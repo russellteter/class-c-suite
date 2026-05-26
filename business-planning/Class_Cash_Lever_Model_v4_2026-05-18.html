@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Technologies — Cash Lever Model v4 | What Actually Moves July?</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --navy: #0A1849; --gold: #FFBA00; --purple: #4739E7; --white: #FFFFFF;
+    --light-gray: #FAFAFA; --section-gray: #F3F3F3; --border: #E0E0E0;
+    --green: #00B894; --red: #E74C3C; --amber: #F39C12; --teal: #52d1e4;
+    --orange: #FF7F50; --grey: #6b7180;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+  body { background: var(--light-gray); color: var(--navy); line-height: 1.4; }
+  .header { background: var(--navy); color: var(--white); padding: 28px 44px 24px; border-bottom: 4px solid var(--gold); }
+  .header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+  .header .subtitle { color: var(--gold); font-size: 12px; font-weight: 600; margin-top: 6px; letter-spacing: 0.3px; }
+  .header .meta { color: rgba(255,255,255,0.7); font-size: 11px; margin-top: 10px; }
+  .container { padding: 26px 44px 44px; max-width: 1600px; margin: 0 auto; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.1px; color: var(--navy); margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--gold); display: inline-block; }
+  .section-title:first-of-type { margin-top: 4px; }
+
+  /* JULY HEADLINE — the focal point */
+  .july-focus {
+    background: linear-gradient(135deg, var(--navy) 0%, #1a2a6a 100%);
+    color: var(--white);
+    border-radius: 8px;
+    padding: 22px 28px;
+    margin-bottom: 16px;
+    border-left: 5px solid var(--gold);
+  }
+  .july-focus .label { font-size: 10px; color: var(--gold); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 6px; }
+  .july-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 24px; align-items: end; }
+  .july-grid .main h2 { font-size: 17px; line-height: 1.3; font-weight: 700; margin-bottom: 4px; }
+  .july-grid .stat-label { font-size: 10px; color: rgba(255,186,0,0.85); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; margin-bottom: 4px; }
+  .july-grid .stat-value { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+  .july-grid .stat-value.pos { color: #5cffa9; }
+  .july-grid .stat-value.neg { color: #ff8888; }
+  .july-grid .stat-value.warn { color: var(--gold); }
+  .july-grid .stat-sub { font-size: 10px; color: rgba(255,255,255,0.65); margin-top: 2px; }
+
+  /* What's new banner */
+  .whats-new { background: #fff4e0; border: 1px solid var(--amber); border-left: 4px solid var(--amber); padding: 14px 20px; border-radius: 4px; margin-bottom: 14px; font-size: 11px; line-height: 1.6; }
+  .whats-new strong { color: var(--navy); }
+  .whats-new .label { font-size: 10px; color: var(--amber); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 4px; }
+
+  /* Scenario quick cards */
+  .scenario-cards { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 16px; }
+  .scen { background: var(--white); border: 1px solid var(--border); border-radius: 6px; padding: 11px 12px; border-top: 4px solid var(--navy); }
+  .scen.base { border-top-color: var(--gold); }
+  .scen.t1a { border-top-color: var(--teal); }
+  .scen.t1b { border-top-color: #95d5b2; }
+  .scen.t1 { border-top-color: var(--green); }
+  .scen.t12 { border-top-color: var(--amber); }
+  .scen.t123 { border-top-color: var(--orange); }
+  .scen.all { border-top-color: var(--red); }
+  .scen .name { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: var(--navy); min-height: 28px; line-height: 1.25; margin-bottom: 4px; }
+  .scen .trough { font-size: 17px; font-weight: 700; color: var(--navy); letter-spacing: -0.3px; }
+  .scen .trough-label { font-size: 8.5px; color: var(--grey); text-transform: uppercase; letter-spacing: 0.5px; }
+  .scen .delta { font-size: 10px; font-weight: 700; margin-top: 3px; color: var(--green); }
+  .scen.base .delta { color: var(--grey); }
+
+  /* Layout */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-asym { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card { background: var(--white); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px 18px; }
+  .card.full { grid-column: 1 / -1; }
+  .card-title { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+  .card-sub { font-size: 11px; color: var(--grey); margin-bottom: 12px; line-height: 1.5; }
+  .chart-container { position: relative; height: 320px; }
+  .chart-container.tall { height: 420px; }
+  .chart-container.short { height: 240px; }
+
+  /* Levers panel */
+  .levers { background: var(--white); border: 1px solid var(--border); border-radius: 6px; padding: 16px 20px 18px; margin-bottom: 14px; }
+  .levers h3 { font-size: 13px; font-weight: 700; margin-bottom: 4px; color: var(--navy); }
+  .levers .ctrl-sub { font-size: 11px; color: var(--grey); margin-bottom: 14px; }
+
+  /* Line item adjustments table */
+  .line-items table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .line-items th { background: var(--navy); color: var(--white); padding: 7px 9px; text-align: left; font-weight: 700; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .line-items th.num { text-align: right; }
+  .line-items td { padding: 6px 9px; border-bottom: 1px solid var(--border); }
+  .line-items td.amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .line-items input { width: 110px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 3px; font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
+  .line-items input.amount-input { background: #fffae0; }
+  .line-items .annual-fc { color: var(--grey); }
+  .line-items .delta-pos { color: var(--green); }
+  .line-items .delta-neg { color: var(--red); }
+  .line-items .src { font-size: 9px; color: var(--grey); font-style: italic; }
+
+  /* Bookings table */
+  .bookings-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .booking-ctrl { background: var(--light-gray); padding: 10px 12px; border-radius: 4px; border-left: 3px solid var(--teal); }
+  .booking-ctrl label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--navy); margin-bottom: 5px; }
+  .booking-ctrl input { width: 100%; padding: 5px 7px; border: 1px solid var(--border); border-radius: 3px; font-size: 12px; }
+  .booking-ctrl .src { font-size: 9px; color: var(--grey); margin-top: 4px; font-style: italic; }
+
+  /* Tranche person picker */
+  .tranche-section { margin-top: 16px; }
+  .tranche-header { display: flex; align-items: center; gap: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .tranche-header h4 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--navy); }
+  .tranche-header .summary { font-size: 11px; color: var(--grey); margin-left: auto; }
+  .tranche-header .mode-toggle { font-size: 10px; }
+  .tranche-header .mode-toggle select { padding: 3px 6px; border: 1px solid var(--border); border-radius: 3px; font-size: 11px; }
+  .tranche-header .term-date input { padding: 3px 6px; border: 1px solid var(--border); border-radius: 3px; font-size: 11px; width: 130px; }
+  .emp-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .emp-table th { background: var(--section-gray); color: var(--navy); padding: 6px 8px; text-align: left; font-weight: 700; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .emp-table th.num { text-align: right; }
+  .emp-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); }
+  .emp-table td.amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 10.5px; }
+  .emp-table td.label { font-weight: 600; }
+  .emp-table .role { font-size: 10px; color: var(--grey); }
+  .emp-table input[type="number"] { width: 56px; padding: 3px 5px; border: 1px solid var(--border); border-radius: 3px; font-size: 11px; text-align: center; }
+  .loc-tag { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 9px; font-weight: 700; }
+  .loc-tag.US { background: #e6e9f5; color: var(--navy); }
+  .loc-tag.EU { background: #fff4e0; color: var(--amber); }
+  .loc-tag.CZ { background: #ffe6e6; color: var(--red); }
+  .loc-tag.MX { background: #ece9ff; color: var(--purple); }
+  .loc-tag.UK { background: #d1f0ff; color: #0a5e8f; }
+  .loc-tag.CA { background: #d4f0d4; color: #2a7d2a; }
+  .loc-tag.IN { background: #fef3c7; color: #b8860b; }
+  .loc-tag.APAC, .loc-tag.Intl { background: var(--section-gray); color: var(--grey); }
+  .emp-table tr.checked td { background: #f0fff4; }
+  .emp-table tr.protected td { color: var(--grey); background: var(--section-gray); }
+
+  /* Buttons */
+  .btn-row { margin-top: 14px; }
+  .btn-primary { background: var(--navy); color: var(--white); border: none; padding: 9px 18px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; border-radius: 4px; cursor: pointer; }
+  .btn-primary:hover { background: #1a2a6a; }
+  .btn-secondary { background: var(--white); color: var(--navy); border: 1px solid var(--border); padding: 9px 18px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; border-radius: 4px; cursor: pointer; margin-left: 6px; }
+
+  /* Legend / methodology cards */
+  .legend-card { background: #fffae0; border-radius: 6px; padding: 16px 20px; border-left: 3px solid var(--gold); margin-bottom: 14px; }
+  .legend-card h4 { font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+  .legend-card .body { font-size: 11px; line-height: 1.65; color: var(--navy); }
+  .legend-card code { background: var(--white); padding: 1px 5px; border-radius: 2px; font-family: monospace; font-size: 11px; color: var(--purple); }
+  .legend-card ul { margin-top: 6px; padding-left: 22px; }
+
+  /* Tables */
+  table.std { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.std th { background: var(--navy); color: var(--white); padding: 8px 10px; text-align: left; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; }
+  table.std th.num { text-align: right; }
+  table.std td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--navy); }
+  table.std tr:nth-child(even) td { background: var(--light-gray); }
+  table.std td.amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  table.std td.amount.neg { color: var(--red); }
+  table.std td.amount.pos { color: var(--green); }
+  table.std td.left { text-align: left; }
+
+  /* Heatmap */
+  .heatmap { width: 100%; border-collapse: collapse; font-size: 9.5px; font-variant-numeric: tabular-nums; }
+  .heatmap th { padding: 5px 3px; text-align: center; font-size: 8.5px; background: var(--navy); color: #fff; }
+  .heatmap td { padding: 5px 3px; text-align: center; font-weight: 600; border: 1px solid #fff; }
+  .heatmap td.label { background: var(--navy); color: var(--white); text-align: left; padding: 5px 7px; font-weight: 700; font-size: 9.5px; min-width: 130px; }
+  .heatmap td.trough-col { border: 2px solid var(--red); }
+
+  .tag { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .tag.verified { background: #e6fff9; color: var(--green); }
+  .tag.modeled { background: #fff4e0; color: var(--amber); }
+  .tag.user { background: #e6e9f5; color: var(--navy); }
+
+  .footer { margin-top: 36px; padding: 16px; text-align: center; color: var(--grey); font-size: 10px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 1100px) {
+    .scenario-cards { grid-template-columns: repeat(2, 1fr); }
+    .july-grid { grid-template-columns: 1fr; }
+    .bookings-grid { grid-template-columns: 1fr 1fr; }
+    .grid-2, .grid-asym { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Class Technologies — Cash Lever Model v4</h1>
+  <div class="subtitle">WEEKLY  •  PER-PERSON SEVERANCE  •  T1 SPLIT (1a/1b)  •  LINE ITEM LEVERS  •  JULY FOCUSED</div>
+  <div class="meta">As of May 18, 2026  |  Baseline = Finance Cash Flow Model (May 10 snapshot, W20-W53, 34 weeks)  |  Roster = 41 employees (Sharae Long &amp; Tomas Novotny already exited)  |  Cash trough confirmed at Week #30 (July 26, 2026) = $111,766</div>
+</div>
+
+<div class="container">
+
+  <!-- WHAT'S NEW -->
+  <div class="whats-new">
+    <div class="label">What changed in v4</div>
+    <strong>Per-person severance:</strong> Each employee row has its own Weeks of severance input. Severance = Base × Weeks ÷ 52.
+    <strong>Spread vs Lump toggle:</strong> Default is "spread across normal payroll" per CFO policy. Spread mode means the person stays on payroll for W weeks — no immediate cash benefit from cutting them. <strong>Tranche 1 split:</strong> T1a (AWS/COGS only, no headcount) vs T1b (S&amp;M headcount only, no COGS) vs T1 combined. <strong>Line item levers:</strong> Adjust AWS, software, or bookings directly. <strong>NS Independent Baseline removed</strong> — single source of truth is the Finance Cash Flow Model.
+  </div>
+
+  <!-- JULY FOCUS HEADLINE -->
+  <div class="july-focus">
+    <div class="label">The question this model answers</div>
+    <div class="july-grid">
+      <div class="main">
+        <h2>What levers, if pulled in the next 6 weeks, actually change the July 26 cash trough?</h2>
+        <div style="font-size: 11px; opacity: 0.85; line-height: 1.5;">Finance baseline trough: <strong style="color:var(--gold);">$111,766</strong>. Every lever above is shown both for full-period impact AND specifically for impact on this single week.</div>
+      </div>
+      <div>
+        <div class="stat-label">Selected scenario trough</div>
+        <div class="stat-value" id="hl-trough">$—</div>
+        <div class="stat-sub" id="hl-trough-week">Week #30 (7/26)</div>
+      </div>
+      <div>
+        <div class="stat-label">vs Baseline</div>
+        <div class="stat-value" id="hl-delta">$—</div>
+        <div class="stat-sub">Higher = better</div>
+      </div>
+      <div>
+        <div class="stat-label">Weeks below $500K</div>
+        <div class="stat-value" id="hl-weeks-low">—</div>
+        <div class="stat-sub">Lower = better</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENARIO CARDS -->
+  <div class="section-title">7 Scenarios — Live</div>
+  <div class="scenario-cards" id="scenarioCards"></div>
+
+  <!-- MAIN CHART -->
+  <div class="section-title">Weekly Cash Path — All Scenarios</div>
+  <div class="card full">
+    <div class="card-title">Operating Cash Balance — Weekly W20-W53 (May 17, 2026 – Jan 3, 2027)</div>
+    <div class="card-sub">Dashed gold = Finance Baseline (= Board Deck slide 16). Other lines layer interventions. Vertical guide at Week #30 (July 26) = the trough.</div>
+    <div class="chart-container tall"><canvas id="cashPath"></canvas></div>
+  </div>
+
+  <!-- JUNE-JULY-AUGUST ZOOM -->
+  <div class="section-title">June–August Zoom — The Crisis Window</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Weekly Cash, W23-W35 Only (Jun 7 – Aug 30)</div>
+      <div class="card-sub">Zoomed view of the trough crisis window. This is where the July problem lives.</div>
+      <div class="chart-container"><canvas id="zoomChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">"What Moves the July Trough?" — Lever Decomposition</div>
+      <div class="card-sub">Each bar shows that lever's contribution to the July 26 trough specifically (positive = lifts trough, negative = lowers it).</div>
+      <div class="chart-container"><canvas id="leverDecomp"></canvas></div>
+    </div>
+  </div>
+
+  <!-- T1A VS T1B COMPARISON -->
+  <div class="section-title">T1a (AWS only) vs T1b (S&amp;M only) vs T1 Combined</div>
+  <div class="card full">
+    <div class="card-title">Which Part of Tranche 1 Is Actually Driving the Cash Outcome?</div>
+    <div class="card-sub">Three overlays vs Finance Baseline showing the AWS portion of T1 separately from the S&amp;M portion. Answers: "If we ONLY did the AWS adjustment, would that solve July? If we ONLY did the S&amp;M cuts, would those?"</div>
+    <div class="chart-container tall"><canvas id="t1splitChart"></canvas></div>
+  </div>
+
+  <!-- LEVERS PANEL -->
+  <div class="section-title">Levers — Edit Any Input Below</div>
+
+  <!-- A. Baseline Line Item Adjustments -->
+  <div class="levers">
+    <h3>A. Baseline Line Item Adjustments — Override Finance Forecast</h3>
+    <div class="ctrl-sub">Positive adjustment = additional cash benefit vs Finance forecast. Spread evenly across the remaining 34 weeks. For example, if you believe AWS is actually $50K/month lower than Finance projects, enter <code>+600000</code> (=$50K × 12) under AWS Fees.</div>
+    <div class="line-items">
+      <table>
+        <thead>
+          <tr>
+            <th>Line Item</th>
+            <th class="num">Finance Forecast (W20-W53)</th>
+            <th class="num">Annual Adjustment ($)</th>
+            <th class="num">Adjusted Total</th>
+            <th>Why You Might Adjust</th>
+          </tr>
+        </thead>
+        <tbody id="lineItemsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- B. New Sales Bookings -->
+  <div class="levers">
+    <h3>B. New Sales Bookings — Cash Inflow Projections</h3>
+    <div class="ctrl-sub">Finance baseline assumes $0 of new sales cash. Russell's projection: ~$350K CoSo + ~$350K Class per quarter. Bookings convert to cash on a 60-day lag.</div>
+    <div class="bookings-grid">
+      <div class="booking-ctrl">
+        <label>Q2 CoSo Bookings ($)</label>
+        <input type="number" id="q2_coso" value="350000" step="25000">
+        <div class="src">Cash arrives ~Aug-Sep (60d lag)</div>
+      </div>
+      <div class="booking-ctrl">
+        <label>Q2 Class Bookings ($)</label>
+        <input type="number" id="q2_class" value="350000" step="25000">
+        <div class="src">Cash arrives ~Aug-Sep (60d lag)</div>
+      </div>
+      <div class="booking-ctrl">
+        <label>Q3 Total Bookings ($)</label>
+        <input type="number" id="q3_total" value="700000" step="25000">
+        <div class="src">Cash arrives ~Nov-Dec (60d lag)</div>
+      </div>
+      <div class="booking-ctrl">
+        <label>Q4 Total Bookings ($)</label>
+        <input type="number" id="q4_total" value="700000" step="25000">
+        <div class="src">Cash arrives ~Feb-Mar 2027 (mostly outside forecast)</div>
+      </div>
+    </div>
+    <div class="ctrl-sub" style="margin-top: 10px;">
+      <strong>Note on July impact:</strong> Q2 bookings (closing Apr-Jun) only convert to cash 60 days after close — which lands in Aug-Sep. <span style="color: var(--red); font-weight: 700;">New sales bookings DO NOT help the July trough.</span> Only Q1 bookings closed in March-April could help July cash — and those are already in the Finance Baseline as Class collections.
+    </div>
+  </div>
+
+  <!-- SEVERANCE LEGEND -->
+  <div class="legend-card">
+    <h4>📐 Severance Calculation Legend (Per CFO Policy)</h4>
+    <div class="body">
+      <strong>Severance Amount</strong> = <code>Base Salary × Weeks ÷ 52</code><br>
+      <strong>Severance Range</strong> = 2 to 12 weeks depending on tenure and seniority. Defaults below are estimates; replace with actual employment agreement terms.<br>
+      <strong>Cash Timing — Spread mode (default per CFO policy where legally allowed):</strong>
+      <ul>
+        <li>Person stays on payroll at normal rate for <code>weeks</code> weeks after termination decision</li>
+        <li>During this period: <strong>no change vs baseline</strong> — they're still being paid like normal</li>
+        <li>Savings begin AFTER spread period ends</li>
+        <li>Example: terminate end of May with 8 weeks spread → spread runs through Aug 2 → savings begin Aug 3. <strong>July sees zero cash benefit.</strong></li>
+      </ul>
+      <strong>Cash Timing — Lump mode:</strong>
+      <ul>
+        <li>Severance paid in full at termination as one outflow</li>
+        <li>Savings begin immediately the next week</li>
+        <li>Example: terminate end of May with 8 weeks lump → -$X cash hit May 31 → savings $Y/wk begin June 7. July gets full month of savings.</li>
+      </ul>
+      <strong>Czech employees:</strong> The 5-month notice period is <strong>already in the Finance Baseline payroll line</strong> (they continue receiving normal salary during notice). The Weeks input applies to ADDITIONAL lump severance AFTER notice ends. Notice begins at termination decision; savings begin 5 months later regardless of mode.<br>
+      <strong>Ongoing savings basis</strong> = <code>Fully Loaded annual cost ÷ 52 per week</code> (because Finance Baseline payroll includes the fully-loaded amount).
+    </div>
+  </div>
+
+  <!-- TRANCHE PICKERS -->
+  <div class="levers">
+    <h3>C. Per-Tranche Person Selection — Who Is Cut and When</h3>
+    <div class="ctrl-sub">Each row is one employee. Check to include them in the tranche. Adjust Weeks of severance individually (defaults set by tenure/location). Select Spread or Lump mode per tranche. Set termination date per tranche.</div>
+
+    <div class="tranche-section">
+      <div class="tranche-header">
+        <h4>T1b — Sales &amp; Marketing Cuts</h4>
+        <div class="term-date">Termination date: <input type="date" id="t1b_term" value="2026-05-31"></div>
+        <div class="mode-toggle">Severance mode: <select id="t1b_mode"><option value="spread" selected>Spread (default per CFO)</option><option value="lump">Lump sum</option></select></div>
+        <div class="summary" id="t1b_summary"></div>
+      </div>
+      <table class="emp-table"><thead><tr><th>✓</th><th>Person</th><th>Location</th><th class="num">Base $</th><th class="num">FL $</th><th class="num">Weeks</th><th class="num">Severance</th><th class="num">Annual Savings</th></tr></thead><tbody id="t1b_body"></tbody></table>
+    </div>
+
+    <div class="tranche-section">
+      <div class="tranche-header">
+        <h4>T2 — Czech Product Development Cuts (15 → 10)</h4>
+        <div class="term-date">Termination date: <input type="date" id="t2_term" value="2026-05-31"></div>
+        <div class="mode-toggle">Severance mode: <select id="t2_mode"><option value="lump" selected>Lump (post-5mo notice)</option></select></div>
+        <div class="summary" id="t2_summary"></div>
+      </div>
+      <div style="font-size: 10px; color: var(--grey); margin-bottom: 6px;">5-month notice period applies — during this period (May-Oct) they remain on baseline payroll. Savings begin Oct 31, 2026. Lump severance applies at end of notice.</div>
+      <table class="emp-table"><thead><tr><th>✓</th><th>Person</th><th>Location</th><th class="num">Base $</th><th class="num">FL $</th><th class="num">Weeks</th><th class="num">Severance</th><th class="num">Annual Savings</th></tr></thead><tbody id="t2_body"></tbody></table>
+    </div>
+
+    <div class="tranche-section">
+      <div class="tranche-header">
+        <h4>T3 — G&amp;A / CS / CoSo Cuts (Post-Renewal Season)</h4>
+        <div class="term-date">Termination date: <input type="date" id="t3_term" value="2026-09-30"></div>
+        <div class="mode-toggle">Severance mode: <select id="t3_mode"><option value="spread" selected>Spread</option><option value="lump">Lump</option></select></div>
+        <div class="summary" id="t3_summary"></div>
+      </div>
+      <table class="emp-table"><thead><tr><th>✓</th><th>Person</th><th>Location</th><th class="num">Base $</th><th class="num">FL $</th><th class="num">Weeks</th><th class="num">Severance</th><th class="num">Annual Savings</th></tr></thead><tbody id="t3_body"></tbody></table>
+    </div>
+
+    <div class="tranche-section">
+      <div class="tranche-header">
+        <h4>T4 — Eliminate Remaining Sales &amp; Marketing</h4>
+        <div class="term-date">Termination date: <input type="date" id="t4_term" value="2026-12-31"></div>
+        <div class="mode-toggle">Severance mode: <select id="t4_mode"><option value="spread" selected>Spread</option><option value="lump">Lump</option></select></div>
+        <div class="summary" id="t4_summary"></div>
+      </div>
+      <table class="emp-table"><thead><tr><th>✓</th><th>Person</th><th>Location</th><th class="num">Base $</th><th class="num">FL $</th><th class="num">Weeks</th><th class="num">Severance</th><th class="num">Annual Savings</th></tr></thead><tbody id="t4_body"></tbody></table>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" onclick="recompute()">↻ Recompute Model</button>
+      <button class="btn-secondary" onclick="resetDefaults()">Reset to Defaults</button>
+    </div>
+  </div>
+
+  <!-- HEATMAP -->
+  <div class="section-title">Weekly Heatmap — Every Scenario × Every Week</div>
+  <div class="card full">
+    <div class="card-title">Ending Cash Balance ($K) by Week and Scenario</div>
+    <div class="card-sub">Color scale: red &lt;$500K (CRISIS), orange $500K-$1M, amber $1-2M, light green $2-3M, green &gt;$3M. Red border = Week #30 (July 26, the trough).</div>
+    <div id="heatmapContainer" style="margin-top: 8px; overflow-x: auto;"></div>
+  </div>
+
+  <!-- TRANCHE IMPACT TABLE -->
+  <div class="section-title">Tranche Cash Impact Summary</div>
+  <div class="card full">
+    <table class="std" id="impactTable">
+      <thead><tr><th>Tranche</th><th class="num">Heads</th><th class="num">Total Severance</th><th class="num">Annual FL Savings</th><th class="num">Impact on July Trough</th><th class="num">Impact on Jan-27 End</th><th>Why</th></tr></thead>
+      <tbody id="impactBody"></tbody>
+    </table>
+  </div>
+
+  <!-- METHODOLOGY -->
+  <div class="section-title">Methodology &amp; What's In / Not In</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Sources (Verifiable)</div>
+      <div style="font-size: 11px; line-height: 1.65;">
+        <strong>Cash Baseline:</strong> Class Cash Forecast as of May 10, 2026.xlsx → Weekly W20-W53 from forecast rows. Same model as Board deck slide 16 (trough $111,766 W30 = "$0.1M late July").<br><br>
+        <strong>Employee Data:</strong> Class GTM Source of Truth - Org Roster CSV → 41 active employees with Base Salary, Fully Loaded Cost, Location, Role.<br><br>
+        <strong>Board Tranche Targets:</strong> Slides 31 (T1 = $1,653K total: $733K headcount + $920K AWS), 32 (T2 = $1,129K), 33 (T3 = $240K), 34 (T4 = $996K), 36 (post-tranche headcount).<br><br>
+        <strong>Cash Interest:</strong> NS GL Acct 6750 avg Nov 25 - Apr 26 = $240K/mo. Already in Finance Baseline.
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">What's Modeled vs Not</div>
+      <div style="font-size: 11px; line-height: 1.65;">
+        <strong>IN the model:</strong> Finance Baseline cash path week-by-week; per-person severance per CFO policy; tranche savings layered on baseline; AWS/Zoom/Software line item overrides; new sales bookings with 60-day cash lag.<br><br>
+        <strong>NOT in the model (deliberately):</strong> Operational damage / revenue impact from cuts (judgment, not cash math); Coso-TD Bank release ($3.245M unknown timing); Barclays BACA release ($2.5M lender consent required); refinance scenarios; M&amp;A; covenant breach scenarios; tax payments; FX; salary increases.<br><br>
+        <strong>Forecast horizon:</strong> May 17, 2026 → Jan 3, 2027 (Finance forecast endpoint). Beyond Jan 2027 not modeled.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Class Technologies, Inc. | Confidential | Generated May 18, 2026 | v4 Cash Lever Model<br>
+    Source: Finance Cash Forecast (May 10) + Employee Roster (41 active employees) | Every input editable; every default sourced.
+  </div>
+
+</div>
+
+<script>
+  const NAVY='#0A1849', GOLD='#FFBA00', TEAL='#52d1e4', GREEN='#00B894', AMBER='#F39C12', RED='#E74C3C', ORANGE='#FF7F50', PURPLE='#4739E7', GREY='#9CA3AF', LIGHT_GREEN='#95d5b2';
+
+  Chart.defaults.font.family='Arial, sans-serif';
+  Chart.defaults.font.size=10;
+  Chart.defaults.color=NAVY;
+  Chart.defaults.plugins.tooltip.backgroundColor=NAVY;
+  Chart.defaults.plugins.tooltip.titleColor=GOLD;
+  Chart.defaults.plugins.tooltip.bodyColor='#fff';
+  Chart.defaults.plugins.tooltip.padding=10;
+
+  const fmt = v => v==null?'':v>=1000000?'$'+(v/1000000).toFixed(2)+'M':v>=1000||v<=-1000?'$'+(v/1000).toFixed(0)+'K':'$'+v.toFixed(0);
+  const fmtSigned = v => (v>=0?'+':'')+fmt(v);
+
+  // === FINANCE BASELINE — embedded weekly data (W20-W53) ===
+  const weeks = [
+    {w:'W20',d:'5/17',m:'May'},{w:'W21',d:'5/24',m:'May'},{w:'W22',d:'5/31',m:'May'},
+    {w:'W23',d:'6/7',m:'Jun'},{w:'W24',d:'6/14',m:'Jun'},{w:'W25',d:'6/21',m:'Jun'},{w:'W26',d:'6/28',m:'Jun'},
+    {w:'W27',d:'7/5',m:'Jul'},{w:'W28',d:'7/12',m:'Jul'},{w:'W29',d:'7/19',m:'Jul'},{w:'W30',d:'7/26',m:'Jul'},
+    {w:'W31',d:'8/2',m:'Aug'},{w:'W32',d:'8/9',m:'Aug'},{w:'W33',d:'8/16',m:'Aug'},{w:'W34',d:'8/23',m:'Aug'},{w:'W35',d:'8/30',m:'Aug'},
+    {w:'W36',d:'9/6',m:'Sep'},{w:'W37',d:'9/13',m:'Sep'},{w:'W38',d:'9/20',m:'Sep'},{w:'W39',d:'9/27',m:'Sep'},
+    {w:'W40',d:'10/4',m:'Oct'},{w:'W41',d:'10/11',m:'Oct'},{w:'W42',d:'10/18',m:'Oct'},{w:'W43',d:'10/25',m:'Oct'},
+    {w:'W44',d:'11/1',m:'Nov'},{w:'W45',d:'11/8',m:'Nov'},{w:'W46',d:'11/15',m:'Nov'},{w:'W47',d:'11/22',m:'Nov'},{w:'W48',d:'11/29',m:'Nov'},
+    {w:'W49',d:'12/6',m:'Dec'},{w:'W50',d:'12/13',m:'Dec'},{w:'W51',d:'12/20',m:'Dec'},{w:'W52',d:'12/27',m:'Dec'},{w:'W53',d:'1/3',m:'Jan'}
+  ];
+  const NW = weeks.length; // 34
+  const STARTING_CASH = 3641277; // W19 ending (last actual)
+  const TROUGH_WEEK = 10; // W30 index in our array (0-indexed)
+
+  // Finance Baseline ending cash (verified)
+  const financeEndingCash = [3258643,1990272,2228292,1966570,1621274,1026316,1088055,922834,813704,153105,111766,461190,2289153,1904786,1738335,2102158,2542265,2687965,2199648,2326591,2476178,3483267,2796489,2907409,3004872,3313387,3218017,2881350,2954163,3213608,3259254,2817208,2883861,2885536];
+
+  // Net cash flow per week (positive = inflow, negative = outflow) - derived
+  const financeNetFlow = [];
+  for (let i=0; i<NW; i++) {
+    if (i===0) financeNetFlow.push(financeEndingCash[0] - STARTING_CASH);
+    else financeNetFlow.push(financeEndingCash[i] - financeEndingCash[i-1]);
+  }
+
+  // Annual finance forecast totals (for line item adjustment context)
+  const financeAnnualForecast = {
+    aws: -6678637, zoom_ms: -6325152, software_subs: -1463911, legal: -984381,
+    coso_other: -2476772, marketing: -554242, agency: -2283496, other_exp: -1248576,
+    class_collections: 21423312, blackboard: 4085622, bme: 3962455, coso_collections: 4435032
+  };
+
+  // === EMPLOYEE ROSTER (41 from CSV, with default tranche assignment and default weeks) ===
+  const roster = [
+    // G&A — most not cuttable (C-suite)
+    {n:'Michael Chasen', t:'CEO', loc:'US', base:250000, fl:400000, dept:'G&A', protected:true},
+    {n:'Brian Bharwani', t:'CFO', loc:'US', base:250000, fl:400000, dept:'G&A', protected:true},
+    {n:'Russell Teter', t:'SVP BD & Ops', loc:'US', base:250000, fl:400000, dept:'G&A', protected:true},
+    {n:'Nicole Brantley', t:'VP of Accounting', loc:'US', base:205000, fl:276450, dept:'G&A', t3:true, weeks:8},
+    {n:'Andy Prescott', t:'Director Rev Accounting', loc:'US', base:180000, fl:224850, dept:'G&A', t3:true, weeks:6},
+    {n:'Kyle Delaney', t:'Revenue Manager', loc:'US', base:120000, fl:146375, dept:'G&A', t3:true, weeks:4},
+    // Sales
+    {n:'Ed Miller', t:'SVP Business Dev & Strategy', loc:'US', base:250000, fl:400000, dept:'Sales', t1b:true, weeks:12, t4:false},
+    {n:'Daniel Hansen', t:'Director of Sales', loc:'US', base:160000, fl:380750, dept:'Sales', t1b:true, weeks:8, t4:false},
+    {n:'Massimo Gentili', t:'Head of EMEA', loc:'EU', base:135931, fl:409431, dept:'Sales', t1b:true, weeks:12, t4:false},
+    {n:'Clayton Coyne', t:'Dir, Partnerships & Channel', loc:'US', base:145000, fl:221625, dept:'Sales', t1b:false, weeks:8, t4:true},
+    // Marketing
+    {n:'Kendall Woodard', t:'Senior Digital Designer', loc:'US', base:100000, fl:119500, dept:'Marketing', t1b:false, weeks:6, t4:true},
+    {n:'Dalton Mullins', t:'Field Marketing Manager', loc:'EU', base:50000, fl:93000, dept:'Marketing', t1b:false, weeks:8, t4:true},
+    {n:'Roxana Nabavian', t:'Marketing', loc:'US', base:79920, fl:99900, dept:'Marketing', t1b:false, weeks:4, t4:true},
+    // Renewals (protected — needed for renewal season)
+    {n:'Sabina Cramer', t:'SVP, Renewal Sales', loc:'EU', base:223220, fl:409431, dept:'Renewals', protected:true},
+    {n:'Andee Bodenstein', t:'Account Manager, NA', loc:'US', base:115000, fl:178625, dept:'Renewals', protected:true},
+    {n:'Holly Hardin', t:'Customer Success Manager', loc:'US', base:110000, fl:142075, dept:'Renewals', protected:true},
+    {n:'Robert Thayer', t:'Account Manager', loc:'US', base:104000, fl:156050, dept:'Renewals', protected:true},
+    {n:'Emmanuel Clemot', t:'Channel AM MENA', loc:'EU', base:103150, fl:133150, dept:'Renewals', protected:true},
+    {n:'Armanda Sereikaitė', t:'AM/CSM LAC', loc:'Intl', base:65000, fl:80000, dept:'Renewals', protected:true},
+    // Customer Success
+    {n:'Jorge Salinas', t:'Dir Global Solutions Engineering', loc:'US', base:151670, fl:191170, dept:'CS', protected:true},
+    {n:'Alan Lam', t:'Solutions Engineer APAC', loc:'APAC', base:119016, fl:134016, dept:'CS', protected:true},
+    {n:'Monica González', t:'Impl Mgr & Solutions Engineer', loc:'MX', base:76274, fl:91274, dept:'CS', t3:true, weeks:12},
+    // Product (Czech eligible for T2)
+    {n:'Scott Perian', t:'Chief Architect', loc:'US', base:215000, fl:266238, dept:'Product', protected:true},
+    {n:'Balwant Bisht', t:'Staff Software Engineer', loc:'US', base:140000, fl:177550, dept:'Product', protected:true},
+    {n:'Gavin Llewellyn', t:'Staff Software Engineer', loc:'UK', base:128986, fl:205285, dept:'Product', protected:true},
+    {n:'Gail Chua', t:'Sr. QA Specialist', loc:'CA', base:81551, fl:107751, dept:'Product', protected:true},
+    {n:'Michal Marek', t:'Staff Software Engineer', loc:'CZ', base:79384, fl:130983, dept:'Product', t2:true, weeks:8},
+    {n:'Bronek Gabrhelik', t:'Staff Software Engineer', loc:'CZ', base:78164, fl:128971, dept:'Product', t2:true, weeks:8},
+    {n:'Ivo Novosad', t:'Sr. Mgr Software Engineering', loc:'CZ', base:67654, fl:111629, dept:'Product', t2:false, weeks:12},
+    {n:'Pavel Mican', t:'Staff Software Engineer', loc:'CZ', base:61598, fl:101638, dept:'Product', t2:true, weeks:8},
+    {n:'Robin Wolny', t:'Sr. DevOps Engineer', loc:'CZ', base:58310, fl:87464, dept:'Product', t2:false, weeks:8},
+    {n:'Jakub Samek', t:'Sr. Software Engineer', loc:'CZ', base:50202, fl:75303, dept:'Product', t2:true, weeks:8},
+    {n:'Marek Odraska', t:'Sr. Test Automation Engineer', loc:'CZ', base:47987, fl:71981, dept:'Product', t2:false, weeks:8},
+    {n:'Jiri Stefek', t:'Sr. Test Automation Engineer', loc:'CZ', base:44224, fl:66336, dept:'Product', t2:false, weeks:8},
+    {n:'Abhinav Khawarey', t:'Product Manager', loc:'IN', base:41137, fl:60437, dept:'Product', protected:true},
+    {n:'Roksolana Bondarenko', t:'QA Engineer', loc:'CZ', base:36522, fl:54783, dept:'Product', t2:true, weeks:8},
+    {n:'Jan Mátl', t:'Full Stack Node.js Developer', loc:'CZ', base:31304, fl:46957, dept:'Product', t2:false, weeks:8},
+    // Support (protected)
+    {n:'Anthony Fabiani', t:'L3 Client Support Engineer', loc:'US', base:100000, fl:130250, dept:'Support', protected:true},
+    {n:'Timma Wilson', t:'Client Support Engineer', loc:'US', base:81557, fl:99674, dept:'Support', protected:true},
+    // CoSo
+    {n:'AJ Gorton', t:'Commercial Sales Manager', loc:'US', base:120000, fl:302250, dept:'CoSo', protected:true},
+    {n:'Ed Kwong', t:'Controller', loc:'US', base:170000, fl:222163, dept:'CoSo', t3:true, weeks:8}
+  ];
+
+  // Add index for stable IDs
+  roster.forEach((r,i) => r.id = i);
+
+  // === LINE ITEM CONFIG ===
+  const lineItems = [
+    {key:'aws', name:'AWS Fees', total:-6678637, why:'ICS migration savings may exceed Finance forecast', delta:0},
+    {key:'zoom_ms', name:'Zoom / Microsoft / OpenLMS', total:-6325152, why:'Vendor renegotiation or usage reduction', delta:0},
+    {key:'software_subs', name:'Software Subscriptions', total:-1463911, why:'Subscription audit / cancellations', delta:0},
+    {key:'legal', name:'Legal Fees & Settlements', total:-984381, why:'Settlement timing or scope', delta:0},
+    {key:'agency', name:'Agency Contractors', total:-2283496, why:'Contractor reduction', delta:0},
+    {key:'marketing_progs', name:'Marketing Programs', total:-554242, why:'Pause non-essential marketing', delta:0},
+    {key:'class_collections', name:'Class/Collaborate Collections', total:21423312, why:'AR acceleration / faster collection', delta:0},
+    {key:'coso_collections', name:'CoSo TSA Collections', total:4435032, why:'Knox TSA arrangement adjustment', delta:0}
+  ];
+
+  // === RENDER FUNCTIONS ===
+  function renderLineItems() {
+    document.getElementById('lineItemsBody').innerHTML = lineItems.map((li, idx) => `
+      <tr>
+        <td><strong>${li.name}</strong></td>
+        <td class="amount annual-fc">${fmt(li.total)}</td>
+        <td class="amount"><input type="number" class="amount-input" id="li_${li.key}" value="${li.delta}" step="25000" onchange="recompute()"></td>
+        <td class="amount" id="li_adj_${li.key}">—</td>
+        <td><span class="src">${li.why}</span></td>
+      </tr>
+    `).join('');
+  }
+
+  function renderTranches() {
+    function renderRows(filter, tcode) {
+      const list = roster.filter(filter);
+      return list.map(p => {
+        const checked = p[tcode] === true ? 'checked' : '';
+        const sev = p.base * (p.weeks || 4) / 52;
+        const isProtected = p.protected;
+        return `<tr id="row_${tcode}_${p.id}" class="${p[tcode]?'checked':''} ${isProtected?'protected':''}">
+          <td>${isProtected?'<span style="color:var(--grey);">—</span>':`<input type="checkbox" id="cb_${tcode}_${p.id}" ${checked} onchange="toggleEmp('${tcode}', ${p.id})">`}</td>
+          <td class="label">${p.n}<br><span class="role">${p.t}</span></td>
+          <td><span class="loc-tag ${p.loc}">${p.loc}</span></td>
+          <td class="amount">$${(p.base/1000).toFixed(0)}K</td>
+          <td class="amount">$${(p.fl/1000).toFixed(0)}K</td>
+          <td class="amount"><input type="number" id="wk_${tcode}_${p.id}" value="${p.weeks||4}" min="0" max="26" onchange="updatePersonSev('${tcode}',${p.id})" ${isProtected?'disabled':''}></td>
+          <td class="amount" id="sev_${tcode}_${p.id}">$${(sev/1000).toFixed(1)}K</td>
+          <td class="amount">$${(p.fl/1000).toFixed(0)}K/yr</td>
+        </tr>`;
+      }).join('');
+    }
+    // T1b: Sales + Marketing (non-protected)
+    document.getElementById('t1b_body').innerHTML = renderRows(p => (p.dept==='Sales'||p.dept==='Marketing') && !p.protected, 't1b');
+    // T2: Czech Product Dev (CZ only, non-protected)
+    document.getElementById('t2_body').innerHTML = renderRows(p => p.dept==='Product' && p.loc==='CZ' && !p.protected, 't2');
+    // T3: G&A + CS + CoSo (non-protected)
+    document.getElementById('t3_body').innerHTML = renderRows(p => (p.dept==='G&A'||p.dept==='CS'||p.dept==='CoSo') && !p.protected, 't3');
+    // T4: Same as T1b
+    document.getElementById('t4_body').innerHTML = renderRows(p => (p.dept==='Sales'||p.dept==='Marketing') && !p.protected, 't4');
+  }
+
+  window.toggleEmp = function(tcode, id) {
+    const cb = document.getElementById(`cb_${tcode}_${id}`);
+    roster[id][tcode] = cb.checked;
+    const row = document.getElementById(`row_${tcode}_${id}`);
+    if (cb.checked) row.classList.add('checked');
+    else row.classList.remove('checked');
+    recompute();
+  };
+  window.updatePersonSev = function(tcode, id) {
+    const wk = +document.getElementById(`wk_${tcode}_${id}`).value;
+    roster[id].weeks = wk;
+    const sev = roster[id].base * wk / 52;
+    document.getElementById(`sev_${tcode}_${id}`).textContent = `$${(sev/1000).toFixed(1)}K`;
+    // Update other tranches with same person
+    ['t1b','t2','t3','t4'].forEach(t => {
+      if (t !== tcode) {
+        const wkEl = document.getElementById(`wk_${t}_${id}`);
+        if (wkEl) { wkEl.value = wk; const sevEl = document.getElementById(`sev_${t}_${id}`); if (sevEl) sevEl.textContent = `$${(sev/1000).toFixed(1)}K`; }
+      }
+    });
+    recompute();
+  };
+
+  // === SEVERANCE / SAVINGS CALC ===
+  function dateToWeekIdx(dateStr) {
+    // Find the week index in our weeks[] array for a given date
+    // Match by week-ending date
+    const d = new Date(dateStr);
+    for (let i = 0; i < weeks.length; i++) {
+      const [mo, day] = weeks[i].d.split('/').map(Number);
+      const wd = new Date(d.getFullYear(), mo - 1, day);
+      if (wd >= d) return i;
+    }
+    return weeks.length - 1;
+  }
+
+  function computeTrancheImpact(tcode, isCzech) {
+    // Returns array of cash deltas (one per week in W20-W53)
+    const impact = new Array(NW).fill(0);
+    const termDateStr = document.getElementById(`${tcode}_term`).value;
+    const mode = document.getElementById(`${tcode}_mode`).value;
+    const termWeekIdx = dateToWeekIdx(termDateStr);
+    const selected = roster.filter(p => p[tcode]);
+
+    selected.forEach(p => {
+      const weeklySaving = p.fl / 52;
+      const sevAmount = p.base * (p.weeks || 4) / 52;
+
+      if (isCzech || p.loc === 'CZ') {
+        // Czech: 5-month notice during which they remain on baseline payroll
+        // Savings begin after notice ends
+        // 5 months ≈ 22 weeks
+        const noticeWeeks = 22;
+        const savingsStart = termWeekIdx + noticeWeeks;
+        // Lump severance at end of notice
+        if (savingsStart < NW) {
+          impact[savingsStart] -= sevAmount;
+        }
+        // Weekly savings from savingsStart+1 onwards
+        for (let i = savingsStart + 1; i < NW; i++) {
+          impact[i] += weeklySaving;
+        }
+      } else if (mode === 'spread') {
+        // Spread: person remains on payroll for p.weeks weeks; no immediate cash impact
+        // After spread period: savings begin
+        const spreadWeeks = p.weeks || 4;
+        const savingsStart = termWeekIdx + spreadWeeks;
+        for (let i = savingsStart; i < NW; i++) {
+          impact[i] += weeklySaving;
+        }
+      } else {
+        // Lump: severance paid at termination, savings begin next week
+        impact[termWeekIdx] -= sevAmount;
+        for (let i = termWeekIdx + 1; i < NW; i++) {
+          impact[i] += weeklySaving;
+        }
+      }
+    });
+    return impact;
+  }
+
+  function computeLineItemImpact() {
+    // Returns weekly adjustments for line items (spread evenly across NW weeks)
+    const impact = new Array(NW).fill(0);
+    lineItems.forEach(li => {
+      const adj = +document.getElementById(`li_${li.key}`).value || 0;
+      li.delta = adj;
+      const perWeek = adj / NW;
+      for (let i = 0; i < NW; i++) impact[i] += perWeek;
+      // Update display
+      document.getElementById(`li_adj_${li.key}`).textContent = fmt(li.total + adj);
+      document.getElementById(`li_adj_${li.key}`).className = 'amount ' + (adj > 0 ? 'delta-pos' : adj < 0 ? 'delta-neg' : '');
+    });
+    return impact;
+  }
+
+  function computeBookingsImpact() {
+    // Q2 bookings: cash arrives 60 days post-close (assume close Jun 30)
+    //   Q2 cash arrives ~Aug 29 (W34-W35)
+    // Q3 bookings: close Sep 30 → cash arrives Nov 29 (W48-W49)
+    // Q4 bookings: close Dec 31 → cash arrives Feb-Mar 2027 (mostly outside forecast)
+    const q2 = (+document.getElementById('q2_coso').value || 0) + (+document.getElementById('q2_class').value || 0);
+    const q3 = +document.getElementById('q3_total').value || 0;
+    const q4 = +document.getElementById('q4_total').value || 0;
+    const impact = new Array(NW).fill(0);
+    // Distribute Q2 across W34-W35 (2 weeks) for ~Aug arrivals
+    impact[14] += q2 * 0.5; impact[15] += q2 * 0.5; // W34, W35
+    // Q3 across W48-W49 (Nov 29 - Dec 6)
+    impact[28] += q3 * 0.5; impact[29] += q3 * 0.5;
+    // Q4: only first portion within forecast (Jan W53)
+    impact[33] += q4 * 0.15; // ~15% of Q4 booking cash within forecast end
+    return impact;
+  }
+
+  // === SCENARIO BUILDER ===
+  function buildScenario(includeLineItems, includeBookings, includeTranches) {
+    // Start from finance baseline net flow + apply deltas
+    const cash = [];
+    let running = STARTING_CASH;
+    const lineImpact = includeLineItems ? computeLineItemImpact() : new Array(NW).fill(0);
+    const bookingsImpact = includeBookings ? computeBookingsImpact() : new Array(NW).fill(0);
+    const trancheImpacts = (includeTranches || []).map(t => computeTrancheImpact(t, t === 't2'));
+
+    for (let i = 0; i < NW; i++) {
+      let delta = financeNetFlow[i] + lineImpact[i] + bookingsImpact[i];
+      trancheImpacts.forEach(ti => { delta += ti[i]; });
+      running += delta;
+      cash.push(running);
+    }
+    return cash;
+  }
+
+  function buildPureTrancheImpact(tcode, isCzech) {
+    // Build path with only this tranche applied
+    return buildScenario(false, false, [tcode]);
+  }
+
+  // === CHARTS ===
+  let chart_cashPath, chart_zoom, chart_leverDecomp, chart_t1split;
+
+  function renderCharts() {
+    // Compute scenarios
+    const baseline = buildScenario(false, false, []); // Should match financeEndingCash exactly
+    const t1a_only = buildScenario(true, false, []); // Line items only (T1a is AWS adjustment)
+    const t1b_only = buildScenario(false, false, ['t1b']);
+    const t1_combined = buildScenario(true, false, ['t1b']);
+    const t12 = buildScenario(true, false, ['t1b','t2']);
+    const t123 = buildScenario(true, false, ['t1b','t2','t3']);
+    const all_t = buildScenario(true, false, ['t1b','t2','t3','t4']);
+
+    // Y-axis range
+    const all = [...baseline, ...t1a_only, ...t1b_only, ...t1_combined, ...t12, ...t123, ...all_t];
+    const yMin = Math.max(-200000, Math.min(...all) - 200000);
+    const yMax = Math.max(...all) + 200000;
+    const labels = weeks.map(w => `${w.w} ${w.d}`);
+
+    // Main chart
+    if (chart_cashPath) chart_cashPath.destroy();
+    chart_cashPath = new Chart(document.getElementById('cashPath'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label:'A. Finance Baseline', data:baseline, borderColor:GOLD, borderWidth:3, borderDash:[6,3], tension:0.2, pointRadius:0, pointHoverRadius:5 },
+          { label:'B. + T1a (AWS / line items)', data:t1a_only, borderColor:TEAL, borderWidth:2, tension:0.2, pointRadius:0, pointHoverRadius:5 },
+          { label:'C. + T1b (S&M cuts only)', data:t1b_only, borderColor:LIGHT_GREEN, borderWidth:2, tension:0.2, pointRadius:0, pointHoverRadius:5 },
+          { label:'D. + T1 combined', data:t1_combined, borderColor:GREEN, borderWidth:2.5, tension:0.2, pointRadius:0, pointHoverRadius:5 },
+          { label:'E. + T1+T2', data:t12, borderColor:AMBER, borderWidth:2, tension:0.2, pointRadius:0, pointHoverRadius:5 },
+          { label:'F. + T1+T2+T3', data:t123, borderColor:ORANGE, borderWidth:2, tension:0.2, pointRadius:0, pointHoverRadius:5 },
+          { label:'G. + All Tranches', data:all_t, borderColor:RED, borderWidth:2, tension:0.2, pointRadius:0, pointHoverRadius:5 }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        interaction: {mode:'index', intersect:false},
+        plugins: {
+          legend:{position:'top', align:'end', labels:{font:{size:10, weight:600}, padding:8, boxWidth:14}},
+          tooltip:{callbacks:{title:(ctx)=>weeks[ctx[0].dataIndex].w+' ('+weeks[ctx[0].dataIndex].d+')', label:ctx=>ctx.dataset.label+': '+fmt(ctx.raw)}},
+          annotation: {}
+        },
+        scales: {
+          x: {grid:{display:false}, ticks:{font:{size:9}, maxRotation:60, minRotation:60, callback:function(val, idx){return idx%2===0 ? labels[idx] : '';}}},
+          y: {grid:{color:'#f0f0f0'}, ticks:{callback:v=>fmt(v)}, min:yMin, max:yMax}
+        }
+      }
+    });
+
+    // Zoom chart W23-W35 (June-Aug)
+    const zoomStart = 3, zoomEnd = 16; // W23-W35 inclusive
+    const zoomLabels = labels.slice(zoomStart, zoomEnd);
+    if (chart_zoom) chart_zoom.destroy();
+    chart_zoom = new Chart(document.getElementById('zoomChart'), {
+      type:'line',
+      data: {
+        labels: zoomLabels,
+        datasets: [
+          {label:'Finance Baseline', data:baseline.slice(zoomStart, zoomEnd), borderColor:GOLD, borderWidth:3, borderDash:[6,3], tension:0.2, pointRadius:4, pointBackgroundColor:GOLD},
+          {label:'+ T1a (AWS)', data:t1a_only.slice(zoomStart, zoomEnd), borderColor:TEAL, borderWidth:2, tension:0.2, pointRadius:3},
+          {label:'+ T1b (S&M)', data:t1b_only.slice(zoomStart, zoomEnd), borderColor:LIGHT_GREEN, borderWidth:2, tension:0.2, pointRadius:3},
+          {label:'+ T1 combined', data:t1_combined.slice(zoomStart, zoomEnd), borderColor:GREEN, borderWidth:2.5, tension:0.2, pointRadius:3},
+          {label:'+ All Tranches', data:all_t.slice(zoomStart, zoomEnd), borderColor:RED, borderWidth:2, tension:0.2, pointRadius:3}
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins: {
+          legend:{position:'top', align:'end', labels:{font:{size:9}, boxWidth:12, padding:6}},
+          tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fmt(ctx.raw)}}
+        },
+        scales: {
+          x:{grid:{display:false}, ticks:{font:{size:9}, maxRotation:60, minRotation:60}},
+          y:{grid:{color:'#f0f0f0'}, ticks:{callback:v=>fmt(v)}}
+        }
+      }
+    });
+
+    // Lever Decomposition — impact on W30 trough specifically
+    const baselineTrough = baseline[TROUGH_WEEK];
+    const t1aTrough = buildScenario(true, false, []);
+    const t1bTrough = buildScenario(false, false, ['t1b']);
+    const t2Trough = buildScenario(false, false, ['t2']);
+    const t3Trough = buildScenario(false, false, ['t3']);
+    const t4Trough = buildScenario(false, false, ['t4']);
+    const bookingsTrough = buildScenario(false, true, []);
+
+    const decomp = [
+      {label:'AWS / line items (T1a)', value: t1aTrough[TROUGH_WEEK] - baselineTrough},
+      {label:'S&M cuts (T1b)', value: t1bTrough[TROUGH_WEEK] - baselineTrough},
+      {label:'Czech ProdDev (T2)', value: t2Trough[TROUGH_WEEK] - baselineTrough},
+      {label:'G&A cuts (T3)', value: t3Trough[TROUGH_WEEK] - baselineTrough},
+      {label:'New sales bookings', value: bookingsTrough[TROUGH_WEEK] - baselineTrough}
+    ];
+
+    if (chart_leverDecomp) chart_leverDecomp.destroy();
+    chart_leverDecomp = new Chart(document.getElementById('leverDecomp'), {
+      type:'bar',
+      data: {
+        labels: decomp.map(d=>d.label),
+        datasets: [{
+          data: decomp.map(d=>d.value),
+          backgroundColor: decomp.map(d=>d.value>0?GREEN:d.value<0?RED:GREY),
+          borderRadius:3
+        }]
+      },
+      options: {
+        indexAxis:'y',
+        responsive:true, maintainAspectRatio:false,
+        plugins: {
+          legend:{display:false},
+          tooltip:{callbacks:{label:ctx=>'July trough delta: '+fmtSigned(ctx.raw)}}
+        },
+        scales: {
+          x:{grid:{color:'#f0f0f0'}, ticks:{callback:v=>fmt(v)}},
+          y:{grid:{display:false}, ticks:{font:{size:10, weight:600}}}
+        }
+      }
+    });
+
+    // T1 split chart
+    if (chart_t1split) chart_t1split.destroy();
+    chart_t1split = new Chart(document.getElementById('t1splitChart'), {
+      type:'line',
+      data: {
+        labels,
+        datasets: [
+          {label:'Finance Baseline', data:baseline, borderColor:GOLD, borderWidth:3, borderDash:[6,3], tension:0.2, pointRadius:0, pointHoverRadius:5},
+          {label:'T1a alone (AWS/line items only)', data:t1a_only, borderColor:TEAL, borderWidth:2.5, tension:0.2, pointRadius:0, pointHoverRadius:5},
+          {label:'T1b alone (S&M cuts only)', data:t1b_only, borderColor:LIGHT_GREEN, borderWidth:2.5, tension:0.2, pointRadius:0, pointHoverRadius:5},
+          {label:'T1 combined', data:t1_combined, borderColor:GREEN, borderWidth:3, tension:0.2, pointRadius:0, pointHoverRadius:5}
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        interaction:{mode:'index', intersect:false},
+        plugins: {
+          legend:{position:'top', align:'end', labels:{font:{size:10, weight:600}}},
+          tooltip:{callbacks:{title:(ctx)=>weeks[ctx[0].dataIndex].w+' ('+weeks[ctx[0].dataIndex].d+')', label:ctx=>ctx.dataset.label+': '+fmt(ctx.raw)}}
+        },
+        scales: {
+          x:{grid:{display:false}, ticks:{font:{size:9}, maxRotation:60, minRotation:60, callback:function(val, idx){return idx%2===0 ? labels[idx] : '';}}},
+          y:{grid:{color:'#f0f0f0'}, ticks:{callback:v=>fmt(v)}}
+        }
+      }
+    });
+
+    return {baseline, t1a_only, t1b_only, t1_combined, t12, t123, all_t};
+  }
+
+  function renderScenarioCards(s) {
+    const cards = [
+      {code:'A', cls:'base', name:'Finance Baseline (= Board Deck)', data:s.baseline},
+      {code:'B', cls:'t1a', name:'+ T1a (AWS / Line Items)', data:s.t1a_only},
+      {code:'C', cls:'t1b', name:'+ T1b (S&M Cuts only)', data:s.t1b_only},
+      {code:'D', cls:'t1', name:'+ T1 combined', data:s.t1_combined},
+      {code:'E', cls:'t12', name:'+ T1+T2', data:s.t12},
+      {code:'F', cls:'t123', name:'+ T1+T2+T3', data:s.t123},
+      {code:'G', cls:'all', name:'+ All Tranches', data:s.all_t}
+    ];
+    const baselineTrough = s.baseline[TROUGH_WEEK];
+    document.getElementById('scenarioCards').innerHTML = cards.map(c => {
+      const trough = Math.min(...c.data);
+      const troughIdx = c.data.indexOf(trough);
+      const delta = c.data[TROUGH_WEEK] - baselineTrough;
+      return `<div class="scen ${c.cls}">
+        <div class="name">${c.code}. ${c.name}</div>
+        <div class="trough-label">Trough</div>
+        <div class="trough">${fmt(trough)}</div>
+        <div class="trough-label" style="margin-top:4px;">${weeks[troughIdx].w} ${weeks[troughIdx].d}</div>
+        <div class="delta">${c.code === 'A' ? 'Baseline' : 'July: ' + fmtSigned(delta)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderJulyHeadline(s) {
+    // Use the most-selected scenario = All Tranches as the "selected scenario"
+    // Or just show base + interventions combined
+    const selected = s.all_t;
+    const trough = selected[TROUGH_WEEK];
+    const delta = trough - s.baseline[TROUGH_WEEK];
+    const weeksLow = selected.filter(v => v < 500000).length;
+
+    document.getElementById('hl-trough').textContent = fmt(trough);
+    document.getElementById('hl-trough').className = 'stat-value ' + (trough < 250000 ? 'neg' : trough < 1000000 ? 'warn' : 'pos');
+    document.getElementById('hl-delta').textContent = fmtSigned(delta);
+    document.getElementById('hl-delta').className = 'stat-value ' + (delta > 100000 ? 'pos' : delta < -100000 ? 'neg' : 'warn');
+    document.getElementById('hl-weeks-low').textContent = weeksLow;
+    document.getElementById('hl-weeks-low').className = 'stat-value ' + (weeksLow > 5 ? 'neg' : weeksLow > 2 ? 'warn' : 'pos');
+  }
+
+  function renderHeatmap(s) {
+    const scenarios = [
+      {name:'A. Finance Baseline', data:s.baseline},
+      {name:'B. + T1a (Line items)', data:s.t1a_only},
+      {name:'C. + T1b (S&M)', data:s.t1b_only},
+      {name:'D. + T1 combined', data:s.t1_combined},
+      {name:'E. + T1+T2', data:s.t12},
+      {name:'F. + T1+T2+T3', data:s.t123},
+      {name:'G. + All Tranches', data:s.all_t}
+    ];
+    function colorFor(v) {
+      if (v==null) return '#f0f0f0';
+      if (v<500000) return '#fecaca';
+      if (v<1000000) return '#fed7aa';
+      if (v<2000000) return '#fef3c7';
+      if (v<3000000) return '#d9f99d';
+      return '#bbf7d0';
+    }
+    let html = '<table class="heatmap"><thead><tr><th style="text-align:left;">Scenario</th>';
+    weeks.forEach((w,i) => {
+      const isTrough = i === TROUGH_WEEK;
+      html += `<th${isTrough?' style="background:var(--red); color:#fff;"':''}>${w.w}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+    scenarios.forEach(sc => {
+      html += '<tr><td class="label">'+sc.name+'</td>';
+      sc.data.forEach((v,i) => {
+        const isTrough = i === TROUGH_WEEK;
+        html += `<td style="background:${colorFor(v)}; color:#0A1849;${isTrough?'border: 2px solid var(--red);':''}">$${Math.round(v/1000)}K</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('heatmapContainer').innerHTML = html;
+  }
+
+  function renderImpactTable(s) {
+    function trancheTotals(tcode) {
+      const sel = roster.filter(p => p[tcode]);
+      const heads = sel.length;
+      const severance = sel.reduce((sum, p) => sum + (p.base * (p.weeks || 4) / 52), 0);
+      const annual = sel.reduce((sum, p) => sum + p.fl, 0);
+      return {heads, severance, annual};
+    }
+    function trancheImpact(scenarioData) {
+      const trough = scenarioData[TROUGH_WEEK];
+      const end = scenarioData[NW-1];
+      return {trough, end};
+    }
+    const baselineTrough = s.baseline[TROUGH_WEEK];
+    const baselineEnd = s.baseline[NW-1];
+    function dlt(scenarioData) {
+      return {tDelta: scenarioData[TROUGH_WEEK] - baselineTrough, eDelta: scenarioData[NW-1] - baselineEnd};
+    }
+    const rows = [
+      {name:'T1a (Line item adjustments)', tot:{heads:0, severance:0, annual:lineItems.reduce((s,l)=>s+l.delta,0)*-1}, d:dlt(s.t1a_only), why:'Spread evenly across forecast period'},
+      {name:'T1b (S&M cuts)', tot:trancheTotals('t1b'), d:dlt(s.t1b_only), why:'Severance ' + (document.getElementById('t1b_mode').value === 'spread' ? 'spread → savings after weeks elapse' : 'lump → savings immediately')},
+      {name:'T2 (Czech ProdDev)', tot:trancheTotals('t2'), d:dlt(buildScenario(false,false,['t2'])), why:'5-month notice in baseline; savings begin Oct 31'},
+      {name:'T3 (G&A/CS/CoSo)', tot:trancheTotals('t3'), d:dlt(buildScenario(false,false,['t3'])), why:'Post-Q3 renewal season'},
+      {name:'T4 (Eliminate S&M)', tot:trancheTotals('t4'), d:dlt(buildScenario(false,false,['t4'])), why:'Executed late, minimal forecast-window impact'}
+    ];
+    document.getElementById('impactBody').innerHTML = rows.map(r => `
+      <tr>
+        <td><strong>${r.name}</strong></td>
+        <td class="amount">${r.tot.heads || '—'}</td>
+        <td class="amount">${r.tot.severance ? fmt(r.tot.severance) : '—'}</td>
+        <td class="amount">${r.tot.annual ? fmt(r.tot.annual) : '—'}</td>
+        <td class="amount ${r.d.tDelta>0?'pos':r.d.tDelta<0?'neg':''}">${fmtSigned(r.d.tDelta)}</td>
+        <td class="amount ${r.d.eDelta>0?'pos':r.d.eDelta<0?'neg':''}">${fmtSigned(r.d.eDelta)}</td>
+        <td><span class="src" style="font-size:10px;color:var(--grey);">${r.why}</span></td>
+      </tr>
+    `).join('');
+  }
+
+  function updateTrancheSummaries() {
+    ['t1b','t2','t3','t4'].forEach(t => {
+      const sel = roster.filter(p => p[t]);
+      const heads = sel.length;
+      const sev = sel.reduce((sum, p) => sum + (p.base * (p.weeks||4) / 52), 0);
+      const ann = sel.reduce((sum, p) => sum + p.fl, 0);
+      document.getElementById(`${t}_summary`).textContent = `${heads} selected | $${(ann/1000).toFixed(0)}K/yr savings | $${(sev/1000).toFixed(0)}K severance`;
+    });
+  }
+
+  function resetDefaults() {
+    // Reset tranche flags to defaults
+    roster.forEach((p, i) => {
+      const cb1 = document.getElementById(`cb_t1b_${i}`);
+      const cb2 = document.getElementById(`cb_t2_${i}`);
+      const cb3 = document.getElementById(`cb_t3_${i}`);
+      const cb4 = document.getElementById(`cb_t4_${i}`);
+      // Re-read original defaults from data
+      if (cb1) { cb1.checked = p.t1b === true; p.t1b = p.t1b === true; }
+      if (cb2) { cb2.checked = p.t2 === true; p.t2 = p.t2 === true; }
+      if (cb3) { cb3.checked = p.t3 === true; p.t3 = p.t3 === true; }
+      if (cb4) { cb4.checked = p.t4 === true; p.t4 = p.t4 === true; }
+    });
+    // Reset line items to 0
+    lineItems.forEach(li => { li.delta = 0; const el = document.getElementById(`li_${li.key}`); if (el) el.value = 0; });
+    // Reset bookings
+    document.getElementById('q2_coso').value = 350000;
+    document.getElementById('q2_class').value = 350000;
+    document.getElementById('q3_total').value = 700000;
+    document.getElementById('q4_total').value = 700000;
+    recompute();
+  }
+
+  function recompute() {
+    const s = renderCharts();
+    renderScenarioCards(s);
+    renderJulyHeadline(s);
+    renderHeatmap(s);
+    renderImpactTable(s);
+    updateTrancheSummaries();
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    renderLineItems();
+    renderTranches();
+    // Wire change handlers for tranche selects/inputs
+    ['t1b_mode','t2_mode','t3_mode','t4_mode','t1b_term','t2_term','t3_term','t4_term'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', recompute);
+    });
+    ['q2_coso','q2_class','q3_total','q4_total'].forEach(id => {
+      document.getElementById(id).addEventListener('change', recompute);
+    });
+    recompute();
+  });
+</script>
+</body>
+</html>

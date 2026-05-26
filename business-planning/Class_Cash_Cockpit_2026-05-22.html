@@ -1,0 +1,2183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Class Cash Cockpit v2</title>
+<style>
+:root {
+  --navy: #0A1849;
+  --navy-mid: #1a2a5e;
+  --navy-light: #2a3a72;
+  --navy-bg: #f4f6fb;
+  --gold: #FFBA00;
+  --gold-soft: #FFE9A8;
+  --purple: #4739E7;
+  --white: #FFFFFF;
+  --gray-50: #FAFAFA;
+  --gray-100: #F1F3F7;
+  --gray-150: #E8EBF1;
+  --gray-200: #DDE1EA;
+  --gray-300: #C1C7D5;
+  --gray-500: #6B7280;
+  --gray-700: #374151;
+  --gray-900: #111827;
+  --red: #DC2626;
+  --red-soft: #FEE2E2;
+  --yellow: #D97706;
+  --yellow-soft: #FEF3C7;
+  --green: #059669;
+  --green-soft: #D1FAE5;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Arial, sans-serif;
+  background: var(--gray-100);
+  color: var(--navy);
+  font-size: 12px;
+  line-height: 1.4;
+  font-feature-settings: 'tnum' on;
+  overflow: hidden;
+}
+.app {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  height: 100vh;
+}
+
+/* ============== HEADER ============== */
+header {
+  background: var(--navy);
+  color: var(--white);
+  padding: 10px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--gold);
+  min-height: 44px;
+}
+header h1 {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+header h1 .sub {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 500;
+  margin-left: 10px;
+  letter-spacing: 0;
+  opacity: 0.85;
+}
+.scenario-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.scenario-controls input {
+  background: var(--navy-mid);
+  border: 1px solid var(--navy-light);
+  color: var(--white);
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  width: 150px;
+  font-family: inherit;
+}
+.scenario-controls input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.scenario-controls button {
+  background: var(--gold);
+  color: var(--navy);
+  border: none;
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+.scenario-controls button.ghost {
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+}
+.scenario-controls button:hover { opacity: 0.82; }
+
+/* ============== KPI STRIP ============== */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-200);
+}
+.kpi {
+  padding: 9px 14px;
+  text-align: left;
+  border-right: 1px solid var(--gray-150);
+}
+.kpi:last-child { border-right: none; }
+.kpi .label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--gray-500);
+  font-weight: 600;
+}
+.kpi .value {
+  font-size: 19px;
+  font-weight: 700;
+  margin-top: 1px;
+  color: var(--navy);
+  font-variant-numeric: tabular-nums;
+}
+.kpi .value.danger { color: var(--red); }
+.kpi .value.warn { color: var(--yellow); }
+.kpi .value.good { color: var(--green); }
+.kpi .delta {
+  font-size: 10px;
+  color: var(--gray-500);
+  margin-top: 1px;
+}
+.kpi .delta.up { color: var(--green); }
+.kpi .delta.down { color: var(--red); }
+
+/* ============== MAIN GRID ============== */
+.main {
+  display: grid;
+  grid-template-columns: 360px 5px 1fr;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ============== RESIZER ============== */
+.resizer {
+  background: var(--gray-200);
+  cursor: col-resize;
+  position: relative;
+  transition: background 0.15s;
+  user-select: none;
+}
+.resizer:hover, .resizer.dragging {
+  background: var(--gold);
+}
+.resizer::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 28px;
+  background: var(--gray-500);
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+.resizer:hover::after, .resizer.dragging::after {
+  background: var(--navy);
+  opacity: 1;
+}
+body.resizing { cursor: col-resize !important; user-select: none; }
+body.resizing * { cursor: col-resize !important; user-select: none !important; }
+
+/* ============== LEFT CONTROLS ============== */
+.controls {
+  background: var(--white);
+  border-right: 1px solid var(--gray-200);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.controls::-webkit-scrollbar { width: 8px; }
+.controls::-webkit-scrollbar-track { background: var(--gray-50); }
+.controls::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 4px; }
+.tabs {
+  display: flex;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.tabs button {
+  flex: 1;
+  padding: 9px 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--gray-500);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.tabs button.active {
+  color: var(--navy);
+  border-bottom-color: var(--gold);
+  background: var(--white);
+}
+.tabs button:hover:not(.active) { color: var(--navy); background: var(--white); }
+.tab-content {
+  padding: 12px 14px;
+  display: none;
+}
+.tab-content.active { display: block; }
+
+.section {
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--gray-100);
+}
+.section:last-child { border-bottom: none; margin-bottom: 0; }
+.section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--navy);
+  margin-bottom: 9px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.section-title .tip {
+  font-size: 9px;
+  color: var(--gray-500);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.field {
+  margin-bottom: 8px;
+}
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.field-row label {
+  font-size: 11px;
+  color: var(--gray-700);
+  font-weight: 500;
+}
+.field-row label .hint {
+  display: block;
+  font-size: 9px;
+  color: var(--gray-500);
+  margin-top: 1px;
+  font-weight: 400;
+}
+.field-row input[type="number"],
+.field-row input[type="date"] {
+  width: 110px;
+  padding: 4px 6px;
+  border: 1px solid var(--gray-200);
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: inherit;
+  background: var(--white);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.field-row input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+.field-row input:focus {
+  outline: none;
+  border-color: var(--purple);
+}
+.field-slider {
+  display: grid;
+  grid-template-columns: 1fr 50px;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.field-slider label {
+  font-size: 11px;
+  color: var(--gray-700);
+  font-weight: 500;
+}
+.field-slider input[type="range"] {
+  width: 100%;
+  margin-top: 4px;
+  cursor: pointer;
+}
+.field-slider .v {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--purple);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Preset row */
+.presets {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.presets button {
+  padding: 4px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  color: var(--navy);
+  border-radius: 3px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-family: inherit;
+  transition: all 0.12s;
+}
+.presets button:hover { background: var(--navy); color: var(--gold); border-color: var(--navy); }
+.presets button.active { background: var(--navy); color: var(--gold); border-color: var(--navy); }
+
+/* Employee table */
+.emp-tools {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.emp-tools input {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid var(--gray-200);
+  border-radius: 3px;
+  font-size: 11px;
+  min-width: 100px;
+  font-family: inherit;
+}
+.emp-tools select {
+  padding: 4px 6px;
+  border: 1px solid var(--gray-200);
+  border-radius: 3px;
+  font-size: 11px;
+  background: var(--white);
+  font-family: inherit;
+}
+.emp-meta {
+  width: 100%;
+  font-size: 10px;
+  color: var(--gray-500);
+  margin-top: 2px;
+  font-weight: 500;
+}
+.emp-meta b { color: var(--navy); }
+.emp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+.emp-table thead th {
+  background: var(--navy);
+  color: var(--white);
+  padding: 5px 3px;
+  font-size: 9px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 600;
+}
+.emp-table thead th.left { text-align: left; padding-left: 5px; }
+.emp-table tbody tr:nth-child(even) { background: var(--gray-50); }
+.emp-table tbody tr.cut { background: var(--gold-soft); }
+.emp-table tbody tr.cut:nth-child(even) { background: var(--gold-soft); }
+.emp-table tbody tr.protected { opacity: 0.5; }
+.emp-table tbody tr:hover { background: var(--navy-bg); }
+.emp-table tbody tr.cut:hover { background: #FFE08A; }
+.emp-table td {
+  padding: 3px 3px;
+  border-bottom: 1px solid var(--gray-150);
+  vertical-align: middle;
+  text-align: center;
+}
+.emp-table td.name {
+  font-weight: 600;
+  text-align: left;
+  padding-left: 5px;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.emp-table td.name .loc {
+  font-size: 9px;
+  color: var(--gray-500);
+  font-weight: 400;
+  display: block;
+}
+.emp-table input[type="number"] {
+  width: 36px;
+  padding: 1px 3px;
+  border: 1px solid var(--gray-200);
+  border-radius: 2px;
+  font-size: 10px;
+  text-align: center;
+  font-family: inherit;
+}
+.emp-table select {
+  padding: 1px 2px;
+  font-size: 9px;
+  border: 1px solid var(--gray-200);
+  border-radius: 2px;
+  font-family: inherit;
+}
+.emp-table input[type="checkbox"] { cursor: pointer; }
+.emp-table input.emp-term {
+  width: 92px;
+  padding: 1px 3px;
+  border: 1px solid var(--gray-200);
+  border-radius: 2px;
+  font-size: 9px;
+  font-family: inherit;
+  background: var(--white);
+}
+.emp-table input.emp-term.term-auto {
+  color: var(--gray-500);
+  font-style: italic;
+}
+.emp-table input.emp-term.term-override {
+  color: var(--purple);
+  font-weight: 600;
+  border-color: var(--purple);
+}
+.emp-table .savings { font-size: 9px; color: var(--green); font-weight: 600; }
+.emp-table .protected-badge {
+  background: var(--gray-200);
+  color: var(--gray-700);
+  font-size: 8px;
+  padding: 1px 3px;
+  border-radius: 2px;
+  font-weight: 700;
+}
+.emp-summary {
+  background: var(--navy-bg);
+  padding: 7px 9px;
+  border-radius: 4px;
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.emp-summary .item { text-align: center; }
+.emp-summary .item .lbl {
+  font-size: 8px;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 600;
+}
+.emp-summary .item .v {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-top: 1px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============== RIGHT OUTPUT PANEL ============== */
+.output {
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Chart controls strip */
+.chart-controls {
+  padding: 8px 14px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+}
+.chart-controls .group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.chart-controls .group-label {
+  font-size: 9px;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 600;
+  margin-right: 4px;
+}
+.chart-controls button {
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  color: var(--navy);
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s;
+}
+.chart-controls button:hover { border-color: var(--navy); }
+.chart-controls button.active {
+  background: var(--navy);
+  color: var(--gold);
+  border-color: var(--navy);
+}
+.chart-controls select {
+  padding: 4px 6px;
+  border: 1px solid var(--gray-200);
+  border-radius: 3px;
+  font-size: 11px;
+  background: var(--white);
+  font-family: inherit;
+}
+
+/* Chart area */
+.chart-area {
+  flex: 1;
+  padding: 0 18px 14px 18px;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+#cashChart { display: block; flex: 1; min-height: 0; }
+
+/* HUD (heads-up display) above chart */
+.hud {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto auto;
+  gap: 18px;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--navy);
+  color: var(--white);
+  border-radius: 4px 4px 0 0;
+  margin: 10px 0 0 0;
+  font-variant-numeric: tabular-nums;
+  min-height: 44px;
+  transition: opacity 0.15s;
+}
+.hud.dim { opacity: 0.4; }
+.hud .week-tag {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.5px;
+}
+.hud .meta {
+  font-size: 10px;
+  color: rgba(255,255,255,0.6);
+  font-weight: 500;
+}
+.hud .stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.hud .stat .lbl {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(255,255,255,0.55);
+  font-weight: 600;
+}
+.hud .stat .v {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--white);
+}
+.hud .stat .v.red { color: #FCA5A5; }
+.hud .stat .v.green { color: #86EFAC; }
+
+/* Diff strip — "what changed" */
+.diff-strip {
+  padding: 6px 18px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 30px;
+}
+.diff-strip .diff-empty {
+  font-size: 10px;
+  color: var(--gray-500);
+  font-style: italic;
+}
+.diff-strip .diff-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray-500);
+  margin-right: 4px;
+}
+.diff-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  background: var(--gold-soft);
+  color: var(--navy);
+  border-radius: 11px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.1s;
+}
+.diff-badge:hover {
+  background: var(--gold);
+  border-color: var(--navy);
+}
+.diff-badge .x {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.55;
+  margin-left: 2px;
+}
+.diff-badge:hover .x { opacity: 1; }
+
+/* Scenario chip strip */
+.scenario-chips {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 1;
+}
+.scenario-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 6px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--navy);
+  transition: all 0.1s;
+  white-space: nowrap;
+}
+.scenario-chip:hover { border-color: var(--navy); }
+.scenario-chip.active {
+  background: var(--navy);
+  color: var(--white);
+  border-color: var(--navy);
+}
+.scenario-chip .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--gray-300);
+  flex-shrink: 0;
+}
+.scenario-chip.active .dot {
+  border: 1.5px solid var(--white);
+  width: 10px;
+  height: 10px;
+}
+.scenario-chips .empty {
+  font-size: 10px;
+  color: var(--gray-500);
+  font-style: italic;
+}
+
+/* KPI flash animation */
+@keyframes kpiFlash {
+  0%   { background-color: rgba(255, 186, 0, 0.45); }
+  60%  { background-color: rgba(255, 186, 0, 0.18); }
+  100% { background-color: transparent; }
+}
+.kpi.flash { animation: kpiFlash 0.55s ease-out; }
+
+/* Bottom strip — mini stats + readout */
+.chart-bottom {
+  padding: 8px 18px;
+  background: var(--gray-50);
+  border-top: 1px solid var(--gray-200);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 14px;
+}
+.chart-bottom .stat .lbl {
+  font-size: 9px;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+.chart-bottom .stat .v {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-top: 1px;
+  font-variant-numeric: tabular-nums;
+}
+.chart-bottom .stat .v.red { color: var(--red); }
+.chart-bottom .stat .v.green { color: var(--green); }
+
+/* Callout/alert below chart */
+.callout-row {
+  padding: 0 18px 14px 18px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.callout {
+  padding: 8px 12px;
+  border-left: 3px solid var(--gold);
+  background: var(--gray-50);
+  font-size: 11px;
+  border-radius: 0 3px 3px 0;
+  flex: 1;
+  min-width: 240px;
+}
+.callout.danger { border-left-color: var(--red); background: var(--red-soft); }
+.callout.warn { border-left-color: var(--yellow); background: var(--yellow-soft); }
+.callout.good { border-left-color: var(--green); background: var(--green-soft); }
+.callout strong { color: var(--navy); }
+
+@media (max-width: 1200px) {
+  .main { grid-template-columns: 320px 1fr; }
+  .kpi-strip { grid-template-columns: repeat(3, 1fr); }
+  .kpi { border-bottom: 1px solid var(--gray-150); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <h1>CLASS CASH COCKPIT<span class="sub">v2 · Live scenario tool · May 2026 → Dec 2027 · Anchored to Cash Lever Model v5</span></h1>
+  <div class="scenario-controls">
+    <input id="scenarioName" type="text" placeholder="Scenario name" value="Working scenario">
+    <button id="btn-save">Save</button>
+    <button id="btn-load" class="ghost">Load</button>
+    <button id="btn-export" class="ghost">Export</button>
+    <button id="btn-reset" class="ghost">Reset</button>
+  </div>
+</header>
+
+<div class="kpi-strip">
+  <div class="kpi">
+    <div class="label">2027 Trough · Deepest Cash Hole</div>
+    <div class="value" id="kpi-trough27">$0</div>
+    <div class="delta" id="kpi-trough27-week">at W—</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Cash-Out Date</div>
+    <div class="value" id="kpi-cashout">—</div>
+    <div class="delta" id="kpi-cashout-week">first week below $0</div>
+  </div>
+  <div class="kpi">
+    <div class="label">$ Needed to Bridge 2027</div>
+    <div class="value" id="kpi-bridge">$0</div>
+    <div class="delta" id="kpi-bridge-tag">cash injection to stay above $0</div>
+  </div>
+  <div class="kpi">
+    <div class="label">W30 2026 Trough</div>
+    <div class="value" id="kpi-trough">$0</div>
+    <div class="delta" id="kpi-trough-delta">Jul 26 2026 · vs $112K baseline</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Annual Burn FY27</div>
+    <div class="value" id="kpi-burn27">$0</div>
+    <div class="delta" id="kpi-burn27-tag">total cash burn 2027</div>
+  </div>
+  <div class="kpi">
+    <div class="label">EBITDA Breakeven Gap</div>
+    <div class="value" id="kpi-ebitda-gap">$0</div>
+    <div class="delta" id="kpi-ebitda-gap-tag">ARR needed to flip</div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- LEFT CONTROLS -->
+  <div class="controls">
+    <div class="tabs">
+      <button data-tab="headcount" class="active">People</button>
+      <button data-tab="revenue">Revenue</button>
+      <button data-tab="levers">Levers</button>
+      <button data-tab="cash">Cash</button>
+    </div>
+
+    <!-- PEOPLE TAB -->
+    <div class="tab-content active" id="tab-headcount">
+      <div class="section">
+        <div class="section-title">Defaults <span class="tip">apply to new cuts</span></div>
+        <div class="field-row">
+          <label>Default notify date<span class="hint">Czech term = 1st of M+2 (May 30 notify → Jul 1 term)</span></label>
+          <input type="date" id="notifyDate" value="2026-05-30">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Roster <span class="tip">41 people</span></div>
+        <div class="emp-tools">
+          <input type="text" id="emp-search" placeholder="Search…">
+          <select id="emp-loc-filter">
+            <option value="">All loc</option>
+            <option value="US">US</option>
+            <option value="EU">EU</option>
+            <option value="CZ">CZ</option>
+            <option value="UK">UK</option>
+            <option value="CA">CA</option>
+            <option value="APAC">APAC</option>
+            <option value="MX">MX</option>
+            <option value="IN">IN</option>
+            <option value="Intl">Intl</option>
+          </select>
+          <select id="emp-dept-filter">
+            <option value="">All depts</option>
+            <option value="Sales">Sales</option>
+            <option value="Marketing">Marketing</option>
+            <option value="Renewals">Renewals</option>
+            <option value="CS">CS</option>
+            <option value="Product">Product</option>
+            <option value="G&amp;A">G&amp;A</option>
+            <option value="CoSo">CoSo</option>
+            <option value="Support">Support</option>
+          </select>
+          <div class="emp-meta"><b id="emp-visible">41</b> visible / <b id="emp-cut">0</b> cut</div>
+        </div>
+        <table class="emp-table">
+          <thead>
+            <tr>
+              <th>Cut</th>
+              <th class="left">Name</th>
+              <th>FL</th>
+              <th>Wks</th>
+              <th>Mode</th>
+              <th>Term</th>
+              <th>$/wk</th>
+            </tr>
+          </thead>
+          <tbody id="emp-tbody"></tbody>
+        </table>
+        <div class="emp-summary">
+          <div class="item"><div class="lbl">Heads</div><div class="v" id="emp-cut-count">0</div></div>
+          <div class="item"><div class="lbl">Severance</div><div class="v" id="emp-sev-total">$0</div></div>
+          <div class="item"><div class="lbl">Annual save</div><div class="v" id="emp-savings">$0</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVENUE TAB -->
+    <div class="tab-content" id="tab-revenue">
+      <div class="section">
+        <div class="section-title">Coverage drivers <span class="tip">affects 2027 path</span></div>
+        <div class="field-slider">
+          <label>New-biz multiplier</label>
+          <div class="v" id="newBizMult-v">1.0x</div>
+        </div>
+        <input type="range" id="newBizMult" min="0.5" max="5" step="0.1" value="1.0">
+        <div class="field-row">
+          <label>Annual churn ($)<span class="hint">POS-015 anchor: $4.19M · LTM: $3.67M</span></label>
+          <input type="number" id="churnAnnual" value="4187000" step="100000">
+        </div>
+        <div class="field-row">
+          <label>Annual expansion ($)<span class="hint">Massimo carries $811K alone</span></label>
+          <input type="number" id="expansionAnnual" value="1256000" step="50000">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">P&amp;L anchors</div>
+        <div class="field-row">
+          <label>Blended GM (%)<span class="hint">actual today 53-58% · post-2026-pricing target 64.5%</span></label>
+          <input type="number" id="blendedGM" value="64.5" step="0.5" min="40" max="90">
+        </div>
+        <div class="field-row">
+          <label>Current ARR ($M)</label>
+          <input type="number" id="currentARR" value="35.85" step="0.5">
+        </div>
+        <div class="field-row">
+          <label>Monthly opex ($)<span class="hint">recalcs with cuts below</span></label>
+          <input type="number" id="monthlyOpex" value="2240000" step="50000">
+        </div>
+      </div>
+    </div>
+
+    <!-- LEVERS TAB -->
+    <div class="tab-content" id="tab-levers">
+      <div class="section">
+        <div class="section-title">Cost line items <span class="tip">annual $ adj vs Finance baseline</span></div>
+        <div class="field-row"><label>AWS<span class="hint">~$23-30K/mo achievable beyond baseline</span></label><input type="number" id="lever_aws" value="0" step="25000"></div>
+        <div class="field-row"><label>Zoom / MS / OpenLMS</label><input type="number" id="lever_software" value="0" step="25000"></div>
+        <div class="field-row"><label>Legal &amp; settlements</label><input type="number" id="lever_legal" value="0" step="25000"></div>
+        <div class="field-row"><label>Agency contractors</label><input type="number" id="lever_contractors" value="0" step="25000"></div>
+        <div class="field-row"><label>Marketing programs</label><input type="number" id="lever_marketing" value="0" step="10000"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Collection levers <span class="tip">POS-003 caps total AR pull at $1.4M</span></div>
+        <div class="field-row"><label>Class/Collab collections<span class="hint">core AR pull; biggest single lever</span></label><input type="number" id="lever_classCollect" value="0" step="50000"></div>
+        <div class="field-row"><label>BME stale AR<span class="hint">$1.41M overdue from 2022-23 — write-down candidate, NOT collectible cash</span></label><input type="number" id="lever_bme" value="0" step="50000"></div>
+        <div class="field-row"><label>Blackboard / Anthology<span class="hint">channel collection timing</span></label><input type="number" id="lever_blackboard" value="0" step="50000"></div>
+        <div class="field-row"><label>CoSo / Knox TSA<span class="hint">pool ~$2.195M after May 18-22 drawdown — forensic gap open</span></label><input type="number" id="lever_cosotsa" value="0" step="50000"></div>
+        <div class="field-row" style="background:var(--yellow-soft);padding:6px 8px;border-radius:3px;margin-top:6px;">
+          <label style="font-size:10px;color:var(--yellow);">⚠ Sum of all four lines = total AR you're pulling forward. If &gt;$1.64M (the 0-60d aging bucket per CFO lens) you're double-counting.</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- CASH TAB -->
+    <div class="tab-content" id="tab-cash">
+      <div class="section">
+        <div class="section-title">BACA release <span class="tip">requires Barclays consent</span></div>
+        <div class="field-row">
+          <label>Apply BACA release</label>
+          <input type="checkbox" id="bacaRelease">
+        </div>
+        <div class="field-row">
+          <label>Amount ($)</label>
+          <input type="number" id="bacaAmount" value="2500000" step="100000">
+        </div>
+        <div class="field-row">
+          <label>Week index (W20=1)</label>
+          <input type="number" id="bacaWeek" value="6" min="1" max="86">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">New sales bookings <span class="tip">60-day cash lag</span></div>
+        <div class="field-row"><label>Q2 close → cash</label><input type="number" id="q2Bookings" value="700000" step="50000"></div>
+        <div class="field-row"><label>Q3 close → cash</label><input type="number" id="q3Bookings" value="700000" step="50000"></div>
+        <div class="field-row"><label>Q4 close → cash</label><input type="number" id="q4Bookings" value="700000" step="50000"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Covenant floor <span class="tip">verbatim def. pending</span></div>
+        <div class="field-row">
+          <label>Assumed min liquidity</label>
+          <input type="number" id="covenantFloor" value="2000000" step="100000">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESIZER -->
+  <div class="resizer" id="resizer" title="Drag to resize"></div>
+
+  <!-- RIGHT OUTPUT -->
+  <div class="output">
+
+    <!-- Diff strip — what changed vs default -->
+    <div class="diff-strip" id="diffStrip">
+      <span class="diff-label">Changes:</span>
+      <span class="diff-empty">No changes vs default. Tweak any input to see modifications here.</span>
+    </div>
+
+    <!-- Chart controls -->
+    <div class="chart-controls">
+      <div class="group">
+        <span class="group-label">View</span>
+        <button data-view="ending" class="active">Ending Cash</button>
+        <button data-view="netflow">Weekly Flow</button>
+        <button data-view="delta">Δ vs Baseline</button>
+      </div>
+      <div class="group">
+        <span class="group-label">Range</span>
+        <button data-range="full" class="active">Full</button>
+        <button data-range="2026">2026</button>
+        <button data-range="2027">2027</button>
+        <button data-range="trough">W30 zoom</button>
+      </div>
+      <div class="group" style="flex:1; justify-content:flex-end;">
+        <span class="group-label">Overlay</span>
+        <div class="scenario-chips" id="scenarioChips">
+          <span class="empty">Save scenarios to overlay them here</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart + HUD -->
+    <div class="chart-area">
+      <div class="hud" id="hud">
+        <div>
+          <div class="week-tag" id="hud-week">Hover the chart</div>
+          <div class="meta" id="hud-meta">Heads-up display for the hovered week</div>
+        </div>
+        <div></div>
+        <div class="stat"><div class="lbl">Adjusted</div><div class="v" id="hud-adj">—</div></div>
+        <div class="stat"><div class="lbl">Δ vs Baseline</div><div class="v" id="hud-delta">—</div></div>
+        <div class="stat"><div class="lbl">Weekly flow</div><div class="v" id="hud-flow">—</div></div>
+        <div class="stat"><div class="lbl">Implied ARR</div><div class="v" id="hud-arr">—</div></div>
+      </div>
+      <canvas id="cashChart"></canvas>
+    </div>
+
+    <!-- Dynamic callouts -->
+    <div class="callout-row" id="callout-row"></div>
+
+  </div>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<script>
+const BASELINE_WEEKLY = [{"week": "W20", "date": "2026-05-17", "month": "May", "wknum": 1.0, "fin_net_flow": -382634.0, "fin_ending_cash": 3258643.0, "source": "v5"}, {"week": "W21", "date": "2026-05-24", "month": "May", "wknum": 2.0, "fin_net_flow": -1268371.0, "fin_ending_cash": 1990272.0, "source": "v5"}, {"week": "W22", "date": "2026-05-31", "month": "May", "wknum": 3.0, "fin_net_flow": 238020.0, "fin_ending_cash": 2228292.0, "source": "v5"}, {"week": "W23", "date": "2026-06-07", "month": "Jun", "wknum": 4.0, "fin_net_flow": -261722.0, "fin_ending_cash": 1966570.0, "source": "v5"}, {"week": "W24", "date": "2026-06-14", "month": "Jun", "wknum": 5.0, "fin_net_flow": -345296.0, "fin_ending_cash": 1621274.0, "source": "v5"}, {"week": "W25", "date": "2026-06-21", "month": "Jun", "wknum": 6.0, "fin_net_flow": -594958.0, "fin_ending_cash": 1026316.0, "source": "v5"}, {"week": "W26", "date": "2026-06-28", "month": "Jun", "wknum": 7.0, "fin_net_flow": 61739.0, "fin_ending_cash": 1088055.0, "source": "v5"}, {"week": "W27", "date": "2026-07-05", "month": "Jul", "wknum": 8.0, "fin_net_flow": -165221.0, "fin_ending_cash": 922834.0, "source": "v5"}, {"week": "W28", "date": "2026-07-12", "month": "Jul", "wknum": 9.0, "fin_net_flow": -109130.0, "fin_ending_cash": 813704.0, "source": "v5"}, {"week": "W29", "date": "2026-07-19", "month": "Jul", "wknum": 10.0, "fin_net_flow": -660599.0, "fin_ending_cash": 153105.0, "source": "v5"}, {"week": "W30", "date": "2026-07-26", "month": "Jul", "wknum": 11.0, "fin_net_flow": -41339.0, "fin_ending_cash": 111766.0, "source": "v5"}, {"week": "W31", "date": "2026-08-02", "month": "Aug", "wknum": 12.0, "fin_net_flow": 349424.0, "fin_ending_cash": 461190.0, "source": "v5"}, {"week": "W32", "date": "2026-08-09", "month": "Aug", "wknum": 13.0, "fin_net_flow": 1827963.0, "fin_ending_cash": 2289153.0, "source": "v5"}, {"week": "W33", "date": "2026-08-16", "month": "Aug", "wknum": 14.0, "fin_net_flow": -384367.0, "fin_ending_cash": 1904786.0, "source": "v5"}, {"week": "W34", "date": "2026-08-23", "month": "Aug", "wknum": 15.0, "fin_net_flow": -166451.0, "fin_ending_cash": 1738335.0, "source": "v5"}, {"week": "W35", "date": "2026-08-30", "month": "Aug", "wknum": 16.0, "fin_net_flow": 363823.0, "fin_ending_cash": 2102158.0, "source": "v5"}, {"week": "W36", "date": "2026-09-06", "month": "Sep", "wknum": 17.0, "fin_net_flow": 440107.0, "fin_ending_cash": 2542265.0, "source": "v5"}, {"week": "W37", "date": "2026-09-13", "month": "Sep", "wknum": 18.0, "fin_net_flow": 145700.0, "fin_ending_cash": 2687965.0, "source": "v5"}, {"week": "W38", "date": "2026-09-20", "month": "Sep", "wknum": 19.0, "fin_net_flow": -488317.0, "fin_ending_cash": 2199648.0, "source": "v5"}, {"week": "W39", "date": "2026-09-27", "month": "Sep", "wknum": 20.0, "fin_net_flow": 126943.0, "fin_ending_cash": 2326591.0, "source": "v5"}, {"week": "W40", "date": "2026-10-04", "month": "Oct", "wknum": 21.0, "fin_net_flow": 149587.0, "fin_ending_cash": 2476178.0, "source": "v5"}, {"week": "W41", "date": "2026-10-11", "month": "Oct", "wknum": 22.0, "fin_net_flow": 1007089.0, "fin_ending_cash": 3483267.0, "source": "v5"}, {"week": "W42", "date": "2026-10-18", "month": "Oct", "wknum": 23.0, "fin_net_flow": -686778.0, "fin_ending_cash": 2796489.0, "source": "v5"}, {"week": "W43", "date": "2026-10-25", "month": "Oct", "wknum": 24.0, "fin_net_flow": 110920.0, "fin_ending_cash": 2907409.0, "source": "v5"}, {"week": "W44", "date": "2026-11-01", "month": "Nov", "wknum": 25.0, "fin_net_flow": 97463.0, "fin_ending_cash": 3004872.0, "source": "v5"}, {"week": "W45", "date": "2026-11-08", "month": "Nov", "wknum": 26.0, "fin_net_flow": 308515.0, "fin_ending_cash": 3313387.0, "source": "v5"}, {"week": "W46", "date": "2026-11-15", "month": "Nov", "wknum": 27.0, "fin_net_flow": -95370.0, "fin_ending_cash": 3218017.0, "source": "v5"}, {"week": "W47", "date": "2026-11-22", "month": "Nov", "wknum": 28.0, "fin_net_flow": -336667.0, "fin_ending_cash": 2881350.0, "source": "v5"}, {"week": "W48", "date": "2026-11-29", "month": "Nov", "wknum": 29.0, "fin_net_flow": 72813.0, "fin_ending_cash": 2954163.0, "source": "v5"}, {"week": "W49", "date": "2026-12-06", "month": "Dec", "wknum": 30.0, "fin_net_flow": 259445.0, "fin_ending_cash": 3213608.0, "source": "v5"}, {"week": "W50", "date": "2026-12-13", "month": "Dec", "wknum": 31.0, "fin_net_flow": 45645.0, "fin_ending_cash": 3259254.0, "source": "v5"}, {"week": "W51", "date": "2026-12-20", "month": "Dec", "wknum": 32.0, "fin_net_flow": -442045.0, "fin_ending_cash": 2817208.0, "source": "v5"}, {"week": "W52", "date": "2026-12-27", "month": "Dec", "wknum": 33.0, "fin_net_flow": 66653.0, "fin_ending_cash": 2883861.0, "source": "v5"}, {"week": "W53", "date": "2027-01-03", "month": "Jan", "wknum": 34.0, "fin_net_flow": 1675.0, "fin_ending_cash": 2885536.0, "source": "v5"}, {"week": "W54", "date": "2027-01-10", "month": "Jan", "wknum": 54.0, "fin_net_flow": -516923.08, "fin_ending_cash": 2368612.92, "source": "forward", "month_num": 1, "weekly_inflow_estimate": 0.0, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W55", "date": "2027-01-17", "month": "Jan", "wknum": 55.0, "fin_net_flow": -516923.08, "fin_ending_cash": 1851689.85, "source": "forward", "month_num": 1, "weekly_inflow_estimate": 0.0, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W56", "date": "2027-01-24", "month": "Jan", "wknum": 56.0, "fin_net_flow": -516923.08, "fin_ending_cash": 1334766.77, "source": "forward", "month_num": 1, "weekly_inflow_estimate": 0.0, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W57", "date": "2027-01-31", "month": "Jan", "wknum": 57.0, "fin_net_flow": -516923.08, "fin_ending_cash": 817843.69, "source": "forward", "month_num": 1, "weekly_inflow_estimate": 0.0, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W58", "date": "2027-02-07", "month": "Feb", "wknum": 58.0, "fin_net_flow": -237209.95, "fin_ending_cash": 580633.74, "source": "forward", "month_num": 2, "weekly_inflow_estimate": 279713.12, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W59", "date": "2027-02-14", "month": "Feb", "wknum": 59.0, "fin_net_flow": -237209.95, "fin_ending_cash": 343423.79, "source": "forward", "month_num": 2, "weekly_inflow_estimate": 279713.12, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W60", "date": "2027-02-21", "month": "Feb", "wknum": 60.0, "fin_net_flow": -237209.95, "fin_ending_cash": 106213.83, "source": "forward", "month_num": 2, "weekly_inflow_estimate": 279713.12, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W61", "date": "2027-02-28", "month": "Feb", "wknum": 61.0, "fin_net_flow": -237209.95, "fin_ending_cash": -130996.12, "source": "forward", "month_num": 2, "weekly_inflow_estimate": 279713.12, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W62", "date": "2027-03-07", "month": "Mar", "wknum": 62.0, "fin_net_flow": -269317.75, "fin_ending_cash": -400313.87, "source": "forward", "month_num": 3, "weekly_inflow_estimate": 247605.33, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W63", "date": "2027-03-14", "month": "Mar", "wknum": 63.0, "fin_net_flow": -269317.75, "fin_ending_cash": -669631.62, "source": "forward", "month_num": 3, "weekly_inflow_estimate": 247605.33, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W64", "date": "2027-03-21", "month": "Mar", "wknum": 64.0, "fin_net_flow": -269317.75, "fin_ending_cash": -938949.37, "source": "forward", "month_num": 3, "weekly_inflow_estimate": 247605.33, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W65", "date": "2027-03-28", "month": "Mar", "wknum": 65.0, "fin_net_flow": -269317.75, "fin_ending_cash": -1208267.12, "source": "forward", "month_num": 3, "weekly_inflow_estimate": 247605.33, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W66", "date": "2027-04-04", "month": "Apr", "wknum": 66.0, "fin_net_flow": -140998.97, "fin_ending_cash": -1349266.09, "source": "forward", "month_num": 4, "weekly_inflow_estimate": 375924.11, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W67", "date": "2027-04-11", "month": "Apr", "wknum": 67.0, "fin_net_flow": -140998.97, "fin_ending_cash": -1490265.06, "source": "forward", "month_num": 4, "weekly_inflow_estimate": 375924.11, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W68", "date": "2027-04-18", "month": "Apr", "wknum": 68.0, "fin_net_flow": -140998.97, "fin_ending_cash": -1631264.03, "source": "forward", "month_num": 4, "weekly_inflow_estimate": 375924.11, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W69", "date": "2027-04-25", "month": "Apr", "wknum": 69.0, "fin_net_flow": -140998.97, "fin_ending_cash": -1772263.0, "source": "forward", "month_num": 4, "weekly_inflow_estimate": 375924.11, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W70", "date": "2027-05-02", "month": "May", "wknum": 70.0, "fin_net_flow": 35752.54, "fin_ending_cash": -1736510.46, "source": "forward", "month_num": 5, "weekly_inflow_estimate": 552675.61, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": true}, {"week": "W71", "date": "2027-05-09", "month": "May", "wknum": 71.0, "fin_net_flow": 35752.54, "fin_ending_cash": -1700757.93, "source": "forward", "month_num": 5, "weekly_inflow_estimate": 552675.61, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": true}, {"week": "W72", "date": "2027-05-16", "month": "May", "wknum": 72.0, "fin_net_flow": 35752.54, "fin_ending_cash": -1665005.39, "source": "forward", "month_num": 5, "weekly_inflow_estimate": 552675.61, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": true}, {"week": "W73", "date": "2027-05-23", "month": "May", "wknum": 73.0, "fin_net_flow": 35752.54, "fin_ending_cash": -1629252.85, "source": "forward", "month_num": 5, "weekly_inflow_estimate": 552675.61, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": true}, {"week": "W74", "date": "2027-05-30", "month": "May", "wknum": 74.0, "fin_net_flow": 35752.54, "fin_ending_cash": -1593500.32, "source": "forward", "month_num": 5, "weekly_inflow_estimate": 552675.61, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": true}, {"week": "W75", "date": "2027-06-06", "month": "Jun", "wknum": 75.0, "fin_net_flow": -155248.66, "fin_ending_cash": -1748748.97, "source": "forward", "month_num": 6, "weekly_inflow_estimate": 361674.42, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W76", "date": "2027-06-13", "month": "Jun", "wknum": 76.0, "fin_net_flow": -155248.66, "fin_ending_cash": -1903997.63, "source": "forward", "month_num": 6, "weekly_inflow_estimate": 361674.42, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W77", "date": "2027-06-20", "month": "Jun", "wknum": 77.0, "fin_net_flow": -155248.66, "fin_ending_cash": -2059246.29, "source": "forward", "month_num": 6, "weekly_inflow_estimate": 361674.42, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W78", "date": "2027-06-27", "month": "Jun", "wknum": 78.0, "fin_net_flow": -155248.66, "fin_ending_cash": -2214494.94, "source": "forward", "month_num": 6, "weekly_inflow_estimate": 361674.42, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W79", "date": "2027-07-04", "month": "Jul", "wknum": 79.0, "fin_net_flow": 1027181.87, "fin_ending_cash": -1187313.08, "source": "forward", "month_num": 7, "weekly_inflow_estimate": 1544104.95, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": true}, {"week": "W80", "date": "2027-07-11", "month": "Jul", "wknum": 80.0, "fin_net_flow": 1027181.87, "fin_ending_cash": -160131.21, "source": "forward", "month_num": 7, "weekly_inflow_estimate": 1544104.95, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": true}, {"week": "W81", "date": "2027-07-18", "month": "Jul", "wknum": 81.0, "fin_net_flow": 1027181.87, "fin_ending_cash": 867050.66, "source": "forward", "month_num": 7, "weekly_inflow_estimate": 1544104.95, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": true}, {"week": "W82", "date": "2027-07-25", "month": "Jul", "wknum": 82.0, "fin_net_flow": 1027181.87, "fin_ending_cash": 1894232.53, "source": "forward", "month_num": 7, "weekly_inflow_estimate": 1544104.95, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": true}, {"week": "W83", "date": "2027-08-01", "month": "Aug", "wknum": 83.0, "fin_net_flow": -90445.15, "fin_ending_cash": 1803787.38, "source": "forward", "month_num": 8, "weekly_inflow_estimate": 426477.92, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W84", "date": "2027-08-08", "month": "Aug", "wknum": 84.0, "fin_net_flow": -90445.15, "fin_ending_cash": 1713342.23, "source": "forward", "month_num": 8, "weekly_inflow_estimate": 426477.92, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W85", "date": "2027-08-15", "month": "Aug", "wknum": 85.0, "fin_net_flow": -90445.15, "fin_ending_cash": 1622897.08, "source": "forward", "month_num": 8, "weekly_inflow_estimate": 426477.92, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W86", "date": "2027-08-22", "month": "Aug", "wknum": 86.0, "fin_net_flow": -90445.15, "fin_ending_cash": 1532451.92, "source": "forward", "month_num": 8, "weekly_inflow_estimate": 426477.92, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W87", "date": "2027-08-29", "month": "Aug", "wknum": 87.0, "fin_net_flow": -90445.15, "fin_ending_cash": 1442006.77, "source": "forward", "month_num": 8, "weekly_inflow_estimate": 426477.92, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W88", "date": "2027-09-05", "month": "Sep", "wknum": 88.0, "fin_net_flow": -33381.08, "fin_ending_cash": 1408625.7, "source": "forward", "month_num": 9, "weekly_inflow_estimate": 483542.0, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W89", "date": "2027-09-12", "month": "Sep", "wknum": 89.0, "fin_net_flow": -33381.08, "fin_ending_cash": 1375244.62, "source": "forward", "month_num": 9, "weekly_inflow_estimate": 483542.0, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W90", "date": "2027-09-19", "month": "Sep", "wknum": 90.0, "fin_net_flow": -33381.08, "fin_ending_cash": 1341863.55, "source": "forward", "month_num": 9, "weekly_inflow_estimate": 483542.0, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W91", "date": "2027-09-26", "month": "Sep", "wknum": 91.0, "fin_net_flow": -33381.08, "fin_ending_cash": 1308482.47, "source": "forward", "month_num": 9, "weekly_inflow_estimate": 483542.0, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W92", "date": "2027-10-03", "month": "Oct", "wknum": 92.0, "fin_net_flow": 258619.7, "fin_ending_cash": 1567102.17, "source": "forward", "month_num": 10, "weekly_inflow_estimate": 775542.78, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": true}, {"week": "W93", "date": "2027-10-10", "month": "Oct", "wknum": 93.0, "fin_net_flow": 258619.7, "fin_ending_cash": 1825721.87, "source": "forward", "month_num": 10, "weekly_inflow_estimate": 775542.78, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": true}, {"week": "W94", "date": "2027-10-17", "month": "Oct", "wknum": 94.0, "fin_net_flow": 258619.7, "fin_ending_cash": 2084341.57, "source": "forward", "month_num": 10, "weekly_inflow_estimate": 775542.78, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": true}, {"week": "W95", "date": "2027-10-24", "month": "Oct", "wknum": 95.0, "fin_net_flow": 258619.7, "fin_ending_cash": 2342961.27, "source": "forward", "month_num": 10, "weekly_inflow_estimate": 775542.78, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": true}, {"week": "W96", "date": "2027-10-31", "month": "Oct", "wknum": 96.0, "fin_net_flow": 258619.7, "fin_ending_cash": 2601580.97, "source": "forward", "month_num": 10, "weekly_inflow_estimate": 775542.78, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": true}, {"week": "W97", "date": "2027-11-07", "month": "Nov", "wknum": 97.0, "fin_net_flow": -251190.63, "fin_ending_cash": 2350390.34, "source": "forward", "month_num": 11, "weekly_inflow_estimate": 265732.45, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W98", "date": "2027-11-14", "month": "Nov", "wknum": 98.0, "fin_net_flow": -251190.63, "fin_ending_cash": 2099199.71, "source": "forward", "month_num": 11, "weekly_inflow_estimate": 265732.45, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W99", "date": "2027-11-21", "month": "Nov", "wknum": 99.0, "fin_net_flow": -251190.63, "fin_ending_cash": 1848009.08, "source": "forward", "month_num": 11, "weekly_inflow_estimate": 265732.45, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W100", "date": "2027-11-28", "month": "Nov", "wknum": 100.0, "fin_net_flow": -251190.63, "fin_ending_cash": 1596818.45, "source": "forward", "month_num": 11, "weekly_inflow_estimate": 265732.45, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W101", "date": "2027-12-05", "month": "Dec", "wknum": 101.0, "fin_net_flow": -249612.37, "fin_ending_cash": 1347206.08, "source": "forward", "month_num": 12, "weekly_inflow_estimate": 267310.71, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W102", "date": "2027-12-12", "month": "Dec", "wknum": 102.0, "fin_net_flow": -249612.37, "fin_ending_cash": 1097593.71, "source": "forward", "month_num": 12, "weekly_inflow_estimate": 267310.71, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W103", "date": "2027-12-19", "month": "Dec", "wknum": 103.0, "fin_net_flow": -249612.37, "fin_ending_cash": 847981.35, "source": "forward", "month_num": 12, "weekly_inflow_estimate": 267310.71, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W104", "date": "2027-12-26", "month": "Dec", "wknum": 104.0, "fin_net_flow": -249612.37, "fin_ending_cash": 598368.98, "source": "forward", "month_num": 12, "weekly_inflow_estimate": 267310.71, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}, {"week": "W105", "date": "2028-01-02", "month": "Jan", "wknum": 105.0, "fin_net_flow": -516923.08, "fin_ending_cash": 81445.91, "source": "forward", "month_num": 1, "weekly_inflow_estimate": 0.0, "weekly_outflow_estimate": 516923.08, "is_renewal_pulse": false}];
+const EMPLOYEES_RAW = [{"id": 7, "name": "Ed Miller", "title": "SVP Business Dev & Strategy", "loc": "US", "base": 250000.0, "fl": 400000.0, "dept": "Sales", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 9, "name": "Massimo Gentili", "title": "Head of EMEA", "loc": "EU", "base": 135931.0, "fl": 409431.0, "dept": "Sales", "default_mode": "Spread", "default_sev_weeks": 26, "sev_type": "Massimo-special"}, {"id": 13, "name": "Roxana Nabavian", "title": "Marketing", "loc": "US", "base": 79920.0, "fl": 99900.0, "dept": "Marketing", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 14, "name": "Sabina Cramer", "title": "SVP Renewal Sales", "loc": "EU", "base": 223220.0, "fl": 409431.0, "dept": "Renewals", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 10, "name": "Clayton Coyne", "title": "Dir, Partnerships & Channel", "loc": "US", "base": 145000.0, "fl": 221625.0, "dept": "Sales", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 27, "name": "Michal Marek", "title": "Staff SE", "loc": "CZ", "base": 79384.0, "fl": 130983.0, "dept": "Product", "default_mode": "Czech-Notice", "default_sev_weeks": 22, "sev_type": "Czech"}, {"id": 28, "name": "Bronek Gabrhelik", "title": "Staff SE", "loc": "CZ", "base": 78164.0, "fl": 128971.0, "dept": "Product", "default_mode": "Czech-Notice", "default_sev_weeks": 22, "sev_type": "Czech"}, {"id": 30, "name": "Pavel Mican", "title": "Staff SE", "loc": "CZ", "base": 61598.0, "fl": 101638.0, "dept": "Product", "default_mode": "Czech-Notice", "default_sev_weeks": 22, "sev_type": "Czech"}, {"id": 32, "name": "Jakub Samek", "title": "Sr SE", "loc": "CZ", "base": 50202.0, "fl": 75303.0, "dept": "Product", "default_mode": "Czech-Notice", "default_sev_weeks": 22, "sev_type": "Czech"}, {"id": 36, "name": "Roksolana Bondarenko", "title": "QA Engineer", "loc": "CZ", "base": 36522.0, "fl": 54783.0, "dept": "Product", "default_mode": "Czech-Notice", "default_sev_weeks": 22, "sev_type": "Czech"}, {"id": 5, "name": "Andy Prescott", "title": "Director Rev Accounting", "loc": "US", "base": 180000.0, "fl": 224850.0, "dept": "G&A", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 6, "name": "Kyle Delaney", "title": "Revenue Manager", "loc": "US", "base": 120000.0, "fl": 146375.0, "dept": "G&A", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 22, "name": "Monica Gonz\u00e1lez", "title": "Impl Mgr & SE", "loc": "MX", "base": 76274.0, "fl": 91274.0, "dept": "CS", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 41, "name": "Ed Kwong", "title": "Controller", "loc": "US", "base": 170000.0, "fl": 222163.0, "dept": "CoSo", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 11, "name": "Kendall Woodard", "title": "Senior Digital Designer", "loc": "US", "base": 100000.0, "fl": 119500.0, "dept": "Marketing", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 12, "name": "Dalton Mullins", "title": "SDR", "loc": "US", "base": 50000.0, "fl": 93000.0, "dept": "Marketing", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 40, "name": "AJ Gorton", "title": "Commercial Sales Manager", "loc": "US", "base": 120000.0, "fl": 302250.0, "dept": "CoSo", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 8, "name": "Daniel Hansen", "title": "Director of Sales", "loc": "US", "base": 160000.0, "fl": 380750.0, "dept": "Sales", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 29, "name": "Ivo Novosad", "title": "Sr Mgr SE", "loc": "CZ", "base": 67654.0, "fl": 111629.0, "dept": "Product", "default_mode": "Czech-Notice", "default_sev_weeks": 22, "sev_type": "Czech"}, {"id": 31, "name": "Robin Wolny", "title": "Sr DevOps", "loc": "CZ", "base": 58310.0, "fl": 87464.0, "dept": "Product", "default_mode": "Czech-Notice", "default_sev_weeks": 22, "sev_type": "Czech"}, {"id": 33, "name": "Marek Odraska", "title": "Sr Test Auto", "loc": "CZ", "base": 47987.0, "fl": 71981.0, "dept": "Product", "default_mode": "Czech-Notice", "default_sev_weeks": 22, "sev_type": "Czech"}, {"id": 34, "name": "Jiri Stefek", "title": "Sr Test Auto", "loc": "CZ", "base": 44224.0, "fl": 66336.0, "dept": "Product", "default_mode": "Czech-Notice", "default_sev_weeks": 22, "sev_type": "Czech"}, {"id": 37, "name": "Jan M\u00e1tl", "title": "Full Stack Dev", "loc": "CZ", "base": 31304.0, "fl": 46957.0, "dept": "Product", "default_mode": "Czech-Notice", "default_sev_weeks": 22, "sev_type": "Czech"}, {"id": 35, "name": "Abhinav Khawarey", "title": "Product Manager", "loc": "IN", "base": 41137.0, "fl": 60437.0, "dept": "Product", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 1, "name": "Michael Chasen", "title": "CEO", "loc": "US", "base": 250000.0, "fl": 400000.0, "dept": "G&A", "default_mode": "Spread", "default_sev_weeks": 0, "sev_type": "Protected", "protected": true}, {"id": 2, "name": "Brian Bharwani", "title": "CFO", "loc": "US", "base": 250000.0, "fl": 400000.0, "dept": "G&A", "default_mode": "Spread", "default_sev_weeks": 0, "sev_type": "Protected", "protected": true}, {"id": 3, "name": "Russell Teter", "title": "SVP BD & Ops", "loc": "US", "base": 250000.0, "fl": 400000.0, "dept": "G&A", "default_mode": "Spread", "default_sev_weeks": 0, "sev_type": "Protected", "protected": true}, {"id": 4, "name": "Nicole Brantley", "title": "VP of Accounting", "loc": "US", "base": 205000.0, "fl": 276450.0, "dept": "G&A", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 15, "name": "Andee Bodenstein", "title": "Account Manager NA", "loc": "US", "base": 115000.0, "fl": 178625.0, "dept": "Renewals", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 16, "name": "Holly Hardin", "title": "CS Manager", "loc": "US", "base": 110000.0, "fl": 142075.0, "dept": "Renewals", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 17, "name": "Robert Thayer", "title": "Account Manager", "loc": "US", "base": 104000.0, "fl": 156050.0, "dept": "Renewals", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 18, "name": "Emmanuel Clemot", "title": "Channel AM MENA", "loc": "EU", "base": 103150.0, "fl": 133150.0, "dept": "Renewals", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 19, "name": "Armanda Sereikait\u0117", "title": "AM/CSM LAC", "loc": "Intl", "base": 65000.0, "fl": 80000.0, "dept": "Renewals", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 20, "name": "Jorge Salinas", "title": "Dir Global SE", "loc": "US", "base": 151670.0, "fl": 191170.0, "dept": "CS", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 21, "name": "Alan Lam", "title": "Solutions Engineer APAC", "loc": "APAC", "base": 119016.0, "fl": 134016.0, "dept": "CS", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 23, "name": "Scott Perian", "title": "Chief Architect", "loc": "US", "base": 215000.0, "fl": 266238.0, "dept": "Product", "default_mode": "Spread", "default_sev_weeks": 0, "sev_type": "Protected", "protected": true}, {"id": 24, "name": "Balwant Bisht", "title": "Staff SE", "loc": "US", "base": 140000.0, "fl": 177550.0, "dept": "Product", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 25, "name": "Gavin Llewellyn", "title": "Staff SE", "loc": "UK", "base": 128986.0, "fl": 205285.0, "dept": "Product", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 26, "name": "Gail Chua", "title": "Sr QA Specialist", "loc": "CA", "base": 81551.0, "fl": 107751.0, "dept": "Product", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 38, "name": "Anthony Fabiani", "title": "L3 Support Engineer", "loc": "US", "base": 100000.0, "fl": 130250.0, "dept": "Support", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}, {"id": 39, "name": "Timma Wilson", "title": "Client Support Engineer", "loc": "US", "base": 81557.0, "fl": 99674.0, "dept": "Support", "default_mode": "Spread", "default_sev_weeks": 4, "sev_type": "Standard-US", "protected": false}];
+const CRITICAL_EVENTS = [{"week_label": "W30", "date": "2026-07-26", "label": "W30 TROUGH", "color": "#DC2626", "type": "trough"}, {"week_label": "W29", "date": "2026-07-19", "label": "Saudi Electronics $2.125M renewal", "color": "#7C3AED", "type": "renewal"}, {"week_label": "W47", "date": "2026-11-22", "label": "SENAC-SP $664K renewal", "color": "#7C3AED", "type": "renewal"}, {"week_label": "W48", "date": "2026-11-29", "label": "RMIT $340K renewal", "color": "#7C3AED", "type": "renewal"}, {"week_label": "W51", "date": "2026-12-20", "label": "U. of Pretoria $2.5M renewal", "color": "#7C3AED", "type": "renewal"}];
+
+const W0_DATE = new Date('2026-05-17');
+const NWEEKS = BASELINE_WEEKLY.length;
+const V5_END_IDX = 33; // W53 is index 33 (W20=idx 0)
+
+// Defaults used by forward baseline (these are LOCKED — engine compares user state vs these)
+const DEFAULTS = {
+  newBizMult: 1.0,
+  churnAnnual: 4187000,
+  expansionAnnual: 1256000,
+  blendedGM: 64.5,
+  monthlyOpex: 2240000,
+  currentARR: 35.85
+};
+
+// ============================================================
+// STATE
+// ============================================================
+// CFO policy: 2-12 weeks severance by tenure/seniority. Title-based default ladder:
+function defaultSevWeeksByTitle(emp) {
+  // Massimo + Czech keep their special defaults from extraction
+  if (emp.name === 'Massimo Gentili') return 26;
+  if (emp.loc === 'CZ') return 22;
+  const t = (emp.title || '').toLowerCase();
+  // C-suite / SVP — 12 weeks
+  if (t.includes('ceo') || t.includes('cfo') || t.includes('svp') || t.includes('chief')) return 12;
+  // VP — 10 weeks
+  if (t.includes(' vp ') || t.startsWith('vp ') || t.includes('vice president')) return 10;
+  // Director — 8 weeks
+  if (t.includes('director') || t.startsWith('dir,') || t.startsWith('dir ')) return 8;
+  // Manager — 6 weeks
+  if (t.includes('manager') || t.includes(' mgr') || t.startsWith('mgr')) return 6;
+  // Staff / Senior IC — 5 weeks
+  if (t.includes('staff') || t.startsWith('sr ') || t.includes('senior') || t.includes('principal')) return 5;
+  // Default IC — 4 weeks
+  return 4;
+}
+
+function defaultEmployees() {
+  return EMPLOYEES_RAW.map(e => ({
+    id: e.id, name: e.name, title: e.title, loc: e.loc, fl: e.fl, dept: e.dept,
+    protected: e.protected || false,
+    cut: false,
+    sevWeeks: defaultSevWeeksByTitle(e),
+    mode: 'Spread',
+    termDateOverride: null  // string ISO date or null. When null, falls back to global rules.
+  }));
+}
+
+const DEFAULT_STATE = {
+  notifyDate: '2026-05-30',
+  newBizMult: 1.0, churnAnnual: 4187000, expansionAnnual: 1256000,
+  blendedGM: 64.5, currentARR: 35.85, monthlyOpex: 2240000,
+  lever_aws: 0, lever_software: 0, lever_legal: 0, lever_contractors: 0,
+  lever_marketing: 0, lever_classCollect: 0, lever_bme: 0,
+  lever_blackboard: 0, lever_cosotsa: 0,
+  bacaRelease: false, bacaAmount: 2500000, bacaWeek: 6,
+  q2Bookings: 700000, q3Bookings: 700000, q4Bookings: 700000,
+  covenantFloor: 2000000,
+  empSearch: '', empLocFilter: '', empDeptFilter: '',
+  viewMode: 'ending',
+  rangeMode: 'full',
+  compareScenarios: [],
+  employees: []
+};
+
+// Palette for multi-scenario overlay lines (after baseline navy + dashed grey)
+const SCENARIO_COLORS = ['#4739E7', '#059669', '#D97706', '#7C3AED', '#0891B2'];
+
+let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+state.employees = defaultEmployees();
+
+// ============================================================
+// FORMATTERS
+// ============================================================
+function fmtCurrency(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  const neg = n < 0;
+  const a = Math.abs(n);
+  let s;
+  if (a >= 1e6) s = '$' + (a/1e6).toFixed(2) + 'M';
+  else if (a >= 1e3) s = '$' + (a/1e3).toFixed(0) + 'K';
+  else s = '$' + a.toFixed(0);
+  return neg ? '−' + s : s;
+}
+function fmtFull(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return new Intl.NumberFormat('en-US', {style:'currency', currency:'USD', maximumFractionDigits:0}).format(n);
+}
+function parseDate(s) { return new Date(s + 'T00:00:00'); }
+function fmtDate(d) { return d.toISOString().slice(0,10); }
+function fmtShortDate(s) {
+  if (!s) return '';
+  const d = new Date(s);
+  return d.toLocaleString('default', { month: 'short', day: 'numeric' });
+}
+
+// ============================================================
+// SEVERANCE ENGINE
+// ============================================================
+function calcCzechTerm(notifyDate) {
+  const d = parseDate(notifyDate);
+  return new Date(d.getFullYear(), d.getMonth() + 2, 1);
+}
+function getEmpTerm(emp) {
+  // Per-row override takes precedence
+  if (emp.termDateOverride) return parseDate(emp.termDateOverride);
+  // Otherwise fall back to global rules: Czech M+2, others = notify date
+  if (emp.loc === 'CZ') return calcCzechTerm(state.notifyDate);
+  return parseDate(state.notifyDate);
+}
+function dateToWeekIdx(d) {
+  const days = Math.floor((d - W0_DATE) / 86400000);
+  return Math.floor(days / 7);
+}
+
+function calcEmpImpact(emp) {
+  const arr = new Array(NWEEKS).fill(0);
+  if (!emp.cut || emp.protected) return arr;
+  const term = getEmpTerm(emp);
+  const termWk = dateToWeekIdx(term);
+  const wc = emp.fl / 52;
+  const sw = Math.max(0, emp.sevWeeks);
+  if (emp.mode === 'Spread') {
+    const start = termWk + sw;
+    for (let w = Math.max(0, start); w < NWEEKS; w++) arr[w] += wc;
+  } else {
+    const lump = wc * sw;
+    if (termWk >= 0 && termWk < NWEEKS) arr[termWk] -= (lump - wc);
+    for (let w = Math.max(0, termWk + 1); w < NWEEKS; w++) arr[w] += wc;
+  }
+  return arr;
+}
+
+// ============================================================
+// PATH ENGINE
+// ============================================================
+function calcAdjustedPath() {
+  // ----- 2026 portion (W20-W53, idx 0-33): apply v5-style overlays -----
+  const baselineFlow = BASELINE_WEEKLY.map(w => w.fin_net_flow || 0);
+  const adjFlow = baselineFlow.slice();
+
+  // Employee impacts
+  const empImpact = new Array(NWEEKS).fill(0);
+  for (const e of state.employees) {
+    const imp = calcEmpImpact(e);
+    for (let i = 0; i < NWEEKS; i++) empImpact[i] += imp[i];
+  }
+
+  // Cost levers (spread over 34-week v5 window — idx 0-33)
+  const leverAnnual = state.lever_aws + state.lever_software + state.lever_legal +
+    state.lever_contractors + state.lever_marketing + state.lever_classCollect +
+    state.lever_bme + state.lever_blackboard + state.lever_cosotsa;
+  const leverWeekly = leverAnnual / 34;
+
+  // Bookings — Q2 cash arrives idx 14-16, Q3 idx 27-29, Q4 idx 39-41
+  const bookings = new Array(NWEEKS).fill(0);
+  const q2w = state.q2Bookings / 3;
+  for (let w = 14; w <= 16; w++) if (w < NWEEKS) bookings[w] += q2w;
+  const q3w = state.q3Bookings / 3;
+  for (let w = 27; w <= 29; w++) if (w < NWEEKS) bookings[w] += q3w;
+  const q4w = state.q4Bookings / 3;
+  for (let w = 39; w <= 41; w++) if (w < NWEEKS) bookings[w] += q4w;
+
+  // Revenue scenario delta vs DEFAULTS — applies to ALL weeks (compounds from W20)
+  // User's annual ARR delta vs default
+  const userAnnualARR = state.newBizMult * 963000 + state.expansionAnnual - state.churnAnnual;
+  const defAnnualARR = DEFAULTS.newBizMult * 963000 + DEFAULTS.expansionAnnual - DEFAULTS.churnAnnual;
+  const annualARRDelta = userAnnualARR - defAnnualARR;
+  // Weekly cash impact ≈ (ARR delta accumulated to that week) × GM / 52
+  // Simplification: spread evenly over 52 weeks of annual; compounds via running sum
+  const weeklyARRStep = annualARRDelta / 52;
+  const gmRatio = state.blendedGM / 100;
+
+  // Opex delta vs default
+  const opexDelta = state.monthlyOpex - DEFAULTS.monthlyOpex;
+  const weeklyOpexDelta = -opexDelta * 12 / 52; // higher opex = negative cash
+
+  // GM delta vs default — affects gross profit on current ARR
+  const gmDelta = (state.blendedGM - DEFAULTS.blendedGM) / 100;
+  const weeklyGMDelta = state.currentARR * 1e6 * gmDelta / 52; // bigger GM = positive cash
+
+  // Build adjusted flow as DELTA OVERLAY on baseline (preserves pulse pattern in 2027)
+  // Revenue scenario delta vs default — compounds weekly across full timeline
+  const annualARRDeltaVsDef = (state.newBizMult * 963000 + state.expansionAnnual - state.churnAnnual) -
+                              (DEFAULTS.newBizMult * 963000 + DEFAULTS.expansionAnnual - DEFAULTS.churnAnnual);
+  // Opex delta vs default
+  const opexDeltaAnnual = (state.monthlyOpex - DEFAULTS.monthlyOpex) * 12;
+  const weeklyOpexDeltaCash = -opexDeltaAnnual / 52; // higher opex = negative cash
+  // GM delta vs default applied to current ARR
+  const gmDeltaPts = (state.blendedGM - DEFAULTS.blendedGM) / 100;
+  const weeklyGMDeltaCash = state.currentARR * 1e6 * gmDeltaPts / 52;
+
+  for (let i = 0; i < NWEEKS; i++) {
+    // 1. Employee cut savings (applies all weeks)
+    adjFlow[i] += empImpact[i];
+
+    // 2. v5-window-only overlays (W20-W53)
+    if (i <= V5_END_IDX) {
+      adjFlow[i] += leverWeekly;
+      if (state.bacaRelease && i === (state.bacaWeek - 1)) {
+        adjFlow[i] += state.bacaAmount;
+      }
+    }
+
+    // 3. Bookings — applies via specific weeks regardless of region
+    adjFlow[i] += bookings[i];
+
+    // 4. Revenue scenario delta — compounds (ramp from 0 at week 0 to full annual delta at week 52)
+    //    weekly cash impact = (cumulative ARR delta × GM) / 52
+    const weeksFromStart = i + 1;
+    const cumARRDelta = annualARRDeltaVsDef * weeksFromStart / 52;
+    const weeklyRevImpact = cumARRDelta * gmRatio / 52;
+    adjFlow[i] += weeklyRevImpact;
+
+    // 5. Opex + GM deltas (constant weekly, apply to all weeks)
+    adjFlow[i] += weeklyOpexDeltaCash + weeklyGMDeltaCash;
+  }
+
+  // Build ending-cash arrays
+  const startCash = BASELINE_WEEKLY[0].fin_ending_cash - BASELINE_WEEKLY[0].fin_net_flow;
+  const baselineEnd = [];
+  const adjEnd = [];
+  let cb = startCash, ca = startCash;
+  for (let i = 0; i < NWEEKS; i++) {
+    cb += baselineFlow[i];
+    ca += adjFlow[i];
+    baselineEnd.push(cb);
+    adjEnd.push(ca);
+  }
+
+  return { baselineFlow, baselineEnd, adjFlow, adjEnd, empImpact, bookings };
+}
+
+function calcAnnualSavings() {
+  return state.employees.filter(e => e.cut && !e.protected).reduce((s, e) => s + e.fl, 0);
+}
+function calcTotalSeverance() {
+  return state.employees.filter(e => e.cut && !e.protected)
+    .reduce((s, e) => s + (e.fl / 52) * Math.max(0, e.sevWeeks), 0);
+}
+function calcMonthlyOpexAdjusted() {
+  return state.monthlyOpex - (calcAnnualSavings() / 12);
+}
+function calcEBITDA() {
+  const arr = state.currentARR * 1e6;
+  return arr * (state.blendedGM / 100) - calcMonthlyOpexAdjusted() * 12;
+}
+function calcCoverage() {
+  const nb = 963000 * state.newBizMult;
+  return (nb + state.expansionAnnual) / state.churnAnnual;
+}
+
+// ============================================================
+// CHART
+// ============================================================
+let cashChart = null;
+
+// Custom crosshair plugin — draws vertical line at last-hovered x
+const crosshairPlugin = {
+  id: 'crosshair',
+  afterDatasetsDraw(chart) {
+    if (chart._crosshairX == null) return;
+    const ctx = chart.ctx;
+    const top = chart.chartArea.top;
+    const bottom = chart.chartArea.bottom;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(chart._crosshairX, top);
+    ctx.lineTo(chart._crosshairX, bottom);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255, 186, 0, 0.85)';
+    ctx.setLineDash([4, 3]);
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+if (typeof Chart !== 'undefined') Chart.register(crosshairPlugin);
+
+// Update HUD from hovered week index
+function updateHUD(idx, path) {
+  const w = BASELINE_WEEKLY[idx];
+  if (!w) return;
+  const adj = path.adjEnd[idx];
+  const base = path.baselineEnd[idx];
+  const delta = adj - base;
+  const flow = path.adjFlow[idx];
+  const hudWeek = document.getElementById('hud-week');
+  const hudMeta = document.getElementById('hud-meta');
+  const hudAdj = document.getElementById('hud-adj');
+  const hudDelta = document.getElementById('hud-delta');
+  const hudFlow = document.getElementById('hud-flow');
+  const hudArr = document.getElementById('hud-arr');
+  hudWeek.textContent = w.week + ' · ' + w.date;
+  let meta;
+  if (w.source === 'v5') meta = 'Finance baseline (v5) week';
+  else if (w.is_renewal_pulse) meta = 'Forward model · renewal pulse week';
+  else meta = 'Forward model · opex-only week';
+  hudMeta.textContent = meta;
+  hudAdj.textContent = fmtFull(adj);
+  hudAdj.className = 'v' + (adj < 0 ? ' red' : adj < 500000 ? ' red' : '');
+  hudDelta.textContent = (delta >= 0 ? '+' : '') + fmtCurrency(delta);
+  hudDelta.className = 'v ' + (delta >= 0 ? 'green' : 'red');
+  hudFlow.textContent = (flow >= 0 ? '+' : '') + fmtCurrency(flow);
+  hudFlow.className = 'v ' + (flow >= 0 ? 'green' : 'red');
+  hudArr.textContent = w.arr_at_week ? fmtCurrency(w.arr_at_week) : '—';
+  hudArr.className = 'v';
+}
+
+function getViewData(path) {
+  const labels = BASELINE_WEEKLY.map(w => w.week + ' · ' + fmtShortDate(w.date));
+  let baselineData, adjustedData, yLabel;
+  if (state.viewMode === 'ending') {
+    baselineData = path.baselineEnd;
+    adjustedData = path.adjEnd;
+    yLabel = 'Ending Cash ($)';
+  } else if (state.viewMode === 'netflow') {
+    baselineData = path.baselineFlow;
+    adjustedData = path.adjFlow;
+    yLabel = 'Weekly Net Flow ($)';
+  } else {
+    baselineData = path.adjEnd.map(() => 0);
+    adjustedData = path.adjEnd.map((v, i) => v - path.baselineEnd[i]);
+    yLabel = 'Adjusted − Baseline ($)';
+  }
+  return { labels, baselineData, adjustedData, yLabel };
+}
+
+function getRangeIndices() {
+  if (state.rangeMode === '2026') return { min: 0, max: V5_END_IDX };
+  if (state.rangeMode === '2027') return { min: V5_END_IDX + 1, max: NWEEKS - 1 };
+  if (state.rangeMode === 'trough') return { min: 5, max: 20 };
+  return { min: 0, max: NWEEKS - 1 };
+}
+
+function buildAnnotations(path, yMin, yMax, xMin, xMax) {
+  const ann = {};
+  if (state.viewMode !== 'ending') {
+    // Only zero line for flow / delta views
+    ann.zeroLine = {
+      type: 'line', yMin: 0, yMax: 0,
+      borderColor: 'rgba(17, 24, 39, 0.5)', borderWidth: 1, borderDash: [2, 4]
+    };
+    return ann;
+  }
+
+  // Forward-region background shading (subtle visual cue that 2027 is modeled, not Finance-baselined)
+  if (V5_END_IDX < xMax) {
+    ann.forwardBg = {
+      type: 'box',
+      xMin: V5_END_IDX, xMax: xMax,
+      yMin: yMin, yMax: yMax,
+      backgroundColor: 'rgba(71, 57, 231, 0.025)',
+      borderWidth: 0,
+      drawTime: 'beforeDatasetsDraw'
+    };
+  }
+
+  // Cash-out band (below $0) — very subtle red
+  ann.cashOutBand = {
+    type: 'box',
+    yMin: yMin, yMax: 0,
+    backgroundColor: 'rgba(220, 38, 38, 0.06)',
+    borderWidth: 0, drawTime: 'beforeDatasetsDraw'
+  };
+
+  // Only the $0 zero-line — covenant/target/danger reference floors removed per Russell.
+  // Those thresholds are surfaced in KPI strip and dynamic callouts instead.
+  if (0 >= yMin && 0 <= yMax) {
+    ann.zeroLine = {
+      type: 'line',
+      yMin: 0, yMax: 0,
+      borderColor: '#111827', borderWidth: 1,
+      borderDash: []
+    };
+  }
+
+  // v5 / forward boundary — minimal, no label clutter
+  if (V5_END_IDX >= xMin && V5_END_IDX <= xMax) {
+    ann.v5Boundary = {
+      type: 'line',
+      xMin: V5_END_IDX, xMax: V5_END_IDX,
+      borderColor: 'rgba(107, 114, 128, 0.5)', borderWidth: 1, borderDash: [2, 4]
+    };
+  }
+
+  // W30 trough (2026) — secondary marker, more subtle now
+  const w30Idx = 10;
+  if (w30Idx >= xMin && w30Idx <= xMax) {
+    ann.w30Line = {
+      type: 'line',
+      xMin: w30Idx, xMax: w30Idx,
+      borderColor: 'rgba(220, 38, 38, 0.45)', borderWidth: 1, borderDash: [3, 4],
+      label: {
+        display: true, content: 'W30 · 2026',
+        position: 'start',
+        backgroundColor: 'rgba(220, 38, 38, 0.75)', color: '#fff',
+        font: { size: 8, weight: '600' },
+        padding: { top: 2, bottom: 2, left: 4, right: 4 },
+        borderRadius: 2, yAdjust: 8
+      }
+    };
+  }
+
+  // 2027 TROUGH — primary visual anchor (dynamic, computed from current adjusted path)
+  let trough27Idx = V5_END_IDX + 1;
+  let trough27Val = path.adjEnd[trough27Idx];
+  for (let i = V5_END_IDX + 1; i < path.adjEnd.length; i++) {
+    if (path.adjEnd[i] < trough27Val) { trough27Val = path.adjEnd[i]; trough27Idx = i; }
+  }
+  if (trough27Idx >= xMin && trough27Idx <= xMax) {
+    ann.t27Line = {
+      type: 'line',
+      xMin: trough27Idx, xMax: trough27Idx,
+      borderColor: '#DC2626', borderWidth: 2,
+      label: {
+        display: true,
+        content: '2027 TROUGH · ' + BASELINE_WEEKLY[trough27Idx].date,
+        position: 'start',
+        backgroundColor: '#DC2626', color: '#fff',
+        font: { size: 10, weight: '700' },
+        padding: { top: 4, bottom: 4, left: 8, right: 8 },
+        borderRadius: 3, yAdjust: 8
+      }
+    };
+    ann.t27Point = {
+      type: 'point',
+      xValue: trough27Idx, yValue: trough27Val,
+      backgroundColor: '#DC2626', borderColor: '#fff', borderWidth: 2.5, radius: 7
+    };
+    ann.t27Label = {
+      type: 'label',
+      xValue: trough27Idx, yValue: trough27Val,
+      content: [fmtCurrency(trough27Val)],
+      backgroundColor: '#0A1849', color: '#fff',
+      font: { size: 11, weight: 'bold' },
+      padding: 6, yAdjust: -28,
+      callout: { display: true, side: 8 }
+    };
+  }
+
+  // Cash-out crossing marker (first week below $0)
+  const cashOutIdx = path.adjEnd.findIndex(v => v < 0);
+  if (cashOutIdx >= 0 && cashOutIdx >= xMin && cashOutIdx <= xMax) {
+    ann.coLine = {
+      type: 'line',
+      xMin: cashOutIdx, xMax: cashOutIdx,
+      borderColor: '#7C2D12', borderWidth: 1.5, borderDash: [5, 3],
+      label: {
+        display: true,
+        content: 'CASH-OUT · ' + BASELINE_WEEKLY[cashOutIdx].date,
+        position: 'end',
+        backgroundColor: '#7C2D12', color: '#fff',
+        font: { size: 9, weight: '700' },
+        padding: { top: 3, bottom: 3, left: 6, right: 6 },
+        borderRadius: 2, yAdjust: -16
+      }
+    };
+  }
+
+  // BACA marker (if applied) — keep visible, it matters
+  if (state.bacaRelease) {
+    const bIdx = state.bacaWeek - 1;
+    if (bIdx >= xMin && bIdx <= xMax) {
+      ann.bacaLine = {
+        type: 'line',
+        xMin: bIdx, xMax: bIdx,
+        borderColor: '#059669', borderWidth: 1.5, borderDash: [4, 3],
+        label: {
+          display: true, content: 'BACA ' + fmtCurrency(state.bacaAmount),
+          position: 'end',
+          backgroundColor: '#059669', color: '#fff',
+          font: { size: 9, weight: '700' }, padding: { top: 3, bottom: 3, left: 6, right: 6 },
+          borderRadius: 2, yAdjust: -8
+        }
+      };
+    }
+  }
+
+  // Employee term-date pins — subtle, only first 4
+  const cuts = state.employees.filter(e => e.cut && !e.protected).slice(0, 4);
+  cuts.forEach((emp, i) => {
+    const term = getEmpTerm(emp);
+    const idx = dateToWeekIdx(term);
+    if (idx < xMin || idx > xMax) return;
+    ann['cut' + i] = {
+      type: 'line',
+      xMin: idx, xMax: idx,
+      borderColor: 'rgba(255, 186, 0, 0.65)', borderWidth: 1, borderDash: [2, 3]
+    };
+  });
+
+  return ann;
+}
+
+function renderChart(path) {
+  const { labels, baselineData, adjustedData, yLabel } = getViewData(path);
+  const r = getRangeIndices();
+
+  // ===== Y-AXIS BOUNDS =====
+  // Floor LOCKED at -$1M (per Russell — cash going further negative is the same story).
+  // Top: data max + headroom for inline reference labels.
+  const visible = [];
+  for (let i = r.min; i <= r.max; i++) visible.push(baselineData[i], adjustedData[i]);
+  let dataMin = Math.min(...visible);
+  let dataMax = Math.max(...visible);
+  let yMin, yMax;
+  if (state.viewMode === 'ending') {
+    yMin = -1000000;
+    yMax = Math.max(dataMax, state.covenantFloor, 1500000) * 1.10;
+  } else {
+    const range = dataMax - dataMin;
+    const pad = Math.max(range * 0.15, 100000);
+    yMin = dataMin - pad;
+    yMax = dataMax + pad;
+  }
+
+  const annotations = buildAnnotations(path, yMin, yMax, r.min, r.max);
+
+  // ===== DATASETS =====
+  // Adjusted scenario = the HERO. Thick, navy, gradient fill.
+  // Baseline = the GHOST. Thin, lighter, dashed, no fill.
+  const ctx = document.getElementById('cashChart').getContext('2d');
+  const heroGradient = ctx.createLinearGradient(0, 0, 0, 500);
+  heroGradient.addColorStop(0, 'rgba(10, 24, 73, 0.22)');
+  heroGradient.addColorStop(1, 'rgba(10, 24, 73, 0.02)');
+
+  const datasets = [
+    {
+      label: 'Adjusted',
+      data: adjustedData,
+      borderColor: '#0A1849',
+      borderWidth: 3,
+      pointRadius: 0,
+      pointHoverRadius: 6,
+      pointHoverBackgroundColor: '#FFBA00',
+      pointHoverBorderColor: '#0A1849',
+      pointHoverBorderWidth: 2,
+      tension: 0.3,
+      backgroundColor: heroGradient,
+      fill: state.viewMode === 'ending' ? 'origin' : false,
+      order: 1
+    },
+    {
+      label: 'Baseline (v5)',
+      data: baselineData,
+      borderColor: 'rgba(107, 114, 128, 0.55)',
+      borderDash: [4, 4],
+      borderWidth: 1,
+      pointRadius: 0,
+      pointHoverRadius: 0,
+      tension: 0.3,
+      fill: false,
+      order: 2
+    }
+  ];
+
+  // Multi-scenario overlay
+  if (state.compareScenarios && state.compareScenarios.length > 0) {
+    const scenarios = getScenarios();
+    state.compareScenarios.forEach((name, i) => {
+      if (!scenarios[name]) return;
+      const saved = scenarios[name].state;
+      const tempState = state;
+      state = JSON.parse(JSON.stringify(saved));
+      state.employees = saved.employees;
+      const cmpPath = calcAdjustedPath();
+      state = tempState;
+      const cmpView = getViewData(cmpPath);
+      const color = SCENARIO_COLORS[i % SCENARIO_COLORS.length];
+      datasets.push({
+        label: name,
+        data: cmpView.adjustedData,
+        borderColor: color,
+        borderWidth: 2,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        tension: 0.3,
+        fill: false,
+        order: 0
+      });
+    });
+  }
+
+  const config = {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 250 },
+      interaction: { mode: 'index', intersect: false },
+      onHover: (evt, items, chart) => {
+        if (items && items.length > 0) {
+          updateHUD(items[0].index, path);
+          chart._crosshairX = items[0].element.x;
+        } else {
+          chart._crosshairX = null;
+          // don't clear HUD on quick mouseleave — leaves it informative
+        }
+        chart.draw();
+      },
+      layout: { padding: { right: 110, left: 4, top: 6, bottom: 4 } },
+      plugins: {
+        legend: {
+          position: 'top', align: 'start',
+          labels: {
+            font: { size: 11, weight: '600' }, boxWidth: 28, boxHeight: 3,
+            padding: 14, usePointStyle: false
+          }
+        },
+        tooltip: { enabled: false },  // replaced by HUD
+        annotation: { annotations: annotations, clip: false }
+      },
+      scales: {
+        x: {
+          min: r.min, max: r.max,
+          ticks: {
+            font: { size: 10 }, maxTicksLimit: 14, autoSkip: true, color: '#6B7280',
+            callback: function(v, i) {
+              const w = BASELINE_WEEKLY[i];
+              if (!w) return '';
+              // Show only first-of-month
+              const d = new Date(w.date);
+              if (d.getDate() <= 7) return d.toLocaleString('default', { month: 'short' }) + ' ' + (d.getFullYear() === 2027 ? "'27" : '');
+              return '';
+            }
+          },
+          grid: { color: 'rgba(0,0,0,0.035)', drawTicks: false }
+        },
+        y: {
+          min: yMin, max: yMax,
+          ticks: {
+            font: { size: 10, weight: '500' }, color: '#374151', maxTicksLimit: 8,
+            callback: (v) => {
+              if (Math.abs(v) < 1) return '$0';
+              return Math.abs(v) >= 1e6 ? '$' + (v/1e6).toFixed(1) + 'M' : '$' + (v/1e3).toFixed(0) + 'K';
+            }
+          },
+          grid: { color: 'rgba(0,0,0,0.04)', drawTicks: false },
+          title: { display: false }
+        }
+      }
+    }
+  };
+
+  if (cashChart) {
+    cashChart.data = config.data;
+    cashChart.options = config.options;
+    cashChart.update();
+  } else {
+    cashChart = new Chart(document.getElementById('cashChart'), config);
+  }
+}
+
+// ============================================================
+// RENDER (everything else)
+// ============================================================
+// Track previous KPI values for flash animation
+const prevKPIs = {};
+function flashIfChanged(id, newValStr) {
+  const wrapper = document.getElementById(id)?.closest('.kpi');
+  if (!wrapper) return;
+  if (prevKPIs[id] !== undefined && prevKPIs[id] !== newValStr) {
+    wrapper.classList.remove('flash');
+    void wrapper.offsetWidth; // force reflow to restart animation
+    wrapper.classList.add('flash');
+  }
+  prevKPIs[id] = newValStr;
+}
+
+function render() {
+  const path = calcAdjustedPath();
+  renderKPIs(path);
+  renderChart(path);
+  renderEmployees();
+  renderEmpSummary();
+  renderCallouts(path);
+  renderDiffStrip();
+}
+
+// ============================================================
+// DIFF STRIP — what changed from default
+// ============================================================
+const DIFF_FIELD_LABELS = {
+  newBizMult: (v) => `New-biz ${v}x`,
+  churnAnnual: (v) => `Churn ${fmtCurrency(v)}`,
+  expansionAnnual: (v) => `Expansion ${fmtCurrency(v)}`,
+  blendedGM: (v) => `GM ${v}%`,
+  currentARR: (v) => `ARR $${v}M`,
+  monthlyOpex: (v) => `Opex ${fmtCurrency(v)}/mo`,
+  lever_aws: (v) => `AWS ${v>0?'+':''}${fmtCurrency(v)}`,
+  lever_software: (v) => `Software ${v>0?'+':''}${fmtCurrency(v)}`,
+  lever_legal: (v) => `Legal ${v>0?'+':''}${fmtCurrency(v)}`,
+  lever_contractors: (v) => `Contractors ${v>0?'+':''}${fmtCurrency(v)}`,
+  lever_marketing: (v) => `Marketing ${v>0?'+':''}${fmtCurrency(v)}`,
+  lever_classCollect: (v) => `Class AR ${v>0?'+':''}${fmtCurrency(v)}`,
+  lever_bme: (v) => `BME ${v>0?'+':''}${fmtCurrency(v)}`,
+  lever_blackboard: (v) => `Blackboard ${v>0?'+':''}${fmtCurrency(v)}`,
+  lever_cosotsa: (v) => `CoSo TSA ${v>0?'+':''}${fmtCurrency(v)}`,
+  bacaRelease: (v) => v ? `BACA on @ W${state.bacaWeek}` : null,
+  q2Bookings: (v) => v !== DEFAULT_STATE.q2Bookings ? `Q2 bookings ${fmtCurrency(v)}` : null,
+  q3Bookings: (v) => v !== DEFAULT_STATE.q3Bookings ? `Q3 bookings ${fmtCurrency(v)}` : null,
+  q4Bookings: (v) => v !== DEFAULT_STATE.q4Bookings ? `Q4 bookings ${fmtCurrency(v)}` : null,
+  covenantFloor: (v) => `Covenant ${fmtCurrency(v)}`,
+  notifyDate: (v) => `Notify ${v}`
+};
+
+function computeDiff() {
+  const diffs = [];
+  for (const [field, formatter] of Object.entries(DIFF_FIELD_LABELS)) {
+    if (state[field] !== DEFAULT_STATE[field]) {
+      const lbl = formatter(state[field]);
+      if (lbl) diffs.push({ field, label: lbl, kind: 'field' });
+    }
+  }
+  for (const e of state.employees) {
+    if (e.cut && !e.protected) {
+      diffs.push({
+        field: `emp_${e.id}_cut`,
+        empId: e.id,
+        label: `Cut: ${e.name.split(' ')[0]} (${e.sevWeeks}w ${e.mode === 'Lump' ? 'L' : 'S'})`,
+        kind: 'emp'
+      });
+    }
+  }
+  return diffs;
+}
+
+function renderDiffStrip() {
+  const strip = document.getElementById('diffStrip');
+  const diffs = computeDiff();
+  if (!diffs.length) {
+    strip.innerHTML = '<span class="diff-label">Changes:</span><span class="diff-empty">No changes vs default. Tweak any input to see modifications here.</span>';
+    return;
+  }
+  let html = '<span class="diff-label">Changes:</span>';
+  for (const d of diffs) {
+    html += `<span class="diff-badge" data-field="${d.field}" data-kind="${d.kind}" data-emp-id="${d.empId || ''}" title="Click × to revert">${d.label}<span class="x">×</span></span>`;
+  }
+  strip.innerHTML = html;
+}
+
+function revertDiff(field, kind, empId) {
+  if (kind === 'emp') {
+    const emp = state.employees.find(e => e.id === parseInt(empId));
+    if (emp) emp.cut = false;
+  } else {
+    state[field] = DEFAULT_STATE[field];
+    const el = document.getElementById(field);
+    if (el) {
+      if (el.type === 'checkbox') el.checked = state[field];
+      else el.value = state[field];
+    }
+    const vEl = document.getElementById(field + '-v');
+    if (vEl && field === 'newBizMult') vEl.textContent = state[field].toFixed(1) + 'x';
+  }
+  render();
+}
+
+function renderKPIs(path) {
+  // 1) 2027 TROUGH — deepest cash hole anywhere in 2027 (THE PRIMARY ANCHOR)
+  // Search W54-W105 (idx 34-85) for the lowest adjusted ending cash
+  let trough27Idx = V5_END_IDX + 1;
+  let trough27Val = path.adjEnd[trough27Idx];
+  for (let i = V5_END_IDX + 1; i < path.adjEnd.length; i++) {
+    if (path.adjEnd[i] < trough27Val) { trough27Val = path.adjEnd[i]; trough27Idx = i; }
+  }
+  const trough27W = BASELINE_WEEKLY[trough27Idx];
+  const t27Str = fmtFull(trough27Val);
+  document.getElementById('kpi-trough27').textContent = t27Str;
+  document.getElementById('kpi-trough27').className = 'value ' + (trough27Val < 0 ? 'danger' : trough27Val < 500000 ? 'warn' : 'good');
+  document.getElementById('kpi-trough27-week').textContent = 'at ' + trough27W.week + ' · ' + trough27W.date;
+  flashIfChanged('kpi-trough27', t27Str);
+
+  // 2) Cash-Out Date — first week ANY adjusted cash < $0 (could be in 2026 or 2027)
+  const cashOutIdx = path.adjEnd.findIndex(v => v < 0);
+  const cashOutW = cashOutIdx >= 0 ? BASELINE_WEEKLY[cashOutIdx] : null;
+  const cashOutStr = cashOutW ? cashOutW.date : 'Never';
+  document.getElementById('kpi-cashout').textContent = cashOutStr;
+  document.getElementById('kpi-cashout').className = 'value ' + (cashOutIdx < 0 ? 'good' : cashOutIdx < 34 ? 'danger' : 'warn');
+  document.getElementById('kpi-cashout-week').textContent = cashOutW ? ('at ' + cashOutW.week) : 'cash stays positive through entire path';
+  flashIfChanged('kpi-cashout', cashOutStr);
+
+  // 3) Cash Needed to Bridge 2027 — minimum injection to keep cash above $0 throughout
+  // If trough is positive, no injection needed. If negative, need that much + buffer.
+  const minPoint = Math.min(...path.adjEnd);
+  const bridge = minPoint < 0 ? Math.abs(minPoint) : 0;
+  const bridgeStr = bridge > 0 ? fmtFull(bridge) : '$0 — no injection needed';
+  document.getElementById('kpi-bridge').textContent = bridgeStr;
+  document.getElementById('kpi-bridge').className = 'value ' + (bridge > 3e6 ? 'danger' : bridge > 1e6 ? 'warn' : bridge > 0 ? 'warn' : 'good');
+  document.getElementById('kpi-bridge-tag').textContent = bridge > 0
+    ? ('+ buffer; one-time cash to clear the trough')
+    : 'path stays positive without injection';
+  flashIfChanged('kpi-bridge', bridgeStr);
+
+  // 4) W30 2026 Trough — secondary anchor (the 2026 event)
+  const w30 = path.adjEnd[10];
+  const w30Str = fmtFull(w30);
+  document.getElementById('kpi-trough').textContent = w30Str;
+  document.getElementById('kpi-trough').className = 'value ' + (w30 < 250000 ? 'danger' : w30 < 1000000 ? 'warn' : 'good');
+  flashIfChanged('kpi-trough', w30Str);
+  const dTr = w30 - 111766;
+  document.getElementById('kpi-trough-delta').textContent = 'Jul 26 2026 · ' + (dTr >= 0 ? '+' : '') + fmtCurrency(dTr) + ' vs baseline';
+  document.getElementById('kpi-trough-delta').className = 'delta ' + (dTr >= 0 ? 'up' : 'down');
+
+  // 5) Annual Burn FY27 — sum of adjusted net flow across forward portion (W54-W105)
+  const burn27 = path.adjFlow.slice(V5_END_IDX + 1).reduce((s, v) => s + v, 0);
+  const burn27Str = fmtCurrency(burn27);
+  document.getElementById('kpi-burn27').textContent = burn27Str;
+  document.getElementById('kpi-burn27').className = 'value ' + (burn27 < -3e6 ? 'danger' : burn27 < 0 ? 'warn' : 'good');
+  document.getElementById('kpi-burn27-tag').textContent = burn27 < 0
+    ? ('= ' + fmtCurrency(burn27/12) + '/mo through 2027')
+    : 'cash-generative year';
+  flashIfChanged('kpi-burn27', burn27Str);
+
+  // 6) EBITDA Breakeven Gap — ARR growth needed to flip to positive
+  const opexAnnual = calcMonthlyOpexAdjusted() * 12;
+  const breakevenARR = opexAnnual / (state.blendedGM / 100);
+  const currentARR = state.currentARR * 1e6;
+  const gap = breakevenARR - currentARR;
+  const gapStr = (gap > 0 ? '+' : '') + fmtCurrency(gap);
+  document.getElementById('kpi-ebitda-gap').textContent = gapStr;
+  document.getElementById('kpi-ebitda-gap').className = 'value ' + (gap > 5e6 ? 'danger' : gap > 0 ? 'warn' : 'good');
+  document.getElementById('kpi-ebitda-gap-tag').textContent = gap > 0
+    ? ('need ' + fmtCurrency(breakevenARR) + ' ARR')
+    : 'already at EBITDA breakeven';
+  flashIfChanged('kpi-ebitda-gap', gapStr);
+}
+
+
+function renderEmployees() {
+  const tbody = document.getElementById('emp-tbody');
+  const s = state.empSearch.toLowerCase();
+  const loc = state.empLocFilter, dept = state.empDeptFilter;
+  let v = 0, c = 0, html = '';
+  for (const e of state.employees) {
+    if (s && !(e.name?.toLowerCase().includes(s) || e.title?.toLowerCase().includes(s) || e.dept?.toLowerCase().includes(s))) continue;
+    if (loc && e.loc !== loc) continue;
+    if (dept && e.dept !== dept) continue;
+    v++;
+    if (e.cut) c++;
+    const computedTerm = getEmpTerm(e);
+    const termValue = e.termDateOverride || fmtDate(computedTerm);
+    const isAutoTerm = !e.termDateOverride;
+    const wc = e.fl / 52;
+    const cls = e.protected ? 'protected' : (e.cut ? 'cut' : '');
+    const cutCell = e.protected
+      ? '<span class="protected-badge">P</span>'
+      : `<input type="checkbox" data-emp-id="${e.id}" data-emp-field="cut" ${e.cut?'checked':''}>`;
+    // Term date input — placeholder shows the computed default; entering a value overrides
+    const termInputCls = isAutoTerm ? 'term-auto' : 'term-override';
+    html += `<tr class="${cls}">
+      <td>${cutCell}</td>
+      <td class="name" title="${e.title} · ${e.dept}">${e.name}<span class="loc">${e.loc} · ${e.dept}</span></td>
+      <td>${fmtCurrency(e.fl)}</td>
+      <td><input type="number" data-emp-id="${e.id}" data-emp-field="sevWeeks" value="${e.sevWeeks}" min="0" max="52" ${e.protected?'disabled':''}></td>
+      <td><select data-emp-id="${e.id}" data-emp-field="mode" ${e.protected?'disabled':''}>
+        <option value="Spread"${e.mode==='Spread'?' selected':''}>Spr</option>
+        <option value="Lump"${e.mode==='Lump'?' selected':''}>Lmp</option>
+      </select></td>
+      <td><input type="date" class="emp-term ${termInputCls}" data-emp-id="${e.id}" data-emp-field="termDateOverride" value="${e.termDateOverride||''}" placeholder="${fmtDate(computedTerm)}" title="${isAutoTerm ? 'Auto: ' + fmtDate(computedTerm) + ' (clear to use default)' : 'Override active'}" ${e.protected?'disabled':''}></td>
+      <td class="savings">${e.cut && !e.protected ? '+'+fmtCurrency(wc) : '—'}</td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+  document.getElementById('emp-visible').textContent = v;
+  document.getElementById('emp-cut').textContent = c;
+}
+
+function renderEmpSummary() {
+  let count = 0, sev = 0, sav = 0;
+  for (const e of state.employees) {
+    if (e.cut && !e.protected) { count++; sev += (e.fl/52) * Math.max(0, e.sevWeeks); sav += e.fl; }
+  }
+  document.getElementById('emp-cut-count').textContent = count;
+  document.getElementById('emp-sev-total').textContent = fmtCurrency(sev);
+  document.getElementById('emp-savings').textContent = fmtCurrency(sav);
+}
+
+function renderCallouts(path) {
+  const el = document.getElementById('callout-row');
+  let lowVal = Infinity, lowWk = '';
+  for (let i = 0; i < path.adjEnd.length; i++) {
+    if (path.adjEnd[i] < lowVal) { lowVal = path.adjEnd[i]; lowWk = BASELINE_WEEKLY[i].week; }
+  }
+  const cov = calcCoverage();
+  const ebitda = calcEBITDA();
+
+  let calls = [];
+  if (lowVal < 0) calls.push({cls:'danger', html:`<strong>CASH-OUT</strong> at ${lowWk} — path goes negative. Mandatory additional levers.`});
+  else if (lowVal < state.covenantFloor) calls.push({cls:'danger', html:`<strong>COVENANT BREACH</strong> at ${lowWk} (${fmtFull(lowVal)}). Below assumed $${(state.covenantFloor/1e6).toFixed(1)}M floor. Confirm verbatim Barclays definition.`});
+  else if (lowVal < state.covenantFloor + 500000) calls.push({cls:'warn', html:`<strong>COVENANT PROXIMITY</strong> at ${lowWk}. Cushion ${fmtFull(lowVal - state.covenantFloor)}.`});
+  else if (path.adjEnd[10] < 500000) calls.push({cls:'warn', html:`<strong>W30 STILL TIGHT</strong> at ${fmtFull(path.adjEnd[10])}.`});
+  else calls.push({cls:'good', html:`<strong>W30 CLEARED</strong> at ${fmtFull(path.adjEnd[10])}. Q3 cliff still ahead — AR pull single-shot.`});
+
+  if (cov < 1) calls.push({cls:'warn', html:`<strong>STRUCTURAL CONTRACTION</strong>: ${(cov*100).toFixed(1)}% coverage. ARR contracts ${fmtCurrency((1-cov)*state.churnAnnual)} annually.`});
+  else calls.push({cls:'good', html:`<strong>NET GROWTH PATH</strong>: ${(cov*100).toFixed(1)}% coverage. ARR grows ${fmtCurrency((cov-1)*state.churnAnnual)} annually.`});
+
+  if (ebitda < -3e6) calls.push({cls:'danger', html:`<strong>EBITDA: ${fmtFull(ebitda)}</strong>. Need ${fmtFull(calcMonthlyOpexAdjusted()*12/(state.blendedGM/100))} ARR for breakeven.`});
+  else if (ebitda < 0) calls.push({cls:'warn', html:`<strong>EBITDA: ${fmtFull(ebitda)}</strong>. Within striking distance of breakeven.`});
+  else calls.push({cls:'good', html:`<strong>EBITDA POSITIVE</strong>: ${fmtFull(ebitda)} annualized.`});
+
+  el.innerHTML = calls.map(c => `<div class="callout ${c.cls}">${c.html}</div>`).join('');
+}
+
+// ============================================================
+// EVENT WIRING
+// ============================================================
+function bindFields() {
+  const fields = ['notifyDate','newBizMult','churnAnnual','expansionAnnual','blendedGM',
+    'currentARR','monthlyOpex','lever_aws','lever_software','lever_legal',
+    'lever_contractors','lever_marketing','lever_classCollect','lever_bme',
+    'lever_blackboard','lever_cosotsa','bacaAmount','bacaWeek',
+    'q2Bookings','q3Bookings','q4Bookings','covenantFloor'];
+  for (const f of fields) {
+    const el = document.getElementById(f);
+    if (!el) continue;
+    el.addEventListener('input', () => {
+      const v = el.type === 'number' ? parseFloat(el.value) || 0 : el.value;
+      state[f] = v;
+      const vEl = document.getElementById(f + '-v');
+      if (vEl) vEl.textContent = (typeof v === 'number' && f === 'newBizMult') ? v.toFixed(1) + 'x' : v;
+      render();
+    });
+  }
+  document.getElementById('bacaRelease').addEventListener('change', e => { state.bacaRelease = e.target.checked; render(); });
+
+  // Tabs
+  document.querySelectorAll('.tabs button').forEach(b => {
+    b.addEventListener('click', () => {
+      const tab = b.dataset.tab;
+      document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', x === b));
+      document.querySelectorAll('.tab-content').forEach(x => x.classList.toggle('active', x.id === 'tab-' + tab));
+    });
+  });
+
+  // Chart controls — view
+  document.querySelectorAll('.chart-controls button[data-view]').forEach(b => {
+    b.addEventListener('click', () => {
+      state.viewMode = b.dataset.view;
+      document.querySelectorAll('.chart-controls button[data-view]').forEach(x => x.classList.toggle('active', x === b));
+      render();
+    });
+  });
+  // Chart controls — range
+  document.querySelectorAll('.chart-controls button[data-range]').forEach(b => {
+    b.addEventListener('click', () => {
+      state.rangeMode = b.dataset.range;
+      document.querySelectorAll('.chart-controls button[data-range]').forEach(x => x.classList.toggle('active', x === b));
+      render();
+    });
+  });
+
+  // Scenario chips — multi-select (delegated)
+  document.getElementById('scenarioChips').addEventListener('click', e => {
+    const chip = e.target.closest('.scenario-chip');
+    if (!chip) return;
+    const name = chip.dataset.name;
+    if (!name) return;
+    const idx = state.compareScenarios.indexOf(name);
+    if (idx >= 0) state.compareScenarios.splice(idx, 1);
+    else state.compareScenarios.push(name);
+    renderScenarioChips();
+    render();
+  });
+
+  // Diff strip — click X to revert
+  document.getElementById('diffStrip').addEventListener('click', e => {
+    const badge = e.target.closest('.diff-badge');
+    if (!badge) return;
+    revertDiff(badge.dataset.field, badge.dataset.kind, badge.dataset.empId);
+  });
+
+  // Resizer
+  const resizer = document.getElementById('resizer');
+  const mainEl = document.querySelector('.main');
+  let resizing = false, startX = 0, startWidth = 360;
+  resizer.addEventListener('mousedown', e => {
+    resizing = true;
+    startX = e.clientX;
+    startWidth = document.querySelector('.controls').offsetWidth;
+    document.body.classList.add('resizing');
+    resizer.classList.add('dragging');
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!resizing) return;
+    const dx = e.clientX - startX;
+    const newWidth = Math.max(260, Math.min(700, startWidth + dx));
+    mainEl.style.gridTemplateColumns = newWidth + 'px 5px 1fr';
+    localStorage.setItem('cockpit_controls_width', String(newWidth));
+    if (cashChart) cashChart.resize();
+  });
+  window.addEventListener('mouseup', () => {
+    if (!resizing) return;
+    resizing = false;
+    document.body.classList.remove('resizing');
+    resizer.classList.remove('dragging');
+  });
+  // Restore saved width
+  const savedW = localStorage.getItem('cockpit_controls_width');
+  if (savedW) mainEl.style.gridTemplateColumns = savedW + 'px 5px 1fr';
+
+  // Employee table
+  document.getElementById('emp-tbody').addEventListener('change', e => {
+    const id = parseInt(e.target.dataset.empId), f = e.target.dataset.empField;
+    if (!id || !f) return;
+    const emp = state.employees.find(x => x.id === id);
+    if (!emp) return;
+    if (f === 'cut') emp.cut = e.target.checked;
+    else if (f === 'sevWeeks') emp.sevWeeks = parseInt(e.target.value) || 0;
+    else if (f === 'mode') emp.mode = e.target.value;
+    else if (f === 'termDateOverride') emp.termDateOverride = e.target.value || null;
+    render();
+  });
+  document.getElementById('emp-search').addEventListener('input', e => { state.empSearch = e.target.value; renderEmployees(); });
+  document.getElementById('emp-loc-filter').addEventListener('change', e => { state.empLocFilter = e.target.value; renderEmployees(); });
+  document.getElementById('emp-dept-filter').addEventListener('change', e => { state.empDeptFilter = e.target.value; renderEmployees(); });
+
+  // Presets
+  document.querySelectorAll('.presets button').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.preset)));
+
+  // Scenarios
+  document.getElementById('btn-save').addEventListener('click', saveScenario);
+  document.getElementById('btn-load').addEventListener('click', loadScenarioDialog);
+  document.getElementById('btn-export').addEventListener('click', exportScenario);
+  document.getElementById('btn-reset').addEventListener('click', resetScenario);
+}
+
+function applyPreset(name) {
+  state.employees.forEach(e => { if (!e.protected) e.cut = false; });
+  const byName = n => state.employees.find(e => e.name === n);
+  const byLoc = l => state.employees.filter(e => e.loc === l && !e.protected);
+  if (name === 'none') {}
+  else if (name === 'ed-only') { const e = byName('Ed Miller'); if (e) { e.cut = true; e.sevWeeks = 12; } }
+  else if (name === 't1-light') { ['Ed Miller','Roxana Nabavian'].forEach(n => { const e = byName(n); if (e) e.cut = true; }); }
+  else if (name === 't2-deep') { ['Ed Miller','Roxana Nabavian','Clayton Coyne','Sabina Cramer','Holly Hardin'].forEach(n => { const e = byName(n); if (e) e.cut = true; }); }
+  else if (name === 'czech-half') { const cz = byLoc('CZ'); cz.slice(0, Math.floor(cz.length/2)).forEach(e => e.cut = true); }
+  else if (name === 'czech-all') { byLoc('CZ').forEach(e => e.cut = true); }
+  render();
+}
+
+// Storage
+const STORAGE_KEY = 'class_cash_cockpit_v2_scenarios';
+function getScenarios() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; } }
+function setScenarios(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+function renderScenarioChips() {
+  const container = document.getElementById('scenarioChips');
+  const scenarios = getScenarios();
+  const names = Object.keys(scenarios);
+  if (!names.length) {
+    container.innerHTML = '<span class="empty">Save scenarios to overlay them here</span>';
+    return;
+  }
+  let html = '';
+  names.forEach((name, i) => {
+    const active = state.compareScenarios.includes(name);
+    const color = active ? SCENARIO_COLORS[state.compareScenarios.indexOf(name) % SCENARIO_COLORS.length] : '#C1C7D5';
+    html += `<span class="scenario-chip${active ? ' active' : ''}" data-name="${name}" title="Click to toggle on chart">
+      <span class="dot" style="background:${color}"></span>${name}</span>`;
+  });
+  container.innerHTML = html;
+}
+function saveScenario() {
+  const name = document.getElementById('scenarioName').value.trim();
+  if (!name) { alert('Name the scenario'); return; }
+  const scenarios = getScenarios();
+  const path = calcAdjustedPath();
+  scenarios[name] = {
+    state: JSON.parse(JSON.stringify(state)),
+    summary: {
+      w30: path.adjEnd[10],
+      lowest: Math.min(...path.adjEnd),
+      end27: path.adjEnd[path.adjEnd.length - 1],
+      heads: state.employees.filter(e => e.cut && !e.protected).length,
+      annualSavings: calcAnnualSavings(),
+      savedAt: new Date().toISOString()
+    }
+  };
+  setScenarios(scenarios);
+  renderScenarioChips();
+  alert(`Saved "${name}"`);
+}
+function loadScenarioDialog() {
+  const sc = getScenarios();
+  const names = Object.keys(sc);
+  if (!names.length) { alert('No saved scenarios'); return; }
+  const n = prompt('Load which?\n\n' + names.join('\n'));
+  if (!n || !sc[n]) return;
+  state = JSON.parse(JSON.stringify(sc[n].state));
+  document.getElementById('scenarioName').value = n;
+  syncInputs(); render();
+}
+function exportScenario() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cash_cockpit_${document.getElementById('scenarioName').value || 'untitled'}_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function resetScenario() {
+  if (!confirm('Reset to baseline? Unsaved changes lost.')) return;
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  state.employees = defaultEmployees();
+  document.getElementById('scenarioName').value = 'Working scenario';
+  syncInputs(); render();
+}
+function syncInputs() {
+  const fields = ['notifyDate','newBizMult','churnAnnual','expansionAnnual','blendedGM',
+    'currentARR','monthlyOpex','lever_aws','lever_software','lever_legal',
+    'lever_contractors','lever_marketing','lever_classCollect','lever_bme',
+    'lever_blackboard','lever_cosotsa','bacaAmount','bacaWeek',
+    'q2Bookings','q3Bookings','q4Bookings','covenantFloor'];
+  for (const f of fields) {
+    const el = document.getElementById(f);
+    if (el) el.value = state[f];
+    const vEl = document.getElementById(f + '-v');
+    if (vEl && f === 'newBizMult') vEl.textContent = state[f].toFixed(1) + 'x';
+  }
+  document.getElementById('bacaRelease').checked = state.bacaRelease;
+}
+
+// Init
+bindFields();
+renderScenarioChips();
+render();
+</script>
+</body>
+</html>

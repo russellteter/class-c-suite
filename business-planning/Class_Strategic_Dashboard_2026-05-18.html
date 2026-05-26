@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Technologies — Strategic Scenario Dashboard | May 18, 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --navy: #0A1849;
+    --gold: #FFBA00;
+    --purple: #4739E7;
+    --white: #FFFFFF;
+    --light-gray: #FAFAFA;
+    --section-gray: #F3F3F3;
+    --border: #E0E0E0;
+    --green: #00B894;
+    --red: #E74C3C;
+    --amber: #F39C12;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+  body { background: var(--light-gray); color: var(--navy); line-height: 1.4; }
+  .header {
+    background: var(--navy);
+    color: var(--white);
+    padding: 32px 48px 28px;
+    border-bottom: 4px solid var(--gold);
+  }
+  .header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  .header .subtitle { color: var(--gold); font-size: 13px; font-weight: 600; margin-top: 6px; letter-spacing: 0.3px; }
+  .header .meta { color: rgba(255,255,255,0.65); font-size: 11px; margin-top: 12px; }
+  .container { padding: 32px 48px 48px; max-width: 1600px; margin: 0 auto; }
+
+  /* The Big Question banner */
+  .question {
+    background: linear-gradient(135deg, var(--navy) 0%, #1a2a6a 100%);
+    color: var(--white);
+    border-radius: 8px;
+    padding: 26px 32px;
+    margin-bottom: 24px;
+    border-left: 5px solid var(--gold);
+  }
+  .question .label { font-size: 10px; color: var(--gold); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 8px; }
+  .question h2 { font-size: 22px; line-height: 1.3; font-weight: 700; }
+  .question .answer { margin-top: 16px; font-size: 14px; line-height: 1.5; opacity: 0.92; }
+  .question .answer strong { color: var(--gold); }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--navy);
+    margin: 36px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--gold);
+    display: inline-block;
+  }
+  .section-title:first-of-type { margin-top: 12px; }
+
+  /* Scenario ranking cards */
+  .ranking {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .rank-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 14px;
+    position: relative;
+  }
+  .rank-card.tier1 { border-top: 4px solid var(--green); }
+  .rank-card.tier2 { border-top: 4px solid var(--navy); }
+  .rank-card.tier3 { border-top: 4px solid var(--amber); }
+  .rank-card.tier4 { border-top: 4px solid var(--red); }
+  .rank-card .rank-num {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--border);
+    line-height: 1;
+  }
+  .rank-card .scenario {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 8px;
+    padding-right: 24px;
+    min-height: 28px;
+    line-height: 1.3;
+  }
+  .rank-card .cash {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: -0.3px;
+  }
+  .rank-card.tier1 .cash { color: var(--green); }
+  .rank-card.tier4 .cash { color: var(--red); }
+  .rank-card .delta {
+    font-size: 10px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+  .rank-card .delta.pos { color: var(--green); }
+  .rank-card .delta.neg { color: var(--red); }
+  .rank-card .label {
+    font-size: 9px;
+    color: #6b7180;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-top: 8px;
+    font-weight: 600;
+  }
+  .rank-card .risk {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 6px;
+  }
+  .rank-card .risk.none { background: #e6fff9; color: var(--green); }
+  .rank-card .risk.med  { background: #fff4e0; color: var(--amber); }
+  .rank-card .risk.high { background: #ffe6e6; color: var(--red); }
+  .rank-card .risk.extreme { background: var(--red); color: #fff; }
+  .rank-card .risk.unknown { background: #e6e9f5; color: var(--navy); }
+
+  /* Card layout */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-asym { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .card { background: var(--white); border: 1px solid var(--border); border-radius: 6px; padding: 18px 20px 22px; }
+  .card.full { grid-column: 1 / -1; }
+  .card-title { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+  .card-sub { font-size: 11px; color: #6b7180; margin-bottom: 14px; }
+  .chart-container { position: relative; height: 320px; }
+  .chart-container.tall { height: 420px; }
+  .chart-container.short { height: 220px; }
+
+  /* Comparison Table */
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { background: var(--navy); color: var(--white); padding: 9px 10px; text-align: left; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  th.num { text-align: right; }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--navy); }
+  tr:nth-child(even) td { background: var(--light-gray); }
+  td.amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  td.amount.neg { color: var(--red); }
+  td.amount.pos { color: var(--green); }
+  td.amount.big { font-weight: 700; font-size: 12px; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .tag.red { background: #ffe6e6; color: var(--red); }
+  .tag.amber { background: #fff4e0; color: var(--amber); }
+  .tag.green { background: #e6fff9; color: var(--green); }
+  .tag.navy { background: #e6e9f5; color: var(--navy); }
+  .tag.extreme { background: var(--red); color: #fff; }
+  .verdict-do { color: var(--green); font-weight: 700; }
+  .verdict-defer { color: var(--amber); font-weight: 700; }
+  .verdict-avoid { color: var(--red); font-weight: 700; }
+
+  /* Confidence indicators */
+  .conf {
+    display: inline-block;
+    width: 28px;
+    height: 8px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--red) 0%, var(--amber) 50%, var(--green) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  .conf::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    background: #fff;
+  }
+  .conf.high::after { width: 0%; }
+  .conf.med::after { width: 33%; }
+  .conf.low::after { width: 66%; }
+
+  /* Recommendation block */
+  .recos {
+    background: var(--white);
+    border-left: 4px solid var(--green);
+    padding: 22px 28px;
+    border-radius: 6px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+  }
+  .recos h3 { font-size: 14px; font-weight: 700; margin-bottom: 14px; color: var(--navy); }
+  .reco-item {
+    display: flex;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px dashed var(--border);
+    align-items: flex-start;
+  }
+  .reco-item:last-child { border-bottom: 0; }
+  .reco-num {
+    background: var(--navy);
+    color: var(--white);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .reco-num.urgent { background: var(--red); }
+  .reco-num.do { background: var(--green); }
+  .reco-text { font-size: 13px; line-height: 1.5; }
+  .reco-text strong { color: var(--navy); }
+
+  .footer { margin-top: 40px; padding: 20px; text-align: center; color: #6b7180; font-size: 10px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 1100px) {
+    .ranking { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-3, .grid-asym { grid-template-columns: 1fr; }
+    .header, .container { padding-left: 24px; padding-right: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Class Technologies — Strategic Scenario Dashboard</h1>
+  <div class="subtitle">10 STRATEGIC PATHS  •  THE TRANCHES DON'T MOVE THE NEEDLE  •  REFINANCE DOES</div>
+  <div class="meta">As of May 18, 2026  |  Driver-based model from NetSuite GL  |  Validated against board deck ±$25K  |  Confidence-coded</div>
+</div>
+
+<div class="container">
+
+  <!-- THE QUESTION -->
+  <div class="question">
+    <div class="label">The core strategic question</div>
+    <h2>Are the 4 expense tranches actually moving the cash needle — or just removing operational capability?</h2>
+    <div class="answer">After modeling all 10 paths with NetSuite-validated drivers: <strong>Tranches 2, 3, and 4 add essentially zero net cash benefit</strong> once severance + operational damage is netted out. <strong>All four tranches combined deliver basically the same 12-month outcome as Tranche 1 alone</strong> ($7.39M vs $7.34M ending cash). Meanwhile, <strong>refinancing Barclays interest to PIK saves $2.88M cash/year</strong> with zero operational damage — more than every tranche combined, executed via a single lender amendment.</div>
+  </div>
+
+  <!-- SCENARIO RANKING CARDS -->
+  <div class="section-title">10 Strategic Paths — Ranked by 12-Month Cash Outcome</div>
+
+  <div class="ranking">
+    <div class="rank-card tier1">
+      <div class="rank-num">1</div>
+      <div class="scenario">M&A — Delays + Refi Carry</div>
+      <div class="cash">$11.24M</div>
+      <div class="delta pos">+$5.35M vs Base</div>
+      <div class="label">Op Risk</div>
+      <div class="risk med">Medium</div>
+    </div>
+    <div class="rank-card tier1">
+      <div class="rank-num">2</div>
+      <div class="scenario">T1 + Refinance (HYBRID)</div>
+      <div class="cash">$9.74M</div>
+      <div class="delta pos">+$3.85M vs Base</div>
+      <div class="label">Op Risk</div>
+      <div class="risk med">Medium</div>
+    </div>
+    <div class="rank-card tier1">
+      <div class="rank-num">3</div>
+      <div class="scenario">M&A — Close Aug 2026</div>
+      <div class="cash">$8.84M</div>
+      <div class="delta pos">+$2.95M vs Base</div>
+      <div class="label">Op Risk</div>
+      <div class="risk unknown">Unknown</div>
+    </div>
+    <div class="rank-card tier1">
+      <div class="rank-num">4</div>
+      <div class="scenario">Refinance Barclays only</div>
+      <div class="cash">$8.29M</div>
+      <div class="delta pos">+$2.40M vs Base</div>
+      <div class="label">Op Risk</div>
+      <div class="risk none">None</div>
+    </div>
+    <div class="rank-card tier2">
+      <div class="rank-num">5</div>
+      <div class="scenario">All Tranches — Renewals only</div>
+      <div class="cash">$7.39M</div>
+      <div class="delta pos">+$1.51M vs Base</div>
+      <div class="label">Op Risk</div>
+      <div class="risk extreme">Extreme</div>
+    </div>
+    <div class="rank-card tier2">
+      <div class="rank-num">6</div>
+      <div class="scenario">T1+T2+T3 — Add G&A</div>
+      <div class="cash">$7.38M</div>
+      <div class="delta pos">+$1.49M vs Base</div>
+      <div class="label">Op Risk</div>
+      <div class="risk extreme">Extreme</div>
+    </div>
+    <div class="rank-card tier3">
+      <div class="rank-num">7</div>
+      <div class="scenario">T1 + T2 — Add Czech ProdDev</div>
+      <div class="cash">$7.34M</div>
+      <div class="delta pos">+$1.45M vs Base</div>
+      <div class="label">Op Risk</div>
+      <div class="risk high">High</div>
+    </div>
+    <div class="rank-card tier2">
+      <div class="rank-num">8</div>
+      <div class="scenario">T1 only — S&M + AWS</div>
+      <div class="cash">$7.34M</div>
+      <div class="delta pos">+$1.45M vs Base</div>
+      <div class="label">Op Risk</div>
+      <div class="risk med">Medium</div>
+    </div>
+    <div class="rank-card tier3">
+      <div class="rank-num">9</div>
+      <div class="scenario">Wind-down — orderly run-off</div>
+      <div class="cash">$7.11M</div>
+      <div class="delta pos">+$1.22M vs Base</div>
+      <div class="label">Op Risk</div>
+      <div class="risk unknown">Managed end</div>
+    </div>
+    <div class="rank-card tier4">
+      <div class="rank-num">10</div>
+      <div class="scenario">Base — Status quo</div>
+      <div class="cash">$5.89M</div>
+      <div class="delta">Baseline</div>
+      <div class="label">Op Risk</div>
+      <div class="risk none">None</div>
+    </div>
+  </div>
+
+  <!-- KEY OBSERVATION -->
+  <div class="card full" style="background:#fff4e0; border-left: 4px solid var(--amber);">
+    <div style="font-size:13px; line-height:1.5;">
+      <strong style="color: var(--navy);">CRITICAL PATTERN:</strong> Tranches 5, 6, 7, and 8 (#5, #6, #7, #8 above) all cluster between <strong>$7.34M and $7.39M</strong> — a range of $55K across <strong>15 head reductions, $900K of severance, and 180 days of execution</strong>. The model says: <strong>once you've done T1, doing T2/T3/T4 adds essentially nothing in cash but removes substantial operational capability</strong>. The board deck framed these as four meaningful options — the math says only T1 matters, and the rest is operational damage in exchange for noise.
+    </div>
+  </div>
+
+  <!-- BIG CHART: SCENARIO LINES -->
+  <div class="section-title">12-Month Cash Path — All 10 Scenarios</div>
+
+  <div class="card full">
+    <div class="card-title">Operating Cash Path — May 2026 to May 2027</div>
+    <div class="card-sub">All 10 scenarios overlaid. Notice how scenarios 5-8 (the tranche stack) cluster tightly. Click legend items to isolate scenarios.</div>
+    <div class="chart-container tall">
+      <canvas id="allScenarios"></canvas>
+    </div>
+  </div>
+
+  <!-- TRANCHE MARGINAL ANALYSIS -->
+  <div class="section-title">Why the Tranches Cluster — Marginal Net Cash Benefit Decomposition</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Gross Savings vs Net Benefit Per Tranche</div>
+      <div class="card-sub">Annualized savings (gold) get eroded by severance (red) and operational damage (amber).</div>
+      <div class="chart-container">
+        <canvas id="tranchesNet"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Refinance vs All Tranches — Cash Saved per Risk Point</div>
+      <div class="card-sub">Refinance delivers more cash than ALL tranches with NO operational damage. Tranches 2/3/4 are negative on a risk-adjusted basis.</div>
+      <div class="chart-container">
+        <canvas id="refiVsCuts"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPERATIONAL RISK MATRIX -->
+  <div class="section-title">Operational Risk Matrix — What Each Tranche Removes</div>
+
+  <div class="card full">
+    <div class="card-title">Risk Score Across 8 Operational Dimensions</div>
+    <div class="card-sub">Higher = more damage to that dimension. Each cell scored 1-5 by operational impact. Red zones = capability loss that takes 12+ months to rebuild.</div>
+    <div class="chart-container tall">
+      <canvas id="riskRadar"></canvas>
+    </div>
+  </div>
+
+  <!-- HEADCOUNT REALITY -->
+  <div class="section-title">"Already Cut Too Deep" — The Headcount Reality</div>
+
+  <div class="grid-asym">
+    <div class="card">
+      <div class="card-title">Headcount Reduction History by Function</div>
+      <div class="card-sub">Class is down 52% from peak. Several functions are already at or near minimum viable staffing.</div>
+      <div class="chart-container">
+        <canvas id="hcHistory"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Revenue Per Employee</div>
+      <div class="card-sub">$502K/head puts Class ABOVE the healthy SaaS benchmark — efficiency is not the problem.</div>
+      <div class="chart-container">
+        <canvas id="revPerHead"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- SENSITIVITY TORNADO -->
+  <div class="section-title">Sensitivity — What Actually Moves the Outcome (±20% on Each Driver)</div>
+
+  <div class="card full">
+    <div class="card-title">Tornado Diagram — Cash Sensitivity Across Key Drivers</div>
+    <div class="card-sub">REFINANCE is a BINARY $2.40M swing — happens or doesn't. The renewal cohorts (July + Q3 + Jan) collectively swing $5M+. Severance is nearly negligible.</div>
+    <div class="chart-container tall">
+      <canvas id="tornado"></canvas>
+    </div>
+  </div>
+
+  <!-- AUDIT TRAIL SUMMARY -->
+  <div class="section-title">Confidence in the Assumptions</div>
+
+  <div class="card full">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:36%;">Assumption</th>
+          <th class="num" style="width:15%;">Value</th>
+          <th style="width:30%;">Source</th>
+          <th style="width:13%;">Confidence</th>
+          <th style="width:6%;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Cash interest run-rate</strong></td><td class="amount">$240K/mo</td><td>NS GL Acct 6750 avg Nov 25 – Apr 26</td><td><span class="tag green">HIGH</span></td><td><span class="conf high"></span></td></tr>
+        <tr><td><strong>PIK interest accretion</strong></td><td class="amount">$210K/mo</td><td>NS GL Acct 2605 avg Nov 25 – Apr 26</td><td><span class="tag green">HIGH</span></td><td><span class="conf high"></span></td></tr>
+        <tr><td><strong>Refinance cash savings (math)</strong></td><td class="amount">$2.88M/yr</td><td>$240K × 12 months</td><td><span class="tag green">HIGH</span></td><td><span class="conf high"></span></td></tr>
+        <tr><td>Refinance willingness (Barclays)</td><td class="amount">N/A</td><td>Lender behavior post-Oct'25 restructure</td><td><span class="tag amber">MED</span></td><td><span class="conf med"></span></td></tr>
+        <tr><td><strong>Monthly compensation</strong></td><td class="amount">$820K/mo</td><td>NS L6M Acct 6101-6108 + 5003-5006</td><td><span class="tag green">HIGH</span></td><td><span class="conf high"></span></td></tr>
+        <tr><td><strong>Monthly cust collections</strong></td><td class="amount">$1.5M/mo</td><td>NS bank type CustPymt avg L6M</td><td><span class="tag green">HIGH</span></td><td><span class="conf high"></span></td></tr>
+        <tr><td><strong>July 4 renewal cohort</strong></td><td class="amount">$3.8M</td><td>Board deck slide 16</td><td><span class="tag green">HIGH</span></td><td><span class="conf high"></span></td></tr>
+        <tr><td>Q3 heavy renewal cohort</td><td class="amount">$2.3M</td><td>Board deck slide 30 (implied)</td><td><span class="tag amber">MED</span></td><td><span class="conf med"></span></td></tr>
+        <tr><td>Tranche 1-4 gross savings</td><td class="amount">$4.02M/yr</td><td>Board deck slides 31-34</td><td><span class="tag green">HIGH</span></td><td><span class="conf high"></span></td></tr>
+        <tr><td>Operational damage estimates</td><td class="amount">-$1.49M/yr</td><td>Modeled — management judgment</td><td><span class="tag amber">MED</span></td><td><span class="conf med"></span></td></tr>
+        <tr><td>M&A close probability/timing</td><td class="amount">Unknown</td><td>Coordinate with M&A advisor</td><td><span class="tag red">LOW</span></td><td><span class="conf low"></span></td></tr>
+        <tr><td>Coso-TD Bank release ($3.25M)</td><td class="amount">Unknown</td><td>Knox SPA review needed</td><td><span class="tag red">LOW</span></td><td><span class="conf low"></span></td></tr>
+        <tr><td>Jan 2027 annual cohort</td><td class="amount">$7M</td><td>Implied from Jan 26 ($23M billed)</td><td><span class="tag amber">MED-LOW</span></td><td><span class="conf low"></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- RECOMMENDATIONS -->
+  <div class="section-title">Recommended Actions — Prioritized</div>
+
+  <div class="recos">
+    <h3>The math says: pursue the levers with biggest cash impact AND lowest operational damage. In order:</h3>
+    <div class="reco-item">
+      <div class="reco-num urgent">1</div>
+      <div class="reco-text"><strong>OPEN BARCLAYS REFINANCE CONVERSATION THIS WEEK.</strong> Converting cash interest to PIK saves $2.88M/year — bigger than ALL four tranches combined, with zero operational damage. This is the single highest-leverage decision in the model.</div>
+    </div>
+    <div class="reco-item">
+      <div class="reco-num urgent">2</div>
+      <div class="reco-text"><strong>EXECUTE TRANCHE 1 (S&M cut + AWS savings).</strong> Best $-saved-per-risk-point ratio of any cut. Modest, surgical, defensible. $135K/month from June plus the AWS savings already booked.</div>
+    </div>
+    <div class="reco-item">
+      <div class="reco-num urgent">3</div>
+      <div class="reco-text"><strong>DO NOT execute Tranches 2, 3, or 4.</strong> Combined, they add only $50K of ending cash vs Tranche 1 alone — while removing 12 more heads, costing $700K+ in severance, and eliminating the company's product/G&A/sales capability. This is what "already cut too deep" looks like in the math.</div>
+    </div>
+    <div class="reco-item">
+      <div class="reco-num do">4</div>
+      <div class="reco-text"><strong>CONFIRM Coso-TD Bank ($3.245M) release schedule.</strong> Could push trough comfortably above $1M without any other action. Single Knox SPA review.</div>
+    </div>
+    <div class="reco-item">
+      <div class="reco-num do">5</div>
+      <div class="reco-text"><strong>DOCUMENT Barclays BACA ($2.5M) access mechanism with counsel.</strong> Pre-run the covenant trigger drill so you're not making decisions in a panic if the trough is breached.</div>
+    </div>
+    <div class="reco-item">
+      <div class="reco-num do">6</div>
+      <div class="reco-text"><strong>INTENSIFY M&A timeline.</strong> If a buyer is real, deal close by Q3 2026 is materially better than any operational outcome. Critically: <strong>executing Tranches 2-4 destroys buyer optionality</strong> — the cuts make the business less attractive to acquire.</div>
+    </div>
+    <div class="reco-item">
+      <div class="reco-num do">7</div>
+      <div class="reco-text"><strong>IF M&A is not real or slips past Q4 2026:</strong> model a soft wind-down. The wind-down scenario delivers similar cash ($7.1M) to "all tranches" ($7.4M) but with zero operational damage and full optionality preserved.</div>
+    </div>
+    <div class="reco-item">
+      <div class="reco-num do">8</div>
+      <div class="reco-text"><strong>STOP framing the tranches as "the plan."</strong> They are tactical levers with diminishing returns and escalating operational damage. The actual strategic plan must include refinance, M&A, or restructuring — and the model can support whichever path you choose.</div>
+    </div>
+  </div>
+
+  <!-- WHAT WE DON'T KNOW -->
+  <div class="section-title">What We Don't Know — Honest Risk Register</div>
+
+  <div class="card full">
+    <table>
+      <thead>
+        <tr><th>Unknown</th><th>Cash Impact Range</th><th>Remediation</th><th>Owner</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Coso-TD Bank ($3.245M) escrow release schedule</td><td class="amount pos">+$1.5M to +$3.2M</td><td>Pull Knox SPA; contact deal counsel</td><td>Finance + Legal</td></tr>
+        <tr><td>Barclays BACA ($2.5M) covenant access</td><td class="amount pos">+$0 to +$2.5M</td><td>Review credit agreement; engage banker</td><td>Treasury</td></tr>
+        <tr><td>Barclays refinance willingness</td><td class="amount pos">+$0 to +$2.88M/yr</td><td>Open dialogue; engage debt advisor</td><td>CFO</td></tr>
+        <tr><td>M&A buyer/price/timing</td><td class="amount">-$0 to +$5M</td><td>Coordinate with Michael; due diligence status</td><td>CEO</td></tr>
+        <tr><td>July 4 cohort actual retention</td><td class="amount">-$500K to +$300K</td><td>Confirm renewal commitments by mid-June</td><td>Renewals team</td></tr>
+        <tr><td>Q3 cohort renewal rate</td><td class="amount">-$700K to +$400K</td><td>60-day rolling forecast</td><td>Renewals team</td></tr>
+        <tr><td>Anthology overdue ($1.3M) — payment plan</td><td class="amount neg">-$1M to +$0</td><td>Exec conversation with Anthology</td><td>CEO / Partner mgmt</td></tr>
+        <tr><td>Jan '26 $23M billings vs $5M cash — why</td><td class="amount pos">+$0 to +$2M</td><td>Slow-payer review; cash application</td><td>AR team</td></tr>
+        <tr><td>FX exposure on $11M intl ARR</td><td class="amount">-$400K to +$400K</td><td>Hedging review</td><td>Treasury</td></tr>
+        <tr><td>Stale AP from 2022-23 ($12M+ book)</td><td class="amount pos">+$0 to +$2M</td><td>Auditor review; write-off vs dispute</td><td>Controller</td></tr>
+        <tr><td>Customer concentration in top 10</td><td class="amount neg">-$500K to +$0</td><td>Account-level review</td><td>Renewals + Sales</td></tr>
+        <tr><td>Tax position (NOLs, attribute survival)</td><td class="amount pos">+$0 to +$1M</td><td>Tax advisor pre-M&A</td><td>Tax counsel</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- MODEL HEALTH CHECK -->
+  <div class="section-title">Model Health Check</div>
+
+  <div class="card full">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div>
+        <h4 style="font-size: 12px; font-weight: 700; color: var(--green); margin-bottom: 10px;">✓ VALIDATED</h4>
+        <ul style="font-size: 12px; line-height: 1.7; padding-left: 18px; color: var(--navy);">
+          <li>P&L ties to board deck within ±$25K (Q1 EBITDA, YTD)</li>
+          <li>Cash interest validated against NS GL Acct 6750 actuals (Nov 25 – Apr 26)</li>
+          <li>Compensation validated against NS L6M payroll postings</li>
+          <li>Renewal cohort timing matches board deck slide 16</li>
+          <li>Top vendor spend cross-checked against NS A/P</li>
+          <li>Headcount aligns with board deck slide 15</li>
+          <li>3 independent burn-rate calculations agree within $50K/mo</li>
+        </ul>
+      </div>
+      <div>
+        <h4 style="font-size: 12px; font-weight: 700; color: var(--amber); margin-bottom: 10px;">⚠ KNOWN GAPS</h4>
+        <ul style="font-size: 12px; line-height: 1.7; padding-left: 18px; color: var(--navy);">
+          <li>$1.8M gap between board deck cash claim ($3.48M) and NS live ($1.68M unrestricted)</li>
+          <li>Renewal tail risk (&lt;70% retention) not stress-tested</li>
+          <li>M&A scenarios are illustrative, not modeled to specific buyer terms</li>
+          <li>Operational damage estimates are management judgment, not statistical</li>
+          <li>Jan 2027 cohort sized to current ARR — not validated against renewal pipeline</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Class Technologies, Inc. | Confidential | Generated May 18, 2026 | Driver-based model from NetSuite GL<br>
+    Companion files: Class_Cash_Model_2026-05-18.xlsx (12-mo forecast workbook), Class_Cash_Dashboard_2026-05-18.html (operating dashboard), Class_Scenario_Strategy_2026-05-18.xlsx (this model's underlying workbook)
+  </div>
+
+</div>
+
+<script>
+  const NAVY = '#0A1849';
+  const GOLD = '#FFBA00';
+  const PURPLE = '#4739E7';
+  const GREEN = '#00B894';
+  const RED = '#E74C3C';
+  const AMBER = '#F39C12';
+  const GREY = '#9CA3AF';
+
+  Chart.defaults.font.family = 'Arial, sans-serif';
+  Chart.defaults.font.size = 11;
+  Chart.defaults.color = NAVY;
+  Chart.defaults.plugins.legend.labels.boxWidth = 12;
+  Chart.defaults.plugins.legend.labels.padding = 10;
+  Chart.defaults.plugins.legend.labels.font = { size: 10, weight: '600' };
+  Chart.defaults.plugins.tooltip.backgroundColor = NAVY;
+  Chart.defaults.plugins.tooltip.titleColor = GOLD;
+  Chart.defaults.plugins.tooltip.bodyColor = '#fff';
+  Chart.defaults.plugins.tooltip.borderColor = GOLD;
+  Chart.defaults.plugins.tooltip.borderWidth = 1;
+  Chart.defaults.plugins.tooltip.padding = 10;
+
+  const fmt = v => v == null ? '' : v >= 1000000 ? '$' + (v/1000000).toFixed(2) + 'M' : v >= 1000 ? '$' + (v/1000).toFixed(0) + 'K' : '$' + v.toFixed(0);
+  const months = ['May-26','Jun-26','Jul-26','Aug-26','Sep-26','Oct-26','Nov-26','Dec-26','Jan-27','Feb-27','Mar-27','Apr-27','May-27'];
+
+  // Scenario data — from corrected driver model
+  const baseCase  = [3015000, 2160000, 540000, 2715000, 3850000, 4300000, 4395000, 4420000, 5360000, 6705000, 6760000, 6325000, 5885000];
+  const t1        = [2935000, 2215000, 795000, 3105000, 4240000, 4690000, 4785000, 4810000, 5750000, 7095000, 7150000, 6715000, 7340000];
+  const t12       = [2935000, 2215000, 795000, 3105000, 4240000, 4750000, 4847000, 4872000, 5812000, 7117000, 7172000, 6737000, 7337000];
+  const t123      = [2935000, 2215000, 795000, 3105000, 4240000, 4760000, 4862000, 4887000, 5827000, 7147000, 7202000, 6767000, 7377000];
+  const allT      = [2935000, 2215000, 795000, 3105000, 4240000, 4760000, 4862000, 4887000, 5830000, 7150000, 7205000, 6770000, 7392000];
+  const refi      = [3015000, 2160000, 540000, 2955000, 4330000, 5020000, 5355000, 5620000, 6800000, 8385000, 8680000, 8485000, 8285000];
+  const t1refi    = [2935000, 2215000, 795000, 3345000, 4720000, 5410000, 5745000, 6010000, 7190000, 8775000, 9070000, 8875000, 9740000];
+  const maAug     = [2935000, 2215000, 795000, 4605000, 5740000, 6190000, 6285000, 6310000, 7250000, 8595000, 8650000, 8215000, 8840000];
+  const maDelay   = [2935000, 2215000, 795000, 3345000, 4720000, 5410000, 5745000, 6010000, 7190000, 10275000, 10570000, 10375000, 11240000];
+  const wind      = [3015000, 2300000, 820000, 3155000, 4170000, 4490000, 4585000, 4610000, 5350000, 6485000, 6440000, 6005000, 7105000];
+
+  // ==== CHART 1: ALL SCENARIOS ====
+  new Chart(document.getElementById('allScenarios'), {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        { label: '1. M&A — Delays + Refi Carry', data: maDelay, borderColor: GREEN, borderWidth: 3, tension: 0.3, pointRadius: 3, backgroundColor: 'rgba(0,184,148,0.05)' },
+        { label: '2. T1 + Refinance (HYBRID)',   data: t1refi, borderColor: GOLD, borderWidth: 3, tension: 0.3, pointRadius: 3 },
+        { label: '3. M&A — Close Aug 2026',      data: maAug, borderColor: '#7ED321', borderWidth: 2.5, tension: 0.3, pointRadius: 3, borderDash: [3,3] },
+        { label: '4. Refinance only',            data: refi, borderColor: '#52d1e4', borderWidth: 2.5, tension: 0.3, pointRadius: 3 },
+        { label: '5. All Tranches',              data: allT, borderColor: RED, borderWidth: 2, tension: 0.3, pointRadius: 2, borderDash: [5,5] },
+        { label: '6. T1+T2+T3',                  data: t123, borderColor: RED, borderWidth: 2, tension: 0.3, pointRadius: 2, borderDash: [5,5] },
+        { label: '7. T1 + T2',                   data: t12, borderColor: RED, borderWidth: 2, tension: 0.3, pointRadius: 2, borderDash: [5,5] },
+        { label: '8. T1 only',                   data: t1, borderColor: AMBER, borderWidth: 2.5, tension: 0.3, pointRadius: 3 },
+        { label: '9. Wind-down',                 data: wind, borderColor: PURPLE, borderWidth: 2, tension: 0.3, pointRadius: 2, borderDash: [2,4] },
+        { label: '10. Base — Status quo',        data: baseCase, borderColor: NAVY, borderWidth: 2, tension: 0.3, pointRadius: 2 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { size: 10 }, padding: 8 } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => fmt(v) } }
+      }
+    }
+  });
+
+  // ==== CHART 2: TRANCHES NET BENEFIT ====
+  new Chart(document.getElementById('tranchesNet'), {
+    type: 'bar',
+    data: {
+      labels: ['T1 only', 'T1+T2', 'T1+T2+T3', 'All Tranches', 'Refinance only', 'T1+Refinance'],
+      datasets: [
+        { label: 'Gross Savings (Yr 1)', data: [1100, 1660, 1740, 1740, 2880, 3980], backgroundColor: GREEN, stack: 'gross', borderRadius: 2 },
+        { label: 'Severance Cost', data: [-165, -640, -700, -900, 0, -165], backgroundColor: AMBER, stack: 'net', borderRadius: 2 },
+        { label: 'Operational Damage', data: [-160, -520, -640, -1490, 0, -160], backgroundColor: RED, stack: 'net', borderRadius: 2 },
+        { type: 'line', label: 'NET Benefit', data: [775, 500, 400, -650, 2880, 3655], borderColor: NAVY, backgroundColor: NAVY, borderWidth: 3, pointRadius: 5, pointBackgroundColor: GOLD, tension: 0 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { size: 10 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': $' + ctx.raw + 'K' } }
+      },
+      scales: {
+        x: { stacked: false, grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 30, minRotation: 30 } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => '$' + v + 'K' } }
+      }
+    }
+  });
+
+  // ==== CHART 3: REFI VS CUTS ====
+  new Chart(document.getElementById('refiVsCuts'), {
+    type: 'bar',
+    data: {
+      labels: ['T1 only', 'T1+T2', 'T1+T2+T3', 'All Tranches', 'REFI only', 'T1 + REFI'],
+      datasets: [
+        { label: 'Cash saved (Yr 1, $K)', data: [775, 500, 400, -650, 2880, 3655], backgroundColor: [AMBER, AMBER, AMBER, RED, GREEN, GREEN], borderRadius: 4, yAxisID: 'y' },
+        { type: 'line', label: 'Op Risk Score (out of 32)', data: [17, 27, 31, 32, 0, 17], borderColor: PURPLE, backgroundColor: PURPLE, borderWidth: 2.5, pointRadius: 5, tension: 0, yAxisID: 'y1' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { size: 10 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label === 'Op Risk Score (out of 32)' ? 'Risk: ' + ctx.raw + '/32' : 'Net Cash: $' + ctx.raw + 'K'
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 30, minRotation: 30 } },
+        y:  { position: 'left', grid: { color: '#f0f0f0' }, ticks: { callback: v => '$' + v + 'K' } },
+        y1: { position: 'right', grid: { display: false }, ticks: { callback: v => v + '/32' }, max: 32 }
+      }
+    }
+  });
+
+  // ==== CHART 4: RISK RADAR ====
+  new Chart(document.getElementById('riskRadar'), {
+    type: 'radar',
+    data: {
+      labels: ['New logo capability', 'Customer retention', 'Product roadmap', 'Renewals execution', 'Compliance / reporting', 'Customer success', 'M&A optionality', 'Bounce-back speed'],
+      datasets: [
+        { label: 'T1 (S&M cut)', data: [4,2,1,2,1,2,2,3], backgroundColor: 'rgba(0,184,148,0.15)', borderColor: GREEN, borderWidth: 2.5, pointRadius: 4 },
+        { label: 'T1+T2 (+Czech ProdDev)', data: [4,4,5,3,1,2,4,5], backgroundColor: 'rgba(243,156,18,0.15)', borderColor: AMBER, borderWidth: 2.5, pointRadius: 4 },
+        { label: 'T1+T2+T3 (+G&A)', data: [4,4,5,4,5,3,4,5], backgroundColor: 'rgba(231,76,60,0.10)', borderColor: RED, borderWidth: 2, pointRadius: 4 },
+        { label: 'All Tranches (Renewals only)', data: [5,4,5,4,5,3,5,5], backgroundColor: 'rgba(120,0,0,0.12)', borderColor: '#8B0000', borderWidth: 2.5, pointRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { size: 10 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw + '/5' } }
+      },
+      scales: {
+        r: {
+          beginAtZero: true, max: 5,
+          ticks: { stepSize: 1, font: { size: 9 } },
+          pointLabels: { font: { size: 11, weight: 600 }, color: NAVY }
+        }
+      }
+    }
+  });
+
+  // ==== CHART 5: HEADCOUNT HISTORY ====
+  new Chart(document.getElementById('hcHistory'), {
+    type: 'bar',
+    data: {
+      labels: ['Sales','Marketing','Renewals','Product','G&A','Consulting','CS','Support'],
+      datasets: [
+        { label: 'Dec 2024 (peak)', data: [16, 9, 8, 23, 9, 15, 3, 2], backgroundColor: 'rgba(10,24,73,0.30)', borderRadius: 3 },
+        { label: 'Apr 2026 (now)', data: [4, 3, 6, 15, 6, 2, 3, 2], backgroundColor: NAVY, borderRadius: 3 },
+        { label: 'Post all Tranches', data: [0, 0, 6, 10, 5, 2, 2, 2], backgroundColor: RED, borderRadius: 3 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { size: 10 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw + ' people' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: '#f0f0f0' }, beginAtZero: true, ticks: { stepSize: 5 } }
+      }
+    }
+  });
+
+  // ==== CHART 6: REVENUE PER EMPLOYEE ====
+  new Chart(document.getElementById('revPerHead'), {
+    type: 'bar',
+    data: {
+      labels: ['SaaS healthy floor', 'SaaS healthy ceiling', 'Class today', 'Post-Tranche 4'],
+      datasets: [{
+        label: 'Revenue per employee ($K)',
+        data: [200, 400, 502, 744],
+        backgroundColor: [GREY, GREY, NAVY, RED],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => '$' + ctx.raw + 'K per employee' } }
+      },
+      scales: {
+        x: { grid: { color: '#f0f0f0' }, ticks: { callback: v => '$' + v + 'K' } },
+        y: { grid: { display: false }, ticks: { font: { size: 11, weight: 600 } } }
+      }
+    }
+  });
+
+  // ==== CHART 7: TORNADO ====
+  // Sorted by absolute swing magnitude, descending
+  const tornadoData = [
+    { label: 'Compensation run-rate (±20%)', neg: -2132, pos: 2132 },
+    { label: 'Jan 2027 annual cohort (±20%)', neg: -2240, pos: 2240 },
+    { label: 'Cash interest (refinance vs not)', neg: 0, pos: 2400 },
+    { label: 'Monthly subscriptions (×13mo)', neg: -2730, pos: 2730 },
+    { label: 'July 4 renewal cohort (±20%)', neg: -1216, pos: 1216 },
+    { label: 'Hosting costs (±20%)', neg: -936, pos: 936 },
+    { label: 'Q3 renewal cohort (±20%)', neg: -736, pos: 736 },
+    { label: 'FX on intl receipts (±10%)', neg: -400, pos: 400 },
+    { label: 'New sales cash (±20%)', neg: -348, pos: 348 },
+    { label: 'Severance (Tranche 1) (±50%)', neg: -83, pos: 83 }
+  ];
+
+  new Chart(document.getElementById('tornado'), {
+    type: 'bar',
+    data: {
+      labels: tornadoData.map(d => d.label),
+      datasets: [
+        { label: 'Pessimistic (-20%)', data: tornadoData.map(d => d.neg), backgroundColor: RED, borderRadius: 2 },
+        { label: 'Optimistic (+20%)', data: tornadoData.map(d => d.pos), backgroundColor: GREEN, borderRadius: 2 }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { size: 10 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': $' + Math.abs(ctx.raw) + 'K' } }
+      },
+      scales: {
+        x: { grid: { color: '#f0f0f0' }, ticks: { callback: v => '$' + v + 'K' }, stacked: false },
+        y: { grid: { display: false }, stacked: true, ticks: { font: { size: 10, weight: 600 } } }
+      }
+    }
+  });
+</script>
+</body>
+</html>

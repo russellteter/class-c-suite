@@ -1,0 +1,1 @@
+{"_error": "aws: [ERROR]: An error occurred (DataUnavailableException) when calling the GetSavingsPlansUtilization operation:", "_cmd": "/opt/homebrew/bin/aws ce get-savings-plans-utilization --time-period Start=2026-02-20,End=2026-05-21 --granularity MONTHLY --profile collab"}

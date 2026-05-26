@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Technologies — Cash & Operations Dashboard | May 18, 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --navy: #0A1849;
+    --gold: #FFBA00;
+    --purple: #4739E7;
+    --white: #FFFFFF;
+    --light-gray: #FAFAFA;
+    --section-gray: #F3F3F3;
+    --border: #E0E0E0;
+    --green: #00B894;
+    --red: #E74C3C;
+    --amber: #F39C12;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+  body { background: var(--light-gray); color: var(--navy); line-height: 1.4; }
+  .header {
+    background: var(--navy);
+    color: var(--white);
+    padding: 32px 48px 28px;
+    border-bottom: 4px solid var(--gold);
+  }
+  .header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  .header .subtitle { color: var(--gold); font-size: 13px; font-weight: 600; margin-top: 6px; letter-spacing: 0.3px; }
+  .header .meta { color: rgba(255,255,255,0.65); font-size: 11px; margin-top: 12px; }
+  .container { padding: 32px 48px 48px; max-width: 1600px; margin: 0 auto; }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--navy);
+    margin: 32px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--gold);
+    display: inline-block;
+  }
+  .section-title:first-of-type { margin-top: 8px; }
+
+  /* KPI Cards */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .kpi {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px; height: 100%;
+    background: var(--navy);
+  }
+  .kpi.warn::before { background: var(--amber); }
+  .kpi.bad::before { background: var(--red); }
+  .kpi.good::before { background: var(--green); }
+  .kpi .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #6b7180;
+    font-weight: 600;
+  }
+  .kpi .value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 8px 0 4px;
+    letter-spacing: -0.3px;
+  }
+  .kpi.bad .value { color: var(--red); }
+  .kpi.warn .value { color: var(--amber); }
+  .kpi.good .value { color: var(--green); }
+  .kpi .sub {
+    font-size: 10px;
+    color: #6b7180;
+    font-weight: 500;
+  }
+  .kpi .delta {
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+  .kpi .delta.up { color: var(--green); }
+  .kpi .delta.down { color: var(--red); }
+
+  /* Chart Grid */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+  .grid-asym {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+  }
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 18px 20px 22px;
+  }
+  .card.full { grid-column: 1 / -1; }
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+  .card-sub {
+    font-size: 11px;
+    color: #6b7180;
+    margin-bottom: 14px;
+  }
+  .chart-container {
+    position: relative;
+    height: 280px;
+  }
+  .chart-container.tall { height: 340px; }
+  .chart-container.short { height: 220px; }
+
+  /* Scenario Pills */
+  .scenario-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .scenario {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px 14px;
+    background: var(--light-gray);
+  }
+  .scenario .name {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .scenario .trough {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 6px;
+  }
+  .scenario .trough.bad { color: var(--red); }
+  .scenario .trough.warn { color: var(--amber); }
+  .scenario .trough.good { color: var(--green); }
+  .scenario .when {
+    font-size: 10px;
+    color: #6b7180;
+    margin-top: 2px;
+  }
+  .scenario .end {
+    font-size: 11px;
+    color: var(--navy);
+    margin-top: 8px;
+    font-weight: 600;
+  }
+
+  /* Insight blocks */
+  .insight {
+    background: linear-gradient(135deg, var(--navy) 0%, #1a2a6a 100%);
+    color: var(--white);
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin-bottom: 18px;
+  }
+  .insight .label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 8px;
+  }
+  .insight .text {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .insight strong { color: var(--gold); font-weight: 700; }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  th {
+    background: var(--navy);
+    color: var(--white);
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--navy);
+  }
+  tr:nth-child(even) td { background: var(--light-gray); }
+  td.amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  td.amount.neg { color: var(--red); }
+  td.amount.pos { color: var(--green); }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .tag.red { background: #ffe6e6; color: var(--red); }
+  .tag.amber { background: #fff4e0; color: var(--amber); }
+  .tag.green { background: #e6fff9; color: var(--green); }
+  .tag.navy { background: #e6e9f5; color: var(--navy); }
+  .tag.purple { background: #ece9ff; color: var(--purple); }
+
+  .footer {
+    margin-top: 40px;
+    padding: 20px;
+    text-align: center;
+    color: #6b7180;
+    font-size: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Toggle controls */
+  .controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .toggle {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    background: var(--white);
+    color: var(--navy);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .toggle.active { background: var(--navy); color: var(--white); border-color: var(--navy); }
+  .toggle:hover:not(.active) { border-color: var(--navy); }
+
+  @media (max-width: 1100px) {
+    .kpi-row { grid-template-columns: repeat(3, 1fr); }
+    .grid-2, .grid-3, .grid-asym { grid-template-columns: 1fr; }
+    .header, .container { padding-left: 24px; padding-right: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Class Technologies — Cash & Operations Dashboard</h1>
+  <div class="subtitle">12-MONTH FORECAST  •  NETSUITE-SOURCED  •  STRICTLY CONFIDENTIAL</div>
+  <div class="meta">As of May 18, 2026  |  Data: NetSuite GL + Board Deck May 2026  |  Subsidiary: Class Parent Holdco LLC (Consolidated)</div>
+</div>
+
+<div class="container">
+
+  <!-- KPI Row -->
+  <div class="kpi-row">
+    <div class="kpi warn">
+      <div class="label">Operating Cash</div>
+      <div class="value">$3.48M</div>
+      <div class="sub">May 14 board claim</div>
+      <div class="delta down">▼ $1.8M vs NS live</div>
+    </div>
+    <div class="kpi bad">
+      <div class="label">ARR</div>
+      <div class="value">$20.6M</div>
+      <div class="sub">vs $35.85M Dec '24</div>
+      <div class="delta down">▼ 43% in 16 mo</div>
+    </div>
+    <div class="kpi bad">
+      <div class="label">YTD EBITDA</div>
+      <div class="value">($1.77M)</div>
+      <div class="sub">April YTD actual</div>
+      <div class="delta down">$904K below plan</div>
+    </div>
+    <div class="kpi warn">
+      <div class="label">Debt Outstanding</div>
+      <div class="value">$31.4M</div>
+      <div class="sub">Barclays facility</div>
+      <div class="delta down">$5M revolver drawn</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Active Customers</div>
+      <div class="value">674</div>
+      <div class="sub">$31K avg ARR</div>
+      <div class="delta">96% Class / 4% Consulting</div>
+    </div>
+    <div class="kpi warn">
+      <div class="label">Headcount</div>
+      <div class="value">41</div>
+      <div class="sub">vs 55 Jan '26</div>
+      <div class="delta down">▼ 25% YTD</div>
+    </div>
+  </div>
+
+  <!-- Strategic Insight -->
+  <div class="insight" style="margin-top:24px;">
+    <div class="label">The headline isn't the cash problem — it's a symptom</div>
+    <div class="text">ARR has collapsed <strong>43%</strong> from $35.85M to $20.57M in 16 months. At an <strong>81% renewal rate</strong> on $20M ARR, the company sheds $3.8M/year before any new logos — and current new bookings can't replace that gap. <strong>The "Renewals Only" scenario delivers higher 2027 EBITDA ($1.23M) than the operating case ($812K)</strong> — meaning your new-sales motion is currently a value destroyer. M&A or a credible re-acceleration thesis is the actual answer.</div>
+  </div>
+
+  <!-- SECTION: Cash Position -->
+  <div class="section-title">Cash Position — Three Distinct Pools</div>
+
+  <div class="grid-asym">
+    <div class="card">
+      <div class="card-title">Bank Account Balances by Classification</div>
+      <div class="card-sub">Live NetSuite GL — May 18, 2026. Total $7.43M includes $5.75M restricted/escrow.</div>
+      <div class="chart-container tall">
+        <canvas id="bankBars"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Cash Pool Composition</div>
+      <div class="card-sub">Only ~$1.68M is truly operating-unrestricted.</div>
+      <div class="chart-container tall">
+        <canvas id="cashDonut"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: 12-Month Cash Forecast -->
+  <div class="section-title">12-Month Cash Forecast — Scenario Comparison</div>
+
+  <div class="card full">
+    <div class="card-title">Operating Cash Path — May 2026 to May 2027</div>
+    <div class="card-sub">Modeled from NetSuite L12M flows + renewal cohort timing. Click legend items to toggle scenarios.</div>
+    <div class="chart-container tall">
+      <canvas id="forecastLine"></canvas>
+    </div>
+    <div class="scenario-row">
+      <div class="scenario">
+        <div class="name">Board Deck (Slide 16)</div>
+        <div class="trough bad">$0.1M</div>
+        <div class="when">Late July 2026</div>
+        <div class="end">End 2026: $2.9M</div>
+      </div>
+      <div class="scenario">
+        <div class="name">Base — No Cuts</div>
+        <div class="trough warn">$575K</div>
+        <div class="when">July 2026</div>
+        <div class="end">May '27: $6.17M</div>
+      </div>
+      <div class="scenario">
+        <div class="name">T1+2+3 Cuts</div>
+        <div class="trough warn">$851K</div>
+        <div class="when">July 2026</div>
+        <div class="end">May '27: $8.74M</div>
+      </div>
+      <div class="scenario">
+        <div class="name">Stress — 70% Renewal</div>
+        <div class="trough bad">$789K</div>
+        <div class="when">July 2026</div>
+        <div class="end">May '27: $6.94M</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: ARR Trajectory -->
+  <div class="section-title">ARR & Revenue Trajectory — The Real Story</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">ARR Decline Over 16 Months</div>
+      <div class="card-sub">Quarterly snapshots showing the cliff from $35.85M to $20.57M (-43%).</div>
+      <div class="chart-container">
+        <canvas id="arrBars"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Monthly Revenue Trend (NetSuite GL)</div>
+      <div class="card-sub">Income recognition Jan 2025 – Apr 2026. CoSo divestiture in March drives the drop.</div>
+      <div class="chart-container">
+        <canvas id="revenueLine"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: P&L -->
+  <div class="section-title">Monthly P&L — Operating Performance</div>
+
+  <div class="grid-asym">
+    <div class="card">
+      <div class="card-title">Monthly P&L Breakdown</div>
+      <div class="card-sub">Revenue vs COGS vs OpEx — NetSuite actuals.</div>
+      <div class="chart-container tall">
+        <canvas id="plStack"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Monthly EBITDA</div>
+      <div class="card-sub">Improving slowly but persistently negative.</div>
+      <div class="chart-container tall">
+        <canvas id="ebitdaBars"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: Bank Flows -->
+  <div class="section-title">Historical Bank Flows — Inflows vs Outflows</div>
+
+  <div class="card full">
+    <div class="card-title">Monthly Cash Movement by Transaction Type</div>
+    <div class="card-sub">Customer payments (in) vs vendor payments + payroll journals (out). April 2025 spike = recap event. March 2026 spike = Knox proceeds.</div>
+    <div class="chart-container tall">
+      <canvas id="bankFlows"></canvas>
+    </div>
+  </div>
+
+  <!-- SECTION: Debt -->
+  <div class="section-title">Debt Stack & Capital Structure</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Outstanding Debt by Facility</div>
+      <div class="card-sub">$31.4M total Barclays exposure. PIK interest accreting to principal.</div>
+      <div class="chart-container">
+        <canvas id="debtBars"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Equity Series (Original vs Recapped)</div>
+      <div class="card-sub">All preferred series wiped to zero via April 2025 recapitalization.</div>
+      <div class="chart-container">
+        <canvas id="equityBars"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: Expense Tranches -->
+  <div class="section-title">Expense Reduction Roadmap</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Cumulative Annualized Savings by Tranche</div>
+      <div class="card-sub">Total potential: $4.02M. Tranches 1-3 deliver $3.02M without ending new sales.</div>
+      <div class="chart-container">
+        <canvas id="tranchesBars"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Headcount Trajectory</div>
+      <div class="card-sub">From 85 (Dec '24) → 41 today → 27 (post all 4 tranches).</div>
+      <div class="chart-container">
+        <canvas id="headcountLine"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: Renewals & Customers -->
+  <div class="section-title">Renewal Health & Customer Concentration</div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">Renewal Rate by Quarter</div>
+      <div class="card-sub">Class vs Consulting renewals. International outpacing domestic.</div>
+      <div class="chart-container short">
+        <canvas id="renewalBars"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">ARR by Segment</div>
+      <div class="card-sub">47.9% concentration in International Higher Ed.</div>
+      <div class="chart-container short">
+        <canvas id="segmentDonut"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Sales Pipeline Coverage</div>
+      <div class="card-sub">$4.6M pipeline vs $1.8M bookings target — 2.6x coverage (below 3x norm).</div>
+      <div class="chart-container short">
+        <canvas id="pipelineBars"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: AR / AP -->
+  <div class="section-title">Working Capital — AR Aging & AP Schedule</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">AR Aging Distribution</div>
+      <div class="card-sub">~$4.5M net AR. 180+ day bucket ($660K) includes likely write-offs from 2022-2023.</div>
+      <div class="chart-container">
+        <canvas id="arAging"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Real Current AP — Next 90 Days</div>
+      <div class="card-sub">$3.5M of operational vendor payments to clear (excludes stale 2022-23 book entries).</div>
+      <div class="chart-container">
+        <canvas id="apVendors"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Findings Table -->
+  <div class="section-title">Items Not Surfaced in the Board Deck</div>
+
+  <div class="card full">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:36px;">#</th>
+          <th>Finding</th>
+          <th style="width:140px;">Magnitude</th>
+          <th style="width:120px;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Barclays BACA restricted cash access mechanism not documented</td><td class="amount">$2.5M</td><td><span class="tag amber">Week 1</span></td></tr>
+        <tr><td>2</td><td>Coso-TD Bank (Knox proceeds) release schedule unknown</td><td class="amount">$3.25M</td><td><span class="tag red">Week 1</span></td></tr>
+        <tr><td>3</td><td>Cash interest on Barclays facility ($2.4M/yr)</td><td class="amount neg">($205K/mo)</td><td><span class="tag navy">Recurring</span></td></tr>
+        <tr><td>4</td><td>Bad debt reserve only $338K against $1.4M+ stale BME Saudi AR</td><td class="amount">$1.5M gap</td><td><span class="tag amber">Q2 close</span></td></tr>
+        <tr><td>5</td><td>Anthology partner — $1.3M overdue from June 2025 license</td><td class="amount neg">($1.3M)</td><td><span class="tag red">Active</span></td></tr>
+        <tr><td>6</td><td>Stale book AP — Leitner Tax SRO ($9.1M) + Zoom 2023 ($3.2M)</td><td class="amount">$12.3M book</td><td><span class="tag amber">Clean up</span></td></tr>
+        <tr><td>7</td><td>Jan '26 $23.3M billings → only $5.2M cash collected through April</td><td class="amount">$18M gap</td><td><span class="tag amber">Investigate</span></td></tr>
+        <tr><td>8</td><td>Czech 5-month notice period delays Tranche 2 cash savings to Oct</td><td class="amount neg">($475K sev)</td><td><span class="tag navy">Plan</span></td></tr>
+        <tr><td>9</td><td>April '25 recap event = -$36.7M outflow (preferred wiped)</td><td class="amount">Historical</td><td><span class="tag navy">Done</span></td></tr>
+        <tr><td>10</td><td>Goodwill + long-lived impairments already booked ($206M)</td><td class="amount">$206M</td><td><span class="tag navy">Done</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    Class Technologies, Inc. | Confidential | Generated May 18, 2026 from NetSuite GL data + Board of Directors deck<br>
+    Source data verified to ±$25K of board-deck reported figures | Companion Excel model: Class_Cash_Model_2026-05-18.xlsx
+  </div>
+</div>
+
+<script>
+  // Class Brand Colors
+  const NAVY = '#0A1849';
+  const GOLD = '#FFBA00';
+  const PURPLE = '#4739E7';
+  const GREEN = '#00B894';
+  const RED = '#E74C3C';
+  const AMBER = '#F39C12';
+  const LIGHT_PURPLE = '#7B6FF0';
+  const TEAL = '#52d1e4';
+
+  // Global Chart defaults
+  Chart.defaults.font.family = 'Arial, sans-serif';
+  Chart.defaults.font.size = 11;
+  Chart.defaults.color = NAVY;
+  Chart.defaults.plugins.legend.labels.boxWidth = 12;
+  Chart.defaults.plugins.legend.labels.padding = 12;
+  Chart.defaults.plugins.legend.labels.font = { size: 10, weight: '600' };
+  Chart.defaults.plugins.tooltip.backgroundColor = NAVY;
+  Chart.defaults.plugins.tooltip.titleColor = GOLD;
+  Chart.defaults.plugins.tooltip.bodyColor = '#fff';
+  Chart.defaults.plugins.tooltip.borderColor = GOLD;
+  Chart.defaults.plugins.tooltip.borderWidth = 1;
+  Chart.defaults.plugins.tooltip.padding = 10;
+  Chart.defaults.plugins.tooltip.titleFont = { size: 11, weight: 700 };
+  Chart.defaults.plugins.tooltip.bodyFont = { size: 11 };
+
+  const fmt = v => v >= 1000000 ? '$' + (v/1000000).toFixed(2) + 'M' : v >= 1000 ? '$' + (v/1000).toFixed(0) + 'K' : '$' + v.toFixed(0);
+  const fmtNeg = v => v < 0 ? '(' + fmt(Math.abs(v)) + ')' : fmt(v);
+
+  // ==== 1. BANK ACCOUNT BARS ====
+  new Chart(document.getElementById('bankBars'), {
+    type: 'bar',
+    data: {
+      labels: ['SVB Operating', 'SVB Undesignated', 'JP Morgan', 'Truist', 'Bill.com Clearing', 'Barclays BACA', 'Coso-TD Bank'],
+      datasets: [{
+        label: 'Balance',
+        data: [1458676, 126865, 91646, 4187, 1534, 2500000, 3245185],
+        backgroundColor: [NAVY, NAVY, NAVY, NAVY, NAVY, RED, AMBER],
+        borderWidth: 0,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } }
+      },
+      scales: {
+        x: { grid: { color: '#f0f0f0' }, ticks: { callback: v => fmt(v), font: { size: 10 } } },
+        y: { grid: { display: false }, ticks: { font: { size: 11, weight: 600 } } }
+      }
+    }
+  });
+
+  // ==== 2. CASH DONUT ====
+  new Chart(document.getElementById('cashDonut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Operating (Unrestricted)', 'Barclays BACA (Restricted)', 'Coso-TD (Knox proceeds)'],
+      datasets: [{
+        data: [1682908, 2500000, 3245185],
+        backgroundColor: [NAVY, RED, AMBER],
+        borderWidth: 2, borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '60%',
+      plugins: {
+        legend: { position: 'bottom', labels: { padding: 14, font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ctx.label + ': ' + fmt(ctx.raw) + ' (' + (ctx.raw/7428093*100).toFixed(1) + '%)' } }
+      }
+    }
+  });
+
+  // ==== 3. 12-MONTH FORECAST LINE ====
+  const months = ['May-26','Jun-26','Jul-26','Aug-26','Sep-26','Oct-26','Nov-26','Dec-26','Jan-27','Feb-27','Mar-27','Apr-27','May-27'];
+  const boardDeck = [2200000,1100000,100000,2100000,2400000,3000000,2950000,2900000,2800000,2750000,2600000,2500000,null];
+  const baseCase = [2370000,1455000,575000,2825000,3835000,4275000,4365000,4385000,5320000,6660000,6720000,6320000,6170000];
+  const tranches = [2370000,1593000,851000,3239000,4387000,4941000,5125000,5239000,6268000,7702000,7856000,7550000,8738000];
+  const stress = [2370000,1455000,789000,2741000,3576000,4054000,4144000,4164000,4881000,5908000,5781000,5341000,6944000];
+
+  new Chart(document.getElementById('forecastLine'), {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        { label: 'Board Deck Forecast', data: boardDeck, borderColor: GOLD, backgroundColor: 'rgba(255,186,0,0.0)', borderWidth: 3, borderDash: [6,3], tension: 0.3, pointRadius: 4, pointBackgroundColor: GOLD },
+        { label: 'Base — No Cuts', data: baseCase, borderColor: NAVY, backgroundColor: 'rgba(10,24,73,0.0)', borderWidth: 2.5, tension: 0.3, pointRadius: 3, pointBackgroundColor: NAVY },
+        { label: 'T1+2+3 Expense Cuts', data: tranches, borderColor: GREEN, backgroundColor: 'rgba(0,184,148,0.05)', borderWidth: 2.5, tension: 0.3, pointRadius: 3, pointBackgroundColor: GREEN, fill: true },
+        { label: 'Stress — 70% Renewal', data: stress, borderColor: RED, backgroundColor: 'rgba(231,76,60,0.0)', borderWidth: 2.5, tension: 0.3, pointRadius: 3, pointBackgroundColor: RED }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { padding: 18, font: { size: 11, weight: 600 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => fmt(v) }, beginAtZero: false }
+      }
+    }
+  });
+
+  // ==== 4. ARR BARS ====
+  new Chart(document.getElementById('arrBars'), {
+    type: 'bar',
+    data: {
+      labels: ['Dec-24','Mar-25','Jun-25','Sep-25','Dec-25','Mar-26','Apr-26'],
+      datasets: [{
+        label: 'ARR ($M)',
+        data: [35.85, 35.20, 34.07, 28.85, 27.97, 22.04, 20.57],
+        backgroundColor: [NAVY,NAVY,NAVY,AMBER,AMBER,RED,RED],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => '$' + ctx.raw.toFixed(2) + 'M ARR' } }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => '$' + v + 'M' } }
+      }
+    }
+  });
+
+  // ==== 5. REVENUE LINE ====
+  const plMonths = ['Jan-25','Feb-25','Mar-25','Apr-25','May-25','Jun-25','Jul-25','Aug-25','Sep-25','Oct-25','Nov-25','Dec-25','Jan-26','Feb-26','Mar-26','Apr-26'];
+  const revenue = [2966560,3015325,3008475,2948764,2981795,2968525,2767714,2624111,2581835,2540184,2528810,2738703,2449544,2314649,2218946,1693070];
+  new Chart(document.getElementById('revenueLine'), {
+    type: 'line',
+    data: {
+      labels: plMonths,
+      datasets: [{
+        label: 'Monthly Revenue',
+        data: revenue,
+        borderColor: NAVY, backgroundColor: 'rgba(10,24,73,0.08)',
+        borderWidth: 2.5, tension: 0.3, pointRadius: 3, fill: true
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => fmt(v) } }
+      }
+    }
+  });
+
+  // ==== 6. P&L STACK ====
+  const cogs = [1425781,908409,1052724,1011920,1011236,1001333,1004142,998532,1007514,1137712,1301413,1197093,1139590,1084120,1040088,751994];
+  const opex = [2272283,3465088,3608065,2721862,2497207,2304615,2976651,2405832,4900565,2895905,1869720,1579122,1592046,1542749,1865895,1389292];
+
+  new Chart(document.getElementById('plStack'), {
+    type: 'bar',
+    data: {
+      labels: plMonths,
+      datasets: [
+        { label: 'Revenue', data: revenue, backgroundColor: GREEN, stack: 'in', borderRadius: 2 },
+        { label: 'COGS', data: cogs.map(v => -v), backgroundColor: AMBER, stack: 'out', borderRadius: 2 },
+        { label: 'OpEx', data: opex.map(v => -v), backgroundColor: RED, stack: 'out', borderRadius: 2 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(Math.abs(ctx.raw)) } }
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 9 } } },
+        y: { stacked: true, grid: { color: '#f0f0f0' }, ticks: { callback: v => fmt(v) } }
+      }
+    }
+  });
+
+  // ==== 7. EBITDA BARS ====
+  const ebitda = revenue.map((r,i) => r - cogs[i] - opex[i]);
+  new Chart(document.getElementById('ebitdaBars'), {
+    type: 'bar',
+    data: {
+      labels: plMonths,
+      datasets: [{
+        label: 'EBITDA',
+        data: ebitda,
+        backgroundColor: ebitda.map(v => v < -1000000 ? RED : v < -500000 ? AMBER : NAVY),
+        borderRadius: 3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => 'EBITDA: ' + fmt(ctx.raw) } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => fmt(v) } }
+      }
+    }
+  });
+
+  // ==== 8. BANK FLOWS ====
+  const flowMonths = ['Jan-25','Feb-25','Mar-25','Apr-25','May-25','Jun-25','Jul-25','Aug-25','Sep-25','Oct-25','Nov-25','Dec-25','Jan-26','Feb-26','Mar-26','Apr-26','May-26 MTD'];
+  const custIn = [2282498,1508533,1560227,1173678,3246300,2245061,1912487,2095278,2137555,1564302,935283,2177030,1563772,952811,1588335,1079076,376852];
+  const vendOut = [-1506747,-1295850,-1692703,-3253747,-2200282,-1549347,-1508868,-1919846,-1331698,-5113027,-1166097,-2060035,-1610866,-1262864,-1012362,-1357739,-212546];
+  const journalNet = [-937502,-2142472,-1222604,-34592458,-1444098,-1105284,-1052852,-790385,-1003749,58553,2500979,-314783,-978743,-372822,1859193,196074,-154897];
+  // Cap April 2025 outlier so chart is readable
+  const journalDisplay = journalNet.map((v,i) => flowMonths[i] === 'Apr-25' ? -3000000 : v);
+
+  new Chart(document.getElementById('bankFlows'), {
+    type: 'bar',
+    data: {
+      labels: flowMonths,
+      datasets: [
+        { label: 'Customer Payments (Inflow)', data: custIn, backgroundColor: GREEN, borderRadius: 2 },
+        { label: 'Vendor Payments (Outflow)', data: vendOut, backgroundColor: RED, borderRadius: 2 },
+        { label: 'Journals — payroll/other (capped Apr-25)', data: journalDisplay, backgroundColor: AMBER, borderRadius: 2 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.label.startsWith('Journals') && ctx.label === 'Apr-25') {
+                return 'Journals: ($34.6M) — recap event (chart capped)';
+              }
+              return ctx.dataset.label + ': ' + fmt(ctx.raw);
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => fmt(v) } }
+      }
+    }
+  });
+
+  // ==== 9. DEBT BARS ====
+  new Chart(document.getElementById('debtBars'), {
+    type: 'bar',
+    data: {
+      labels: ['Barclays Term Loan','Barclays Revolver (drawn)','Deferred PIK Interest','Deferred Tax Liability','Coso-Other LT'],
+      datasets: [{
+        label: 'Balance',
+        data: [25000000, 5000000, 1401591, 1124013, 54000],
+        backgroundColor: [RED, RED, AMBER, NAVY, NAVY],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } }
+      },
+      scales: {
+        x: { grid: { color: '#f0f0f0' }, ticks: { callback: v => fmt(v) } },
+        y: { grid: { display: false }, ticks: { font: { size: 10, weight: 600 } } }
+      }
+    }
+  });
+
+  // ==== 10. EQUITY BARS ====
+  new Chart(document.getElementById('equityBars'), {
+    type: 'bar',
+    data: {
+      labels: ['Series Seed','Series A','Series B','Series B-1','Series C','Series D','Series Sr 1','Series Sr 2','APIC-Stock','Class Holdco'],
+      datasets: [{
+        label: 'Pre-Recap',
+        data: [50, 80, 120, 60, 90, 100, 0, 0, 0, 0],
+        backgroundColor: 'rgba(231,76,60,0.5)',
+        borderRadius: 2
+      },{
+        label: 'Post-Recap (Today)',
+        data: [0, 0, 0, 0, 0, 0, 0, 0, 150.4, 252.7],
+        backgroundColor: NAVY,
+        borderRadius: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end' },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': $' + ctx.raw.toFixed(0) + 'M (illustrative)' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 45, minRotation: 45 } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => '$' + v + 'M' } }
+      }
+    }
+  });
+
+  // ==== 11. TRANCHES BARS ====
+  new Chart(document.getElementById('tranchesBars'), {
+    type: 'bar',
+    data: {
+      labels: ['Tranche 1\nS&M + AWS','Tranche 2\nProduct Dev','Tranche 3\nPost-Renewal','Tranche 4\nEnd New Sales'],
+      datasets: [{
+        label: 'Annualized Savings',
+        data: [1653, 1129, 240, 996],
+        backgroundColor: [GREEN, NAVY, AMBER, RED],
+        borderRadius: 4,
+        order: 2
+      },{
+        type: 'line',
+        label: 'Cumulative',
+        data: [1653, 2782, 3022, 4018],
+        borderColor: GOLD,
+        backgroundColor: 'rgba(255,186,0,0.1)',
+        borderWidth: 3,
+        pointRadius: 5,
+        pointBackgroundColor: GOLD,
+        tension: 0.2,
+        fill: true,
+        order: 1
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end' },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': $' + ctx.raw + 'K' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => '$' + v + 'K' } }
+      }
+    }
+  });
+
+  // ==== 12. HEADCOUNT LINE ====
+  new Chart(document.getElementById('headcountLine'), {
+    type: 'line',
+    data: {
+      labels: ['Dec-24','Mar-25','Jun-25','Sep-25','Dec-25','Mar-26','Apr-26 (now)','Post T1','Post T2','Post T3','Post T4'],
+      datasets: [{
+        label: 'Core Headcount',
+        data: [85, 79, 75, 67, 55, 43, 41, 38, 33, 31, 27],
+        borderColor: NAVY,
+        backgroundColor: 'rgba(10,24,73,0.08)',
+        borderWidth: 2.5,
+        pointRadius: 4,
+        pointBackgroundColor: NAVY,
+        tension: 0.2,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.raw + ' people' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+        y: { grid: { color: '#f0f0f0' }, beginAtZero: true }
+      }
+    }
+  });
+
+  // ==== 13. RENEWAL BARS ====
+  new Chart(document.getElementById('renewalBars'), {
+    type: 'bar',
+    data: {
+      labels: ['Q1 26','Q2 26','1H 26'],
+      datasets: [
+        { label: 'Class', data: [82,80,81], backgroundColor: NAVY, borderRadius: 3 },
+        { label: 'Consulting', data: [91,89,91], backgroundColor: AMBER, borderRadius: 3 },
+        { label: 'Healthy (≥90%)', type: 'line', data: [90,90,90], borderColor: GREEN, borderDash: [4,4], pointRadius: 0, borderWidth: 2 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { size: 10 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw + '%' } }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: '#f0f0f0' }, beginAtZero: false, min: 70, max: 100, ticks: { callback: v => v + '%' } }
+      }
+    }
+  });
+
+  // ==== 14. SEGMENT DONUT ====
+  new Chart(document.getElementById('segmentDonut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Intl Higher Ed','Domestic Higher Ed','Domestic Corp/Gov','Intl Corp/Gov','Domestic K12','Intl K12'],
+      datasets: [{
+        data: [9.86, 4.17, 3.61, 1.04, 1.69, 0.20],
+        backgroundColor: [RED, NAVY, PURPLE, AMBER, GOLD, '#9ca3af'],
+        borderWidth: 2, borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '55%',
+      plugins: {
+        legend: { position: 'bottom', labels: { padding: 6, font: { size: 9 }, boxWidth: 10 } },
+        tooltip: { callbacks: { label: ctx => ctx.label + ': $' + ctx.raw.toFixed(1) + 'M ARR' } }
+      }
+    }
+  });
+
+  // ==== 15. PIPELINE BARS ====
+  new Chart(document.getElementById('pipelineBars'), {
+    type: 'bar',
+    data: {
+      labels: ['Q2','Q3','Q4','FY26'],
+      datasets: [
+        { label: 'Class Pipeline ($K)', data: [800, 843, 2316, 3959], backgroundColor: NAVY, borderRadius: 3 },
+        { label: 'Consulting Pipeline ($K)', data: [534, 128, 0, 662], backgroundColor: GOLD, borderRadius: 3 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { size: 9 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': $' + ctx.raw + 'K' } }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => '$' + v + 'K' } }
+      }
+    }
+  });
+
+  // ==== 16. AR AGING ====
+  new Chart(document.getElementById('arAging'), {
+    type: 'bar',
+    data: {
+      labels: ['Current (0-30)','31-60','61-90','91-180','180+ days'],
+      datasets: [{
+        label: 'AR Balance',
+        data: [2200000, 950000, 420000, 380000, 660000],
+        backgroundColor: [GREEN, NAVY, AMBER, RED, '#8B0000'],
+        borderRadius: 4
+      },{
+        type: 'line',
+        label: 'Cumulative %',
+        data: [47, 67, 76, 84, 99],
+        borderColor: GOLD,
+        backgroundColor: 'rgba(255,186,0,0.1)',
+        borderWidth: 2.5,
+        pointRadius: 4,
+        pointBackgroundColor: GOLD,
+        yAxisID: 'pct',
+        tension: 0.2,
+        fill: false
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { size: 10 } } },
+        tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0 ? fmt(ctx.raw) : 'Cumulative: ' + ctx.raw + '%' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => fmt(v) }, position: 'left' },
+        pct: { position: 'right', min: 0, max: 100, grid: { display: false }, ticks: { callback: v => v + '%', font: { size: 9 } } }
+      }
+    }
+  });
+
+  // ==== 17. AP VENDORS ====
+  new Chart(document.getElementById('apVendors'), {
+    type: 'bar',
+    data: {
+      labels: ['Anthology (overdue)','Carahsoft','Knox Systems','Learning Tech Group','Zoom Hosting','Anthology current','AmEx','McDermott (legal)'],
+      datasets: [{
+        label: 'Open AP',
+        data: [1300000, 841000, 422000, 274000, 253000, 235000, 105000, 94000],
+        backgroundColor: [RED, AMBER, NAVY, NAVY, AMBER, NAVY, NAVY, NAVY],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } }
+      },
+      scales: {
+        x: { grid: { color: '#f0f0f0' }, ticks: { callback: v => fmt(v) } },
+        y: { grid: { display: false }, ticks: { font: { size: 10, weight: 600 } } }
+      }
+    }
+  });
+
+</script>
+</body>
+</html>

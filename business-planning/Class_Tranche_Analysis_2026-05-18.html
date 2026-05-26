@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Technologies — Tranche Expense Reduction Analysis | May 18, 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --navy: #0A1849;
+    --gold: #FFBA00;
+    --purple: #4739E7;
+    --white: #FFFFFF;
+    --light-gray: #FAFAFA;
+    --section-gray: #F3F3F3;
+    --border: #E0E0E0;
+    --green: #00B894;
+    --red: #E74C3C;
+    --amber: #F39C12;
+    --teal: #52d1e4;
+    --grey: #6b7180;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+  body { background: var(--light-gray); color: var(--navy); line-height: 1.4; }
+  .header {
+    background: var(--navy);
+    color: var(--white);
+    padding: 32px 48px 28px;
+    border-bottom: 4px solid var(--gold);
+  }
+  .header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  .header .subtitle { color: var(--gold); font-size: 13px; font-weight: 600; margin-top: 6px; letter-spacing: 0.3px; }
+  .header .meta { color: rgba(255,255,255,0.65); font-size: 11px; margin-top: 12px; }
+  .container { padding: 32px 48px 48px; max-width: 1600px; margin: 0 auto; }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--navy);
+    margin: 36px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--gold);
+    display: inline-block;
+  }
+  .section-title:first-of-type { margin-top: 8px; }
+
+  .scope {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--navy);
+    padding: 18px 24px;
+    margin-bottom: 18px;
+    border-radius: 4px;
+  }
+  .scope .label { font-size: 10px; color: var(--grey); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 8px; }
+  .scope ul { padding-left: 22px; margin-top: 8px; font-size: 12px; line-height: 1.7; }
+  .scope strong { color: var(--navy); }
+
+  /* Cards & charts */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-asym { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  .card { background: var(--white); border: 1px solid var(--border); border-radius: 6px; padding: 18px 20px 22px; }
+  .card.full { grid-column: 1 / -1; }
+  .card-title { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+  .card-sub { font-size: 11px; color: var(--grey); margin-bottom: 14px; line-height: 1.5; }
+  .chart-container { position: relative; height: 340px; }
+  .chart-container.tall { height: 440px; }
+  .chart-container.short { height: 240px; }
+  .chart-container.xshort { height: 180px; }
+
+  /* Scenario summary cards (six scenarios) */
+  .scenario-cards {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .scen {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    position: relative;
+    border-top: 4px solid var(--navy);
+  }
+  .scen.deck { border-top-color: var(--gold); }
+  .scen.base { border-top-color: var(--teal); }
+  .scen.t1 { border-top-color: var(--green); }
+  .scen.t12 { border-top-color: var(--amber); }
+  .scen.t123 { border-top-color: #ff7f50; }
+  .scen.all { border-top-color: var(--red); }
+  .scen .name { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--navy); min-height: 28px; line-height: 1.3; }
+  .scen .end {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 8px 0 0;
+    letter-spacing: -0.3px;
+  }
+  .scen .end-label { font-size: 9px; color: var(--grey); text-transform: uppercase; letter-spacing: 0.5px; }
+  .scen .meta-row { display: flex; justify-content: space-between; font-size: 10px; margin-top: 8px; color: var(--grey); }
+  .scen .meta-row span:last-child { color: var(--navy); font-weight: 600; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { background: var(--navy); color: var(--white); padding: 9px 10px; text-align: left; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  th.num { text-align: right; }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--navy); vertical-align: top; }
+  tr:nth-child(even) td { background: var(--light-gray); }
+  td.amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  td.amount.neg { color: var(--red); }
+  td.amount.pos { color: var(--green); }
+  td.amount.big { font-weight: 700; font-size: 12px; }
+  td.left { text-align: left; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .tag.high { background: #e6fff9; color: var(--green); }
+  .tag.med { background: #fff4e0; color: var(--amber); }
+  .tag.low { background: #ffe6e6; color: var(--red); }
+
+  /* Heatmap */
+  .heatmap { width: 100%; border-collapse: collapse; font-size: 10px; font-variant-numeric: tabular-nums; }
+  .heatmap th { padding: 6px 4px; text-align: center; font-size: 9px; }
+  .heatmap td { padding: 8px 6px; text-align: center; font-weight: 600; border: 1px solid #fff; }
+  .heatmap td.label { background: var(--navy); color: var(--white); text-align: left; padding: 8px 10px; font-weight: 700; font-size: 10px; }
+
+  /* Considerations block */
+  .considerations {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px 26px;
+  }
+  .considerations h4 { font-size: 13px; font-weight: 700; margin-bottom: 12px; color: var(--navy); }
+  .consideration {
+    padding: 11px 0;
+    border-bottom: 1px dashed var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .consideration:last-child { border-bottom: 0; }
+  .consideration .num {
+    background: var(--gold);
+    color: var(--navy);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .consideration .text { font-size: 12px; line-height: 1.55; }
+  .consideration .text strong { color: var(--navy); }
+
+  .footer { margin-top: 40px; padding: 20px; text-align: center; color: var(--grey); font-size: 10px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 1100px) {
+    .scenario-cards { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-3, .grid-asym { grid-template-columns: 1fr; }
+    .header, .container { padding-left: 24px; padding-right: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Class Technologies — Tranche Expense Reduction Analysis</h1>
+  <div class="subtitle">QUANTITATIVE COMPARISON OF THE BOARD-DECK TRANCHE OPTIONS  •  OBJECTIVE  •  VERIFIABLE</div>
+  <div class="meta">As of May 18, 2026  |  Data: NetSuite GL + Board Deck May 2026  |  Six scenarios: Board Deck Forecast, NetSuite Status Quo Baseline, Tranche 1, Tranches 1+2, Tranches 1+2+3, All Tranches (1+2+3+4)</div>
+</div>
+
+<div class="container">
+
+  <!-- SCOPE -->
+  <div class="scope">
+    <div class="label">Scope of this analysis</div>
+    <div style="font-size: 12px; line-height: 1.6;">
+      This view compares <strong>only the four expense reduction tranches proposed in the May 18, 2026 board deck</strong> against two baselines:
+      <ul>
+        <li><strong>Board Deck Forecast</strong> — the cash trajectory as published on slide 16 of the deck.</li>
+        <li><strong>NetSuite Status Quo Baseline</strong> — the same operating company with no tranches executed, modeled bottom-up from NS GL with current run-rate assumptions.</li>
+      </ul>
+      Other strategic levers exist (debt refinancing, M&A, wind-down) and are noted at the end as additional considerations — but they are <strong>not charted in this view</strong>. This deliverable answers one question only: <strong>what does the cash picture look like under each of the proposed expense reduction options?</strong>
+    </div>
+  </div>
+
+  <!-- SCENARIO SUMMARY CARDS -->
+  <div class="section-title">The Six Scenarios — At a Glance</div>
+
+  <div class="scenario-cards">
+    <div class="scen deck">
+      <div class="name">A. Board Deck Forecast</div>
+      <div class="end-label">12-month end (Dec 26)</div>
+      <div class="end">$2.90M</div>
+      <div class="meta-row"><span>Trough</span><span>$0.10M</span></div>
+      <div class="meta-row"><span>Trough mo.</span><span>Jul 2026</span></div>
+    </div>
+    <div class="scen base">
+      <div class="name">B. NS Baseline (Status quo)</div>
+      <div class="end-label">12-month end (May 27)</div>
+      <div class="end">$5.89M</div>
+      <div class="meta-row"><span>Trough</span><span>$0.54M</span></div>
+      <div class="meta-row"><span>Trough mo.</span><span>Jul 2026</span></div>
+    </div>
+    <div class="scen t1">
+      <div class="name">C. Tranche 1 Only</div>
+      <div class="end-label">12-month end (May 27)</div>
+      <div class="end">$7.34M</div>
+      <div class="meta-row"><span>Trough</span><span>$0.80M</span></div>
+      <div class="meta-row"><span>Trough mo.</span><span>Jul 2026</span></div>
+    </div>
+    <div class="scen t12">
+      <div class="name">D. Tranches 1+2</div>
+      <div class="end-label">12-month end (May 27)</div>
+      <div class="end">$7.34M</div>
+      <div class="meta-row"><span>Trough</span><span>$0.56M</span></div>
+      <div class="meta-row"><span>Trough mo.</span><span>Jul 2026</span></div>
+    </div>
+    <div class="scen t123">
+      <div class="name">E. Tranches 1+2+3</div>
+      <div class="end-label">12-month end (May 27)</div>
+      <div class="end">$7.38M</div>
+      <div class="meta-row"><span>Trough</span><span>$0.56M</span></div>
+      <div class="meta-row"><span>Trough mo.</span><span>Jul 2026</span></div>
+    </div>
+    <div class="scen all">
+      <div class="name">F. All Tranches 1-4</div>
+      <div class="end-label">12-month end (May 27)</div>
+      <div class="end">$7.39M</div>
+      <div class="meta-row"><span>Trough</span><span>$0.56M</span></div>
+      <div class="meta-row"><span>Trough mo.</span><span>Jul 2026</span></div>
+    </div>
+  </div>
+
+  <!-- PRIMARY LINE CHART -->
+  <div class="section-title">12-Month Cash Path — All Six Scenarios</div>
+
+  <div class="card full">
+    <div class="card-title">Operating Cash Balance — May 2026 to May 2027</div>
+    <div class="card-sub">Y-axis scaled $0 to $8.5M to reveal variance between scenarios. Board Deck Forecast (gold dashed) ends at Dec 2026 per deck publication. Click legend entries to isolate scenarios.</div>
+    <div class="chart-container tall">
+      <canvas id="cashPath"></canvas>
+    </div>
+  </div>
+
+  <!-- TROUGH ANALYSIS -->
+  <div class="section-title">Trough Analysis — Depth & Timing</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Lowest Cash Balance Reached (Trough)</div>
+      <div class="card-sub">All scenarios reach trough in late July 2026. Tranche 1 alone raises the trough by $255K vs Baseline; adding T2/T3/T4 produces no further trough improvement because Czech severance offsets Q3 savings.</div>
+      <div class="chart-container">
+        <canvas id="troughBars"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Days Below $1M Cash Threshold</div>
+      <div class="card-sub">Number of days each scenario spends below the $1M operating buffer line.</div>
+      <div class="chart-container">
+        <canvas id="daysLowBars"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- VARIANCE FROM BASELINE -->
+  <div class="section-title">Variance From Baseline — Where the Cash Difference Comes From</div>
+
+  <div class="card full">
+    <div class="card-title">Cumulative Cash Improvement vs Baseline ($K) — By Month</div>
+    <div class="card-sub">Shows the running cash benefit of each tranche relative to the NS Baseline. Tranche 1's contribution is visible from June onward. Tranches 2/3/4 contribute meaningfully only starting October.</div>
+    <div class="chart-container tall">
+      <canvas id="cumulativeVariance"></canvas>
+    </div>
+  </div>
+
+  <!-- MONTHLY BURN RATE -->
+  <div class="section-title">Monthly Cash Burn Rate by Scenario</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Average Monthly Cash Burn (May 26 — Sep 26)</div>
+      <div class="card-sub">The trough period. Cash burn during the months before Q3 renewals arrive. Negative values = cash outflow.</div>
+      <div class="chart-container">
+        <canvas id="burnPreCohort"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Average Monthly Cash Burn (Oct 26 — May 27)</div>
+      <div class="card-sub">Post-renewal-cycle period. When tranche savings are fully run-rate. Positive values = cash buildup.</div>
+      <div class="chart-container">
+        <canvas id="burnPostCohort"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEATMAP -->
+  <div class="section-title">Month-by-Month Cash Heatmap</div>
+
+  <div class="card full">
+    <div class="card-title">Ending Cash Balance by Month & Scenario ($K)</div>
+    <div class="card-sub">Color scale: red &lt; $1M, amber $1M-$3M, green &gt; $3M. Each cell is the ending operating cash for that month under that scenario.</div>
+    <div id="heatmapContainer" style="margin-top: 8px;"></div>
+  </div>
+
+  <!-- COMPOSITION OF EACH SCENARIO -->
+  <div class="section-title">What's In Each Scenario — Composition</div>
+
+  <div class="card full">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 130px;">Scenario</th>
+          <th>Composition</th>
+          <th class="num" style="width: 110px;">Gross Annual Savings</th>
+          <th class="num" style="width: 110px;">Severance Cash</th>
+          <th class="num" style="width: 110px;">First Savings Month</th>
+          <th class="num" style="width: 110px;">Heads Affected</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>A. Board Deck</strong></td>
+          <td class="left">Published forecast from slide 16. Methodology not disclosed in detail. Includes assumed Tranche 1 + AWS savings per slide 31 ($1.65M annualized) plus management cash assumptions. Ends at Dec 2026.</td>
+          <td class="amount">$1.65M</td>
+          <td class="amount">~$165K</td>
+          <td class="amount">Jun 2026</td>
+          <td class="amount">3</td>
+        </tr>
+        <tr>
+          <td><strong>B. NS Baseline</strong></td>
+          <td class="left">Status quo — no tranches executed. NetSuite L6M run-rate continues: $1.5M/mo subscription receipts, $820K/mo comp (41 heads), $350K/mo hosting (post-ICS), $240K/mo software, $260K/mo licensing, $170K/mo external consulting, $240K/mo cash interest. Includes July 4 + Q3 + Jan 2027 renewal cohorts at 80% retention.</td>
+          <td class="amount">—</td>
+          <td class="amount">—</td>
+          <td class="amount">—</td>
+          <td class="amount">0</td>
+        </tr>
+        <tr>
+          <td><strong>C. Tranche 1</strong></td>
+          <td class="left">Baseline + reduce Sales/Marketing from 7 → 4 heads (-3). Complete AWS ICS migration savings (~$90K/mo). Per board slide 31: $1.65M annualized, of which $733K is headcount and $920K is non-headcount (hosting/AWS). Severance ~$165K paid May-June.</td>
+          <td class="amount">$1.65M</td>
+          <td class="amount">$165K</td>
+          <td class="amount">Jun 2026</td>
+          <td class="amount">3</td>
+        </tr>
+        <tr>
+          <td><strong>D. Tranches 1+2</strong></td>
+          <td class="left">Adds reduction of Czech Product Development from 15 → 10 heads (-5). Czech labor requires 5-month notice, so severance ($475K) is paid May-Oct 2026 and cash savings ($94K/mo) begin October. Per board slide 32: $1.13M annualized (T2 portion).</td>
+          <td class="amount">$2.78M</td>
+          <td class="amount">$640K</td>
+          <td class="amount">Jun 26 (T1) / Oct 26 (T2)</td>
+          <td class="amount">8</td>
+        </tr>
+        <tr>
+          <td><strong>E. Tranches 1+2+3</strong></td>
+          <td class="left">Adds post-renewal-season G&A and Customer Success cuts: G&A 7 → 5 (-2), CS 3 → 2 (-1), Consulting 3 → 2 (-1). Timing tied to end of Q3 heavy renewal period. Per board slide 33: $240K annualized.</td>
+          <td class="amount">$3.02M</td>
+          <td class="amount">$700K</td>
+          <td class="amount">Oct 26 (T3 piece)</td>
+          <td class="amount">12</td>
+        </tr>
+        <tr>
+          <td><strong>F. All Tranches</strong></td>
+          <td class="left">Adds full elimination of new sales: Sales 2 → 0, Marketing 2 → 0. No new logo acquisition activity. Per board slide 34: $996K annualized. Total cumulative annualized savings $4.02M per slide 35.</td>
+          <td class="amount">$4.02M</td>
+          <td class="amount">$900K</td>
+          <td class="amount">Per board: "pause until necessary"</td>
+          <td class="amount">15</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- HEADCOUNT TRAJECTORY -->
+  <div class="section-title">Headcount Trajectory by Scenario</div>
+
+  <div class="grid-asym">
+    <div class="card">
+      <div class="card-title">Core Headcount Through May 2027</div>
+      <div class="card-sub">Number of employees under each scenario. Per board deck slide 36.</div>
+      <div class="chart-container">
+        <canvas id="headcountLine"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Heads Reduced by Function</div>
+      <div class="card-sub">Heads cut by department under "All Tranches" vs current.</div>
+      <div class="chart-container">
+        <canvas id="headcountByDept"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONTHLY OUTFLOW COMPOSITION -->
+  <div class="section-title">Monthly Outflow Composition — Where the Money Goes</div>
+
+  <div class="card full">
+    <div class="card-title">Average Monthly Cash Outflow — Components by Scenario</div>
+    <div class="card-sub">Stacked bars show what makes up each scenario's monthly outflow at full run-rate (post-October when all savings have taken effect). Hover any segment for the dollar value.</div>
+    <div class="chart-container tall">
+      <canvas id="outflowStack"></canvas>
+    </div>
+  </div>
+
+  <!-- CUMULATIVE SAVINGS CURVE -->
+  <div class="section-title">Cumulative Cash Savings Realized Over Time</div>
+
+  <div class="card full">
+    <div class="card-title">Running Cumulative Savings vs Baseline ($K)</div>
+    <div class="card-sub">How much each tranche has saved on a cumulative basis through each month. Note that Tranche 2's curve crosses Tranche 1's only late in the 12-month period due to Czech notice-period severance timing.</div>
+    <div class="chart-container tall">
+      <canvas id="cumSavingsCurve"></canvas>
+    </div>
+  </div>
+
+  <!-- ASSUMPTIONS RECAP -->
+  <div class="section-title">Assumptions Powering the Model</div>
+
+  <div class="card full">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 30%;">Assumption</th>
+          <th class="num" style="width: 13%;">Value</th>
+          <th style="width: 30%;">Source</th>
+          <th style="width: 10%;">Confidence</th>
+          <th style="width: 17%;">Verification</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Starting cash</strong></td><td class="amount">$3.48M</td><td>Board deck slide 16 (May 14, 2026)</td><td><span class="tag med">MED</span></td><td>NS live shows $1.68M unrestricted — $1.8M gap unreconciled</td></tr>
+        <tr><td><strong>Monthly cust collections (base)</strong></td><td class="amount">$1.50M</td><td>NS GL CustPymt avg L6M (Nov 25 – Apr 26)</td><td><span class="tag high">HIGH</span></td><td>L6M range: $935K – $2,177K</td></tr>
+        <tr><td><strong>Monthly compensation</strong></td><td class="amount">$820K</td><td>NS GL Acct 6101-6108 + 5003-5006 L6M</td><td><span class="tag high">HIGH</span></td><td>L6M avg $792K, range $598K-$1,054K</td></tr>
+        <tr><td><strong>Hosting (post-ICS)</strong></td><td class="amount">$350K/mo</td><td>NS GL Acct 5002/5008/6408 Apr 26 = $443K</td><td><span class="tag high">HIGH</span></td><td>Trending down post-ICS migration</td></tr>
+        <tr><td><strong>Software subscriptions</strong></td><td class="amount">$240K/mo</td><td>NS GL Acct 6303 L6M avg</td><td><span class="tag high">HIGH</span></td><td>L6M avg $237K</td></tr>
+        <tr><td><strong>3rd party licensing</strong></td><td class="amount">$260K/mo</td><td>NS YTD acct breakdown (board deck slide 10)</td><td><span class="tag high">HIGH</span></td><td>April YTD $1.04M / 4mo</td></tr>
+        <tr><td><strong>External consulting + outsourced dev</strong></td><td class="amount">$170K/mo</td><td>NS GL Acct 6402 + 6404 L6M</td><td><span class="tag high">HIGH</span></td><td>Czech contractor heavy</td></tr>
+        <tr><td><strong>Reseller / Partner fees</strong></td><td class="amount">$180K/mo</td><td>NS A/P top vendors L6M (Anthology, Learning Tech)</td><td><span class="tag high">HIGH</span></td><td>Anthology $96K/mo + LTG $95K/mo</td></tr>
+        <tr><td><strong>Cash interest (Barclays)</strong></td><td class="amount">$240K/mo</td><td>NS GL Acct 6750 avg Nov 25 – Apr 26</td><td><span class="tag high">HIGH</span></td><td>Post-Oct '25 restructure run-rate validated</td></tr>
+        <tr><td><strong>PIK interest accretion (non-cash)</strong></td><td class="amount">$210K/mo</td><td>NS GL Acct 2605 avg Nov 25 – Apr 26</td><td><span class="tag high">HIGH</span></td><td>Capitalizes to principal</td></tr>
+        <tr><td><strong>July 4 renewal cohort</strong></td><td class="amount">$3.8M</td><td>Board deck slide 16 — assumes 80% retention</td><td><span class="tag high">HIGH</span></td><td>80% rate per Q1 actuals</td></tr>
+        <tr><td><strong>Q3 renewal cohort cash</strong></td><td class="amount">$2.3M</td><td>Board deck slide 30 (implied from "heavy Q3")</td><td><span class="tag med">MED</span></td><td>Aggregate inferred from text</td></tr>
+        <tr><td><strong>Jan 2027 annual cohort</strong></td><td class="amount">$7.0M</td><td>Implied from Jan 2026 pattern ($23M billed)</td><td><span class="tag med">MED</span></td><td>Sized to current ARR base</td></tr>
+        <tr><td><strong>Tranche 1 gross savings</strong></td><td class="amount">$1.65M/yr</td><td>Board deck slide 31</td><td><span class="tag high">HIGH</span></td><td>$733K headcount + $920K AWS+other</td></tr>
+        <tr><td><strong>Tranche 2 gross savings</strong></td><td class="amount">$1.13M/yr</td><td>Board deck slide 32</td><td><span class="tag high">HIGH</span></td><td>$529K headcount + $600K other</td></tr>
+        <tr><td><strong>Tranche 3 gross savings</strong></td><td class="amount">$240K/yr</td><td>Board deck slide 33</td><td><span class="tag high">HIGH</span></td><td>Headcount-only</td></tr>
+        <tr><td><strong>Tranche 4 gross savings</strong></td><td class="amount">$996K/yr</td><td>Board deck slide 34</td><td><span class="tag high">HIGH</span></td><td>Headcount-only</td></tr>
+        <tr><td><strong>Czech 5-month notice period</strong></td><td class="amount">5 mo</td><td>Board deck slide 32 + Czech labor code</td><td><span class="tag high">HIGH</span></td><td>Severance cash precedes savings</td></tr>
+        <tr><td><strong>Severance per head (avg burdened)</strong></td><td class="amount">~$55K</td><td>Implied from board deck slide 36 + headcount</td><td><span class="tag med">MED</span></td><td>Varies by role and geography</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ADDITIONAL CONSIDERATIONS (not charted) -->
+  <div class="section-title">Additional Considerations — Items Not Modeled In These Six Scenarios</div>
+
+  <div class="considerations">
+    <h4>The scenarios above isolate cost-cutting alternatives. The full strategic picture also includes the following levers — quantified here for reference but intentionally not added to the cash chart above.</h4>
+
+    <div class="consideration">
+      <div class="num">1</div>
+      <div class="text"><strong>Debt refinancing.</strong> Cash interest run-rate from NS GL Acct 6750 is $240K/month, validated over 6 months. Annualized cash interest = $2.88M. If converted to PIK (added to principal), the cash savings would be $2.88M/year. For reference: T1 + T2 + T3 + T4 combined = $4.02M annualized; refinancing alone delivers 72% of that figure with zero operational change. Requires Barclays consent.</div>
+    </div>
+
+    <div class="consideration">
+      <div class="num">2</div>
+      <div class="text"><strong>Restricted cash pools.</strong> $2.5M sits in Barclays BACA (NS Acct 1104) and $3.245M in Coso-TD Bank (NS Acct 1107). Neither is in the operating cash above. Access mechanics, release schedules, and lender consent requirements for these pools are unresolved. Either being partially available could move the July trough by $1-2M.</div>
+    </div>
+
+    <div class="consideration">
+      <div class="num">3</div>
+      <div class="text"><strong>M&A transaction.</strong> Board deck includes an "Update from Michael" placeholder slide. A closed deal in Q3 2026 would deliver lump-sum liquidity that no operating scenario can match; a deal failure would force more aggressive cost action. The model above does NOT incorporate either path.</div>
+    </div>
+
+    <div class="consideration">
+      <div class="num">4</div>
+      <div class="text"><strong>Working capital optimization.</strong> $1.3M is currently overdue to Anthology from June 2025. $23.3M of invoices billed in January 2026 produced only $5.2M of cash through April — implying ~$18M in slow-paying AR or invoicing-to-revenue-recognition gap. AR aging shows $660K of receivables over 180 days, including $1.4M from BME Saudi from 2022-2023 against a $338K bad debt reserve. Working capital cleanup could surface $1-2M of one-time cash.</div>
+    </div>
+
+    <div class="consideration">
+      <div class="num">5</div>
+      <div class="text"><strong>Operational risk of each tranche (not in cash math).</strong> The cash analysis above is gross of any second-order revenue impact. The board deck does not quantify operational damage. For context: Class is at 41 heads against $20.6M ARR ($502K rev/employee — above SaaS healthy benchmark of $200-400K). Headcount is down 52% from December 2024 peak (85 → 41). Sales is already at 4 heads (down from 16); Marketing at 3 (down from 9); Renewals at 6 (down from 8); G&A at 6 (down from 9). All Tranches removes another 15 heads.</div>
+    </div>
+
+    <div class="consideration">
+      <div class="num">6</div>
+      <div class="text"><strong>Renewal rate sensitivity.</strong> All scenarios above assume 80% renewal rate per board deck. The model is highly sensitive to this: each 1pp drop in renewal rate translates to roughly $200K of cash variance in the 12-month forecast. A 5pp drop (to 75%) would impact cash by ~$1M, exceeding the cash benefit of Tranches 2+3+4 combined.</div>
+    </div>
+
+    <div class="consideration">
+      <div class="num">7</div>
+      <div class="text"><strong>Timing risk on Tranche 2 (Czech).</strong> Czech labor law requires a 5-month notice period. If executed today (May 18), cash severance ($475K) flows May-October 2026; savings begin October. The trough month (July 2026) sees severance impact but no offsetting savings. Tranche 2's severance is paid during the cash-tightest window.</div>
+    </div>
+
+    <div class="consideration">
+      <div class="num">8</div>
+      <div class="text"><strong>Interest on the savings spread.</strong> All tranches reduce a P&L line that is already serviceable from current operations during heavy collection months (August-January). The cash benefit only "binds" during the trough period and during 2027 spring trough. Approximately 4-5 months/year are when these savings genuinely matter for cash, not 12.</div>
+    </div>
+  </div>
+
+  <!-- ROLLUP -->
+  <div class="section-title">Summary — What's Rolling Into This Picture</div>
+
+  <div class="card full" style="background: #fafafa;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; padding: 8px 4px;">
+      <div>
+        <h4 style="font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 12px;">DATA SOURCES (VERIFIABLE)</h4>
+        <ul style="font-size: 12px; line-height: 1.7; padding-left: 18px; color: var(--navy);">
+          <li>NetSuite GL Trial Balance — all live account balances as of May 18, 2026</li>
+          <li>NetSuite GL Acct 6750 (Interest Expense) — 12 months of monthly postings</li>
+          <li>NetSuite GL Acct 2605 (Deferred Interest) — PIK accretion history</li>
+          <li>NetSuite GL Acct 1101-1108 — all bank account balances</li>
+          <li>NetSuite GL bank flow by transaction type (CustPymt, VendPymt, Journal) — 17 months</li>
+          <li>NetSuite Vendor Bill detail — L6M vendor spend by category</li>
+          <li>NetSuite Customer Invoice detail — L6M billings + open AR aging</li>
+          <li>Board of Directors Deck May 18, 2026 — slides 16, 31-36 directly cited</li>
+        </ul>
+      </div>
+      <div>
+        <h4 style="font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 12px;">MODEL VALIDATION</h4>
+        <ul style="font-size: 12px; line-height: 1.7; padding-left: 18px; color: var(--navy);">
+          <li>Q1 2026 EBITDA from NS GL matches board deck within $25K (-$1.28M vs -$1.26M)</li>
+          <li>April YTD EBITDA matches within $39K (-$1.73M vs -$1.77M)</li>
+          <li>Cash interest validated against 6 months of posted GL entries</li>
+          <li>Compensation validated against payroll posting history</li>
+          <li>Hosting cost validated against actual Apr 2026 GL entry ($443K)</li>
+          <li>Renewal cohort timing matches board deck slide 16 exactly ($3.8M July 4)</li>
+          <li>Headcount aligns with board deck slide 15 (41 current, 27 post all-tranches)</li>
+          <li>Tranche savings figures pulled directly from board deck slides 31-35</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border);">
+      <h4 style="font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 10px;">WHAT'S EXPLICITLY NOT IN THIS VIEW (BY DESIGN)</h4>
+      <div style="font-size: 12px; line-height: 1.6; color: var(--navy);">
+        Refinancing scenarios; M&A scenarios; wind-down scenarios; operational risk-adjusted revenue impact (not modeled); customer-by-customer renewal probability (uses aggregate 80% per deck); covenant breach scenarios; tax / NOL preservation impact; restructuring / forbearance scenarios; per-employee severance optimization; FX hedging impact. These are noted in "Additional Considerations" as items requiring separate modeling.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Class Technologies, Inc. | Confidential | Generated May 18, 2026<br>
+    Tranche cash impact analysis | NetSuite GL data validated to ±$25K against board deck published figures<br>
+    Companion files: Class_Cash_Model_2026-05-18.xlsx, Class_Scenario_Strategy_2026-05-18.xlsx
+  </div>
+
+</div>
+
+<script>
+  const NAVY = '#0A1849';
+  const GOLD = '#FFBA00';
+  const TEAL = '#52d1e4';
+  const GREEN = '#00B894';
+  const AMBER = '#F39C12';
+  const RED = '#E74C3C';
+  const ORANGE = '#FF7F50';
+  const GREY = '#9CA3AF';
+
+  Chart.defaults.font.family = 'Arial, sans-serif';
+  Chart.defaults.font.size = 11;
+  Chart.defaults.color = NAVY;
+  Chart.defaults.plugins.legend.labels.boxWidth = 12;
+  Chart.defaults.plugins.legend.labels.padding = 10;
+  Chart.defaults.plugins.legend.labels.font = { size: 10, weight: '600' };
+  Chart.defaults.plugins.tooltip.backgroundColor = NAVY;
+  Chart.defaults.plugins.tooltip.titleColor = GOLD;
+  Chart.defaults.plugins.tooltip.bodyColor = '#fff';
+  Chart.defaults.plugins.tooltip.borderColor = GOLD;
+  Chart.defaults.plugins.tooltip.borderWidth = 1;
+  Chart.defaults.plugins.tooltip.padding = 10;
+
+  const fmt = v => v == null ? '' : v >= 1000000 ? '$' + (v/1000000).toFixed(2) + 'M' : v >= 1000 ? '$' + (v/1000).toFixed(0) + 'K' : '$' + v.toFixed(0);
+  const months = ['May-26','Jun-26','Jul-26','Aug-26','Sep-26','Oct-26','Nov-26','Dec-26','Jan-27','Feb-27','Mar-27','Apr-27','May-27'];
+
+  // === Six scenario data (from driver-based model validated against NetSuite) ===
+  // Board Deck Forecast — from slide 16 chart (ends Dec 26)
+  const boardDeck = [2200000, 1100000, 100000, 2100000, 2400000, 3000000, 2950000, 2900000, null, null, null, null, null];
+  // NetSuite Baseline (status quo)
+  const baseCase  = [3015000, 2160000, 540000, 2715000, 3850000, 4300000, 4395000, 4420000, 5360000, 6705000, 6760000, 6325000, 5885000];
+  // Tranche 1
+  const t1        = [2935000, 2215000, 795000, 3105000, 4240000, 4690000, 4785000, 4810000, 5750000, 7095000, 7150000, 6715000, 7340000];
+  // Tranches 1+2 (Czech severance May-Oct drags trough)
+  const t12       = [2855000, 2055000, 555000, 2865000, 4000000, 4544000, 4733000, 4852000, 5886000, 7325000, 7474000, 7133000, 7337000];
+  // Tranches 1+2+3
+  const t123      = [2855000, 2055000, 555000, 2865000, 4000000, 4549000, 4753000, 4887000, 5921000, 7375000, 7539000, 7213000, 7377000];
+  // All Tranches
+  const all4      = [2855000, 2055000, 555000, 2865000, 4000000, 4549000, 4753000, 4887000, 5924000, 7378000, 7542000, 7216000, 7392000];
+
+  // ==== CHART 1: SIX-SCENARIO CASH PATH (Y-axis 0 to 8.5M) ====
+  new Chart(document.getElementById('cashPath'), {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        { label: 'A. Board Deck Forecast', data: boardDeck, borderColor: GOLD, borderWidth: 3, borderDash: [6,3], tension: 0.3, pointRadius: 4, pointBackgroundColor: GOLD, spanGaps: false },
+        { label: 'B. NS Baseline (Status quo)', data: baseCase, borderColor: TEAL, borderWidth: 2.5, tension: 0.3, pointRadius: 3, pointBackgroundColor: TEAL },
+        { label: 'C. Tranche 1 only', data: t1, borderColor: GREEN, borderWidth: 2.5, tension: 0.3, pointRadius: 3, pointBackgroundColor: GREEN },
+        { label: 'D. Tranches 1+2', data: t12, borderColor: AMBER, borderWidth: 2.5, tension: 0.3, pointRadius: 3, pointBackgroundColor: AMBER },
+        { label: 'E. Tranches 1+2+3', data: t123, borderColor: ORANGE, borderWidth: 2, tension: 0.3, pointRadius: 3, pointBackgroundColor: ORANGE, borderDash: [4,2] },
+        { label: 'F. All Tranches (1-4)', data: all4, borderColor: RED, borderWidth: 2, tension: 0.3, pointRadius: 3, pointBackgroundColor: RED, borderDash: [4,2] }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { size: 11, weight: 600 }, padding: 12 } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: {
+          grid: { color: '#f0f0f0' },
+          ticks: { callback: v => fmt(v) },
+          min: 0,
+          max: 8500000
+        }
+      }
+    }
+  });
+
+  // ==== CHART 2: TROUGH BARS ====
+  new Chart(document.getElementById('troughBars'), {
+    type: 'bar',
+    data: {
+      labels: ['Board Deck', 'NS Baseline', 'T1 only', 'T1+T2', 'T1+T2+T3', 'All Tranches'],
+      datasets: [{
+        label: 'Lowest cash balance (trough)',
+        data: [100, 540, 795, 555, 555, 555],
+        backgroundColor: [GOLD, TEAL, GREEN, AMBER, ORANGE, RED],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => '$' + ctx.raw + 'K trough' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: {
+          grid: { color: '#f0f0f0' },
+          ticks: { callback: v => '$' + v + 'K' },
+          min: 0,
+          max: 1000
+        }
+      }
+    }
+  });
+
+  // ==== CHART 3: DAYS BELOW $1M ====
+  new Chart(document.getElementById('daysLowBars'), {
+    type: 'bar',
+    data: {
+      labels: ['Board Deck', 'NS Baseline', 'T1 only', 'T1+T2', 'T1+T2+T3', 'All Tranches'],
+      datasets: [{
+        label: 'Days below $1M',
+        data: [75, 65, 45, 65, 65, 65],
+        backgroundColor: [GOLD, TEAL, GREEN, AMBER, ORANGE, RED],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.raw + ' days below $1M' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => v + ' days' }, min: 0, max: 100 }
+      }
+    }
+  });
+
+  // ==== CHART 4: CUMULATIVE VARIANCE FROM BASELINE ====
+  // (Each scenario minus baseline) over time
+  const v_t1 = t1.map((v,i) => (v - baseCase[i])/1000);
+  const v_t12 = t12.map((v,i) => (v - baseCase[i])/1000);
+  const v_t123 = t123.map((v,i) => (v - baseCase[i])/1000);
+  const v_all = all4.map((v,i) => (v - baseCase[i])/1000);
+  new Chart(document.getElementById('cumulativeVariance'), {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        { label: 'T1 vs Baseline', data: v_t1, borderColor: GREEN, borderWidth: 3, tension: 0.3, pointRadius: 4, backgroundColor: 'rgba(0,184,148,0.08)', fill: true },
+        { label: 'T1+T2 vs Baseline', data: v_t12, borderColor: AMBER, borderWidth: 2.5, tension: 0.3, pointRadius: 3 },
+        { label: 'T1+T2+T3 vs Baseline', data: v_t123, borderColor: ORANGE, borderWidth: 2, tension: 0.3, pointRadius: 3 },
+        { label: 'All Tranches vs Baseline', data: v_all, borderColor: RED, borderWidth: 2, tension: 0.3, pointRadius: 3 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { size: 11, weight: 600 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': $' + ctx.raw.toFixed(0) + 'K' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => '$' + v + 'K' } }
+      }
+    }
+  });
+
+  // Helper for monthly delta
+  function netChange(arr, start, end) {
+    // months 0=May 26 to 12=May 27
+    return (arr[end] - arr[start]) / (end - start);
+  }
+  // ==== CHART 5: BURN PRE COHORT (May-Sep, idx 0-4) ====
+  const preBurn = [
+    netChange(boardDeck.filter(v => v != null), 0, 4),
+    netChange(baseCase, 0, 4),
+    netChange(t1, 0, 4),
+    netChange(t12, 0, 4),
+    netChange(t123, 0, 4),
+    netChange(all4, 0, 4)
+  ];
+  new Chart(document.getElementById('burnPreCohort'), {
+    type: 'bar',
+    data: {
+      labels: ['Board Deck', 'NS Baseline', 'T1 only', 'T1+T2', 'T1+T2+T3', 'All Tranches'],
+      datasets: [{
+        label: 'Avg monthly change',
+        data: preBurn,
+        backgroundColor: preBurn.map(v => v < 0 ? RED : GREEN),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => '$' + (ctx.raw/1000).toFixed(0) + 'K/mo avg' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'K' } }
+      }
+    }
+  });
+
+  // ==== CHART 6: BURN POST COHORT (Oct-May, idx 5-12) ====
+  const postBurn = [
+    null, // Board deck ends Dec 26
+    netChange(baseCase, 5, 12),
+    netChange(t1, 5, 12),
+    netChange(t12, 5, 12),
+    netChange(t123, 5, 12),
+    netChange(all4, 5, 12)
+  ];
+  new Chart(document.getElementById('burnPostCohort'), {
+    type: 'bar',
+    data: {
+      labels: ['Board Deck', 'NS Baseline', 'T1 only', 'T1+T2', 'T1+T2+T3', 'All Tranches'],
+      datasets: [{
+        label: 'Avg monthly change',
+        data: postBurn,
+        backgroundColor: postBurn.map(v => v == null ? GREY : (v < 0 ? RED : GREEN)),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.raw == null ? 'N/A (board deck ends Dec 26)' : '$' + (ctx.raw/1000).toFixed(0) + 'K/mo avg' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'K' } }
+      }
+    }
+  });
+
+  // ==== HEATMAP (build via HTML) ====
+  const scenarios = [
+    {name: 'A. Board Deck', data: boardDeck},
+    {name: 'B. NS Baseline', data: baseCase},
+    {name: 'C. T1 only', data: t1},
+    {name: 'D. T1+T2', data: t12},
+    {name: 'E. T1+T2+T3', data: t123},
+    {name: 'F. All Tranches', data: all4}
+  ];
+  function colorFor(v) {
+    if (v == null) return '#f0f0f0';
+    if (v < 1000000) return '#fecaca'; // red light
+    if (v < 2000000) return '#fed7aa'; // orange light
+    if (v < 3000000) return '#fef3c7'; // amber light
+    if (v < 5000000) return '#d9f99d'; // green light
+    return '#bbf7d0'; // green
+  }
+  function textColor(v) {
+    if (v == null) return '#9CA3AF';
+    return '#0A1849';
+  }
+  let html = '<table class="heatmap"><thead><tr><th style="background:var(--navy); color:#fff; min-width:120px; text-align:left; padding: 6px 10px;">Scenario</th>';
+  months.forEach(m => html += '<th style="background:var(--navy); color:#fff;">' + m + '</th>');
+  html += '</tr></thead><tbody>';
+  scenarios.forEach(s => {
+    html += '<tr><td class="label">' + s.name + '</td>';
+    s.data.forEach(v => {
+      const display = v == null ? '—' : '$' + (v/1000).toFixed(0) + 'K';
+      html += '<td style="background:' + colorFor(v) + '; color:' + textColor(v) + ';">' + display + '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('heatmapContainer').innerHTML = html;
+
+  // ==== HEADCOUNT LINE ====
+  const hcMonths = ['Now', 'Post-T1', 'Post-T2', 'Post-T3', 'Post-T4'];
+  new Chart(document.getElementById('headcountLine'), {
+    type: 'bar',
+    data: {
+      labels: hcMonths,
+      datasets: [{
+        label: 'Core headcount',
+        data: [41, 38, 33, 31, 27],
+        backgroundColor: [TEAL, GREEN, AMBER, ORANGE, RED],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.raw + ' employees' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11, weight: 600 } } },
+        y: { grid: { color: '#f0f0f0' }, beginAtZero: true, max: 45 }
+      }
+    }
+  });
+
+  // ==== HEADCOUNT BY DEPT ====
+  new Chart(document.getElementById('headcountByDept'), {
+    type: 'bar',
+    data: {
+      labels: ['Sales','Marketing','Renewals','Product','G&A','CS','Support','Consulting'],
+      datasets: [
+        { label: 'Now', data: [4, 3, 6, 15, 6, 3, 2, 2], backgroundColor: TEAL, borderRadius: 2 },
+        { label: 'Post All Tranches', data: [0, 0, 6, 10, 5, 2, 2, 2], backgroundColor: RED, borderRadius: 2 }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { size: 10 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw } }
+      },
+      scales: {
+        x: { grid: { color: '#f0f0f0' }, beginAtZero: true },
+        y: { grid: { display: false }, ticks: { font: { size: 10, weight: 600 } } }
+      }
+    }
+  });
+
+  // ==== MONTHLY OUTFLOW COMPOSITION (post-Oct full run-rate) ====
+  new Chart(document.getElementById('outflowStack'), {
+    type: 'bar',
+    data: {
+      labels: ['Baseline', 'Tranche 1', 'Tranches 1+2', 'Tranches 1+2+3', 'All Tranches'],
+      datasets: [
+        { label: 'Compensation', data: [820, 760, 700, 685, 650], backgroundColor: NAVY, stack: 'a' },
+        { label: 'Hosting / Infra', data: [350, 260, 260, 260, 260], backgroundColor: TEAL, stack: 'a' },
+        { label: 'Software subs', data: [240, 240, 240, 240, 240], backgroundColor: GOLD, stack: 'a' },
+        { label: '3rd party licensing', data: [260, 260, 260, 260, 260], backgroundColor: '#7B6FF0', stack: 'a' },
+        { label: 'External consulting', data: [170, 170, 130, 130, 130], backgroundColor: AMBER, stack: 'a' },
+        { label: 'Reseller fees', data: [180, 180, 180, 180, 180], backgroundColor: ORANGE, stack: 'a' },
+        { label: 'Travel + ops', data: [60, 50, 50, 45, 40], backgroundColor: '#a8a29e', stack: 'a' },
+        { label: 'Insurance + overhead', data: [70, 70, 65, 60, 55], backgroundColor: '#cbd5e1', stack: 'a' },
+        { label: 'Legal + prof svcs', data: [40, 40, 40, 35, 35], backgroundColor: '#6b7180', stack: 'a' },
+        { label: 'Cash interest', data: [240, 240, 240, 240, 240], backgroundColor: RED, stack: 'a' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { size: 10 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': $' + ctx.raw + 'K/mo' } }
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11, weight: 600 } } },
+        y: { stacked: true, grid: { color: '#f0f0f0' }, ticks: { callback: v => '$' + v + 'K' }, title: { display: true, text: 'Monthly outflow ($K)', font: { size: 11, weight: 600 } } }
+      }
+    }
+  });
+
+  // ==== CUMULATIVE SAVINGS CURVE ====
+  // Sum of monthly net savings from each tranche over time
+  function cumDelta(arr, base) {
+    return arr.map((v, i) => v - base[i]);
+  }
+  new Chart(document.getElementById('cumSavingsCurve'), {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        { label: 'Tranche 1 cumulative', data: cumDelta(t1, baseCase).map(v => v/1000), borderColor: GREEN, borderWidth: 3, tension: 0.2, pointRadius: 4, fill: false },
+        { label: 'Tranches 1+2 cumulative', data: cumDelta(t12, baseCase).map(v => v/1000), borderColor: AMBER, borderWidth: 2.5, tension: 0.2, pointRadius: 3 },
+        { label: 'Tranches 1+2+3 cumulative', data: cumDelta(t123, baseCase).map(v => v/1000), borderColor: ORANGE, borderWidth: 2, tension: 0.2, pointRadius: 3 },
+        { label: 'All Tranches cumulative', data: cumDelta(all4, baseCase).map(v => v/1000), borderColor: RED, borderWidth: 2, tension: 0.2, pointRadius: 3 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { size: 11, weight: 600 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': $' + ctx.raw.toFixed(0) + 'K' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { callback: v => '$' + v + 'K' } }
+      }
+    }
+  });
+</script>
+</body>
+</html>
