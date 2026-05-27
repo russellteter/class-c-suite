@@ -221,6 +221,29 @@ Staged, not all-at-once. Batch 2 needs Batch 1's findings to verify against; run
 - Synthesis + architecture folding + 10 decisions: ~40-80K
 - Total Phase R estimate: ~170-330K tokens (Max-subscription, no $ cost)
 
+### Batch 1 closure (2026-05-26T23:05 ET)
+
+All 4 R0 reports written + committed:
+- `docs/research/R0-knowledge-inventory.md` — spine corpus map; 5 findings (CRO frame patch needed before Ch.4 use; committed-stage labels wrong in 3 places; 24-month skip rule UNKNOWN; MEMORY.md location candidate `~/Documents/Claude/Projects/_spine/`)
+- `docs/research/R0-constraints-ledger.md` — vault schema reality; 10 findings → BLOCKERS B21-B28, B30 created
+- `docs/research/R0-skill-inventory.md` — 12 skills inventoried; 57 russell-voice rules + 29 class-brand-voice rules extracted; Run-Critic 5-dim rubric extracted; Cowork-UUID→C-Suite-wrapper mapping (12 rows); B7 patched SOQL provided; B29 NEW (installer wrote truncated stubs)
+- `docs/research/R0-customer-dashboard-readout.md` — Phase 0 decision #9 = (b) subprocess; JSON schema sketch; Ch.8 architect deliverables list; 5 caveats (Power BI = weekly-refresh CSVs from OneDrive, not on-demand; Google Sheets token.pickle requires interactive seed)
+
+Read-only sub-agent lesson: 2 of 4 R0 agents (Vault, Skills) couldn't write their reports — orchestrator wrote from return content. Batch 2 will use `general-purpose` subagent_type (not `Explore`) to avoid this.
+
+### Findings for Russell at next session (surfaced, NOT auto-resolved)
+
+These 3 findings are product-shape forks or human-knowledge dependencies. Auto-mode does NOT touch them:
+
+1. **B25 — DEC-001 through DEC-004 referenced in `decisions/INDEX.md` but no files exist.** INDEX claims 7 decisions; vault has only DEC-005/006/007. Russell decides: rename existing files, restore from git history elsewhere, or update INDEX. Auto-mode does not guess.
+2. **B28 — `business-planning/` mirror diverged from vault** (WS-01 status drift confirmed: vault YELLOW/maintenance vs mirror RED/execution; 3 vault-only dirs missing). Recommendation: delete mirror, reference vault directly per `data.md`, but PRESERVE `business-planning/skills/` + `_extracted_skills_for_c_suite.md` (install fixtures, not vault content). Russell approves option at next session.
+3. **B29 — `scripts/install-extracted-skills.py` wrote truncated SKILL.md stubs** (6 of 8 are 15-29 lines vs 168-232 in full body). Ch.10 scheduler must reference `business-planning/skills/<name>/SKILL.md` path until installer is fixed. Codify-vs-invoke decisions in R0-Skills assume full-body availability.
+
+### Decide-and-log decisions made during Batch 1
+
+- **Vault initial commit (B22 mitigation)** deferred to Ch.0 architect — not done in Phase R because vault writes should be SafeWrite-aware from start; orchestrator does not bulk-commit Russell's working-tree without setting up `.gitignore` first (`.gitignore` absent in vault). Documented in BLOCKERS B22 owner field.
+- **Sub-agent model**: `Explore` for R0 (read-heavy); will switch to `general-purpose` for Batch 2 because R0 surfaced that Explore lacks Write tool 50% of the time.
+
 ---
 
 

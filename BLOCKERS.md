@@ -197,6 +197,92 @@
 
 ## New blockers (added during Phase R or chapters)
 
+### B21 — `type:` discriminator field absent from all vault artifacts `NEW` `P0`
+**What.** Every Zod schema in `docs/architecture/data.md` uses `z.literal('position'|'decision'|...)` for the `type` field. R0-Vault verified across 75+ files: **zero** have a `type:` key in their YAML frontmatter. Parser will fail for 100% of vault reads.
+**Bites at.** Ch.0 (schema design), Ch.1 (indexer), Ch.2 (SafeWrite read-side), Ch.3 (lens context bundle).
+**Status.** Surfaced via R0-Vault `docs/research/R0-constraints-ledger.md` §SD-01.
+**Mitigation.**
+- Inject `type` at parse time from file-path zone (Option B in R0 ledger). Do NOT write `type:` keys back to vault files (would touch 75+ files unnecessarily).
+- Update `data.md` Zod schemas to omit `type` and provide a `parseArtifact(rawYaml, zone)` wrapper.
+- Ch.0 architect codifies the zone→type map.
+**Owner.** Ch.0 architect.
+
+### B22 — Vault git has zero commits `NEW` `P0`
+**What.** Vault path is git-initialized (`/Users/russellteter/Documents/Claude/Projects/Business Planning/.git/` exists, mtime 2026-05-26) but `git log --oneline -5` returns `fatal: your current branch 'main' does not have any commits yet`. SafeWrite's auto-commit hook (`git add <path>; git commit -m "c-suite: ..."`) will produce orphan history; the institutional change-history reading depends on a non-empty `git log`.
+**Bites at.** Ch.2 (SafeWrite), all post-Ch.2 vault writes.
+**Status.** Surfaced via R0-Vault verification command output.
+**Mitigation.**
+- Ch.0 setup: perform initial bulk commit of vault contents BEFORE Ch.2 ships. Use a `scripts/vault-bootstrap.sh` that runs `git -C <vault> add . && git commit -m "vault: pre-C-Suite SafeWrite baseline (manual snapshot)"`.
+- Vault `.gitignore` is absent — preflight should suggest adding `.DS_Store`, `*.tmp-*`, `*.proposed-*`, `_extracted_skills_for_c_suite.md` (if it's meant to be local-only) before the bootstrap commit.
+- Document in Ch.11 setup runbook so Russell's fresh-Mac install reproduces the bootstrap.
+**Owner.** Ch.0 architect (writes the bootstrap script); deferred from Phase R per scaffold-session decision to keep vault writes SafeWrite-aware.
+
+### B23 — Kebab vs snake key naming chaos across every artifact type `NEW` `P0`
+**What.** Vault uses **kebab-case** for positions (`last-retested`, `superseded-by`, `decision-this-supports`), pre-mortems (kebab variant), predictions (PRED-007), and parts of stakeholders. Other artifacts use **snake_case**. `data.md` schemas assume snake_case. Zod parse will fail for every kebab-keyed file.
+**Bites at.** Ch.1 (frontmatter parser), Ch.3 (lens context bundle assembly).
+**Status.** Surfaced via R0-Vault §SD-02. 4 of 14 pre-mortems use snake; rest use kebab. Mixed within single artifact type.
+**Mitigation.**
+- YAML key normalizer middleware: replace `-` → `_` in object keys at parse time, then validate via existing snake_case schemas.
+- Do NOT migrate vault files — leave Russell's preferred kebab style intact.
+- Codify in `packages/shared-types/src/normalizeKeys.ts` (Ch.0).
+**Owner.** Ch.0 architect.
+
+### B24 — `WorkstreamFrontmatter` in data.md under-specified by 10+ fields `NEW` `P1`
+**What.** `data.md` WorkstreamFrontmatter has 6 fields (type, id, title, status, amount_usd, dependencies, milestones). Real corpus has 15+: `cash_impact` (object), `arr_impact` (object), `status_criteria` (object), `people_involved`, `depends_on`, `depended_on_by`, `next_milestone`, `next_milestone_date`, `decisions_pending`, `linked_positions`, `linked_decisions`. **`amount_usd` is nested inside `cash_impact`, not at top-level** — the SQLite `workstream_amounts_mirror` parser must read `cash_impact.amount_usd`.
+**Bites at.** Ch.1 (indexer), Ch.3 (lens context bundle), Ch.10 (tripwire-scan reads workstream amounts).
+**Mitigation.** Replace WorkstreamFrontmatter with the expanded schema in `docs/research/R0-constraints-ledger.md` §SD-03. Update SQLite mirror parser to read nested `cash_impact.amount_usd`.
+**Owner.** Ch.0 architect; data.md update.
+
+### B25 — DEC-001 through DEC-004 referenced in INDEX but no files exist `NEW` `P1`
+**What.** `decisions/INDEX.md` reports 7 decisions (1 resolved, 6 active). Vault directory `ls` returns only DEC-005, DEC-006, DEC-007 + INDEX.md. DEC-001 through DEC-004 are missing.
+**Bites at.** Ch.6 (write-back drafter — cross-references break), Ch.1 (indexer error path).
+**Status.** Surfaced for Russell — files may have moved, been renamed, or INDEX is stale. Orchestrator does not guess.
+**Mitigation.**
+- **Surface to Russell at next session** (do NOT auto-create stubs or auto-update INDEX). Russell decides: rename DEC-005-007 to DEC-001-003, restore from git history elsewhere, or update INDEX.
+- Ch.1 indexer fails gracefully (logs missing-file warning) on broken cross-references rather than crashing.
+**Owner.** Russell (next-session decision); Ch.1 architect (graceful-degradation code).
+
+### B26 — Pre-mortem `impact` enum is completely wrong in data.md `NEW` `P1`
+**What.** `data.md` enum: `catastrophic|severe|significant|recoverable`. On-disk reality across 14 files: `existential`, `HIGH`, `high`, `medium`. **Zero overlap.** Zod parse fails 100% of pre-mortems.
+**Bites at.** Ch.1 (parser), Ch.7 (pre-mortem-on-proposed-action playbook reads them).
+**Mitigation.** Replace enum with on-disk values. Normalize case (`HIGH` → `high`) in middleware. See R0-Vault §SD-05.
+**Owner.** Ch.0 architect.
+
+### B27 — `StakeholderFrontmatter` bifurcates by subdirectory `NEW` `P1`
+**What.** `internal-exec-board/` + `internal-dependencies/` (12 files) use lean 5-key person shape. `customers-top-arr/seu-bme.md` uses 18-key account shape. data.md has neither correctly.
+**Bites at.** Ch.1 (parser), Ch.7 (stakeholder 1:1 prep playbook).
+**Mitigation.** `z.union([StakeholderPersonFrontmatter, StakeholderAccountFrontmatter])` per R0-Vault §SD-04. Discriminate by presence of `account_id` key.
+**Owner.** Ch.0 architect.
+
+### B28 — Mirror `business-planning/` diverges from canonical vault `NEW` `P2`
+**What.** Mirror at `c-suite/business-planning/` is stale. R0-Vault confirmed WS-01 has meaningfully drifted (Vault: `phase=maintenance status=YELLOW`; Mirror: `phase=execution status=RED`). 3 entire directories are absent from mirror (`scheduled-reports/`, `scheduled-task-ledger/`, `transformation-backbone/`).
+**Bites at.** Build-process integrity; risk of orchestrator reading stale mirror data.
+**Status.** **Surfaced to Russell.** This is a genuine product-shape fork — mirror was intentionally created during scaffold session for reproducibility; removing it changes bootstrap. Auto-mode does NOT delete.
+**Mitigation candidates (Russell picks):**
+- (a) Keep mirror, add `scripts/sync-mirror.sh` that rsyncs from vault on demand (read-only direction).
+- (b) Delete mirror; reference vault directly per `docs/architecture/data.md`. Update preflight to verify vault path.
+- (c) Convert mirror to `.gitignore`'d symlink — small repo footprint, lives only on developer machines.
+**Recommendation (under DOCTRINE creativity-within-guardrails):** (b) — vault is canonical SoT per data.md; mirror creates drift risk. But preserve `business-planning/skills/` + `business-planning/_extracted_skills_for_c_suite.md` (these are install fixtures, not mirrored vault content).
+**Owner.** Russell (next session) approves option.
+
+### B29 — `scripts/install-extracted-skills.py` writes truncated SKILL.md stubs `NEW` `P2`
+**What.** 6 of 8 operating-logic skills installed at `~/.claude/skills/<name>/SKILL.md` are 15-29 line truncations (header + first section only). Full bodies (168-232 lines) exist at `business-planning/skills/<name>/SKILL.md`. The install script extracted from `_extracted_skills_for_c_suite.md` but appears to have cut at section boundaries.
+**Bites at.** Ch.7 (playbook prereqs invoke skills), Ch.10 (scheduler invokes skills as subprocesses).
+**Status.** B17 was MITIGATED based on skill presence in registry; this finding REOPENS partial — bodies are not what Ch.7/Ch.10 will invoke.
+**Mitigation.**
+- Until installer is fixed: Ch.10 scheduler references `c-suite/business-planning/skills/<name>/SKILL.md` paths directly (full bodies are there + git-tracked).
+- Fix the installer (`scripts/install-extracted-skills.py`) to write full bodies, then re-run.
+- Add preflight check: SKILL.md line count >= 50 per installed skill.
+**Owner.** Ch.0 architect (preflight + installer fix); Russell at next session if codify-vs-invoke decision shifts.
+
+### B30 — Pre-existing SQLite at `c-suite/ruvector.db` of unknown schema `NEW` `P3`
+**What.** R0-Vault found a `ruvector.db` file in the repo root. data.md assumes a fresh SQLite store for runtime. If ruvector.db is related to an existing tool (Ruflo? RuVector memory graph?), it may conflict or coexist.
+**Bites at.** Ch.3 (SQLite migration runner).
+**Mitigation.** Ch.3 architect: investigate ruvector.db schema (run `sqlite3 ruvector.db .schema`) before declaring a fresh SQLite store. Most likely unrelated to C-Suite (Ruflo plugin artifact), but verify.
+**Owner.** Ch.3 architect.
+
+---
+
 ### B17 — Missing-skill register: 8 referenced skills not installed `MITIGATED` `P1`→`P3`
 **What.** PRD and CLAUDE.md reference these skills as if they exist in Russell's Claude Code environment, but `find ~/.claude/skills/` returned nothing for them: `russell-voice`, `run-critique`, `weekly-cash-forecast`, `covenant-tracker`, `renewal-forecast`, `call-intelligence`, `system-check`, `class-aws-connector`. Hypothesis confirmed: they lived as **Cowork plugin skills** under `/var/folders/.../claude-hostloop-plugins/.../skills/<name>/` — ephemeral temp-folder mount Cowork manages, not portable to local Claude Code.
 **Bites at.** Phase R R0 (skill inventory), Ch.4 (Run-Critic + Synthesizer voice rules), Ch.7 (playbook skill invocations), Ch.8 (MCP skill wrappers), Ch.10 (scheduled jobs).
