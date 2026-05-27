@@ -10,6 +10,7 @@ import type { LensContextBundle } from '@c-suite/shared-types/lens-context-bundl
 import type { LensRole } from '@c-suite/shared-types/agent-definition';
 import { LENS_ROLES } from '@c-suite/shared-types/agent-definition';
 import type { PlaybookId, PlaybookInput, PlaybookContext } from '@c-suite/shared-types/playbook';
+import { PlaybookIdSchema } from '@c-suite/shared-types/playbook';
 import { transition, type RunEvent } from './state-machine.js';
 import { dispatchLens } from './dispatch.js';
 import type { IpcEmit } from './hooks.js';
@@ -19,6 +20,14 @@ import { rigorScore, rigorThreshold, shipStatus as computeShipStatus } from '../
 import { StubClaudeClient } from '@c-suite/stub-harness/stub';
 import { draftWritebacks } from '@c-suite/writeback-engine';
 import { routeToPlaybook } from '../playbooks/lib/playbookRouter.js';
+
+// Phase A + B playbooks that bypass the inherited Ch.5 state-machine and go through
+// routeToPlaybook. Derived from PlaybookIdSchema (ADR-0009 §3.2) minus 'cash_lever'
+// (which inherits the Ch.5 path as the framework template). Exported for the
+// regression spec at tests/unit/orchestrator/run-loop-dispatch.spec.ts.
+export const KNOWN_CH7_PLAYBOOK_IDS: ReadonlySet<PlaybookId> = new Set(
+  PlaybookIdSchema.options.filter((id) => id !== 'cash_lever') as PlaybookId[],
+);
 
 export interface FinalRunState {
   finalState: RunState;
@@ -60,14 +69,11 @@ export async function startRun(
   }
 
   // ── Ch.7 ADR-0009 §5: playbook dispatch early-return ────────────────────────
-  // Switch on playbookId (short canonical names per §3.2).
-  // pre_mortem + quick_read + stakeholder_1_1 + open_qa bypass the RunState machine.
-  // cash_lever: falls through to existing Ch.5 state-machine path.
-  // Phase B playbooks: throw (not yet implemented).
-  const knownCh7Ids: ReadonlySet<string> = new Set([
-    'pre_mortem', 'quick_read', 'stakeholder_1_1', 'open_qa',
-  ]);
-  if (knownCh7Ids.has(playbookId)) {
+  // Derived from PlaybookIdSchema (single source of truth, ADR-0009 §3.2) minus
+  // 'cash_lever' which falls through to the inherited Ch.5 state-machine path.
+  // This derivation guarantees that any future PlaybookId addition is automatically
+  // routed via routeToPlaybook (regression guard against the AC-2 REOPEN gap).
+  if (KNOWN_CH7_PLAYBOOK_IDS.has(playbookId as PlaybookId)) {
     const playbookModule = routeToPlaybook(playbookId as PlaybookId);
     const playbookInput: PlaybookInput = {
       playbookId: playbookId as PlaybookId,
