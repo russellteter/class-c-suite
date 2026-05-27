@@ -33,10 +33,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { validateIpc, type IpcMessage } from '@c-suite/shared-types/ipc';
-
-// ── Runtime import (uncomment when Ch.3 Runtime ships) ──────────────────────
-// import { dispatchLens } from '../../apps/utility/src/orchestrator/index.js';
-// import { setIpcEmitter } from '../../apps/utility/src/ipc-sink.js';  // or equivalent
+import { dispatchLens } from '../../apps/utility/src/orchestrator/dispatch.js';
 
 // ── Expected IPC event order per ADR §3 ─────────────────────────────────────
 const EXPECTED_EVENT_ORDER = [
@@ -131,11 +128,10 @@ describe('AC-6: IPC event order for single-lens dispatch (ADR-0004 §3)', () => 
     vi.restoreAllMocks();
   });
 
-  it('dispatchLens module is exported from orchestrator [RED: Runtime not shipped]', () => {
-    expect(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('../../apps/utility/src/orchestrator/index.js');
-    }).toThrow();
+  it('dispatchLens is exported from orchestrator/dispatch', () => {
+    // IPC event-order test (full dispatch with injectable IPC sink) stays RED until
+    // the dispatch function accepts an injectable IpcEmit parameter (Ch.3 wiring).
+    expect(typeof dispatchLens).toBe('function');
   });
 
   it('IpcCaptureSink accumulates messages in insertion order (sink infrastructure test)', () => {
