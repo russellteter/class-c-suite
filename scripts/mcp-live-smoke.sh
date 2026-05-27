@@ -209,14 +209,171 @@ JSEOF
   green "smoke: PASS"
 }
 
+# ── §Gmail ───────────────────────────────────────────────────────────────────
+smoke_gmail() {
+  section "Gmail"
+
+  # 1. Check OAuth App credentials are set.
+  if [ -z "${GMAIL_CLIENT_ID:-}" ] || [ -z "${GMAIL_CLIENT_SECRET:-}" ]; then
+    blocked "awaiting Russell — Gmail OAuth App not configured. See docs/setup/gmail-oauth-app.md"
+    return 0
+  fi
+
+  # 2. Check that the utility dist is built.
+  UTILITY_DIST="/Users/russellteter/Claude Code Projects/c-suite/apps/utility/dist"
+  if [ ! -d "$UTILITY_DIST" ]; then
+    blocked "utility dist not built — run: pnpm --filter utility build"
+    return 0
+  fi
+
+  # 3. Check that a safeStorage credential is present for gmail.
+  RUNTIME_DB="${HOME}/Library/Application Support/c-suite/runtime.db"
+  if [ ! -f "$RUNTIME_DB" ]; then
+    blocked "runtime.db not found at $RUNTIME_DB — app must be launched at least once"
+    return 0
+  fi
+
+  CRED_CHECK=$(node -e "
+const Database = require('better-sqlite3');
+const db = new Database('${RUNTIME_DB}', { readonly: true });
+const row = db.prepare(\"SELECT service_id FROM credentials WHERE service_id = 'gmail'\").get();
+db.close();
+process.stdout.write(row ? 'FOUND' : 'MISSING');
+" 2>/dev/null || echo "ERROR")
+
+  if [ "$CRED_CHECK" = "MISSING" ]; then
+    blocked "awaiting Russell — Gmail OAuth not completed. Launch C-Suite and complete the browser login flow"
+    return 0
+  fi
+
+  if [ "$CRED_CHECK" = "ERROR" ]; then
+    fail "Could not query runtime.db — better-sqlite3 may not be available via node"
+    return 0
+  fi
+
+  green "credential: gmail credential present in vault"
+
+  # 4. Run a live searchThreads query: last 7 days, any thread.
+  SMOKE_RESULT=$(node -e "
+const path = require('path');
+const utilityDist = '/Users/russellteter/Claude Code Projects/c-suite/apps/utility/dist';
+(async () => {
+  try {
+    const { GmailClient } = require(path.join(utilityDist, 'mcp/gmail/client.js'));
+    const { SafeStorageVault } = require(path.join(utilityDist, 'credentials/safeStorageVault.js'));
+    const Database = require('better-sqlite3');
+    const { safeStorage } = require('electron');
+    const db = new Database(process.env.HOME + '/Library/Application Support/c-suite/runtime.db', { readonly: true });
+    const vault = new SafeStorageVault(db, safeStorage);
+    const client = new GmailClient(vault);
+
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+    const y = since.getFullYear();
+    const m = String(since.getMonth() + 1).padStart(2, '0');
+    const d = String(since.getDate()).padStart(2, '0');
+    const query = 'after:' + y + '/' + m + '/' + d;
+
+    const result = await client.searchThreads(query, { maxResults: 5 });
+    process.stdout.write(JSON.stringify({ count: result.threads.length, estimate: result.resultSizeEstimate }));
+    db.close();
+  } catch (err) {
+    process.stdout.write(JSON.stringify({ error: err.message }));
+  }
+})();
+" 2>/dev/null || echo '{"error":"node execution failed"}')
+
+  if echo "$SMOKE_RESULT" | grep -q '"error"'; then
+    fail "searchThreads failed: $SMOKE_RESULT"
+    return 0
+  fi
+
+  THREAD_COUNT=$(echo "$SMOKE_RESULT" | node -e "
+const chunks = [];
+process.stdin.on('data', c => chunks.push(c));
+process.stdin.on('end', () => {
+  try { const d = JSON.parse(chunks.join('')); process.stdout.write(String(d.count)); }
+  catch { process.stdout.write('UNKNOWN'); }
+});
+" 2>/dev/null || echo "UNKNOWN")
+
+  green "searchThreads(last 7 days): returned $THREAD_COUNT thread(s)"
+  green "smoke: PASS"
+}
+
+# ── §NetSuite ────────────────────────────────────────────────────────────────
+smoke_netsuite() {
+  section "NetSuite"
+
+  # 1. Check TBA token env vars (only used for smoke — runtime uses safeStorage).
+  if [ -z "${NETSUITE_TBA_TOKEN_ID:-}" ] || \
+     [ -z "${NETSUITE_TBA_TOKEN_SECRET:-}" ] || \
+     [ -z "${NETSUITE_CONSUMER_KEY:-}" ] || \
+     [ -z "${NETSUITE_CONSUMER_SECRET:-}" ] || \
+     [ -z "${NETSUITE_ACCOUNT_ID:-}" ]; then
+    blocked "awaiting Brian's TBA enablement (B1) — paste NETSUITE_TBA_TOKEN_ID / NETSUITE_TBA_TOKEN_SECRET / NETSUITE_CONSUMER_KEY / NETSUITE_CONSUMER_SECRET / NETSUITE_ACCOUNT_ID then re-run. See scripts/send-tba-request.md."
+    return 0
+  fi
+
+  # 2. Check that the utility dist is built.
+  UTILITY_DIST="/Users/russellteter/Claude Code Projects/c-suite/apps/utility/dist"
+  if [ ! -d "$UTILITY_DIST" ]; then
+    blocked "utility dist not built — run: pnpm --filter utility build"
+    return 0
+  fi
+
+  # 3. Run cashGLBalanceQuery via Node and assert non-zero rows.
+  node - <<'JSEOF' 2>&1
+const { cashGLBalanceQuery } = require('/Users/russellteter/Claude Code Projects/c-suite/apps/utility/dist/mcp/netsuite/typed-queries.js');
+const { buildTBAAuthHeader } = require('/Users/russellteter/Claude Code Projects/c-suite/apps/utility/dist/mcp/netsuite/tba-auth.js');
+
+const creds = {
+  accountId: process.env.NETSUITE_ACCOUNT_ID,
+  consumerKey: process.env.NETSUITE_CONSUMER_KEY,
+  consumerSecret: process.env.NETSUITE_CONSUMER_SECRET,
+  tokenId: process.env.NETSUITE_TBA_TOKEN_ID,
+  tokenSecret: process.env.NETSUITE_TBA_TOKEN_SECRET,
+};
+
+const query = cashGLBalanceQuery({});
+const url = `https://${creds.accountId}.suitetalk.api.netsuite.com/services/rest/query/v1/suiteql`;
+const { Authorization } = buildTBAAuthHeader(creds, 'POST', url);
+
+fetch(url, {
+  method: 'POST',
+  headers: { Authorization, 'Content-Type': 'application/json', Prefer: 'transient' },
+  body: JSON.stringify({ q: query }),
+})
+  .then(r => r.json())
+  .then(data => {
+    const count = data.count ?? data.items?.length ?? 0;
+    if (count === 0) {
+      console.error('cashGLBalanceQuery returned 0 rows — unexpected for Class production');
+      process.exit(1);
+    }
+    console.log('cashGLBalanceQuery: ' + count + ' row(s) — PASS');
+  })
+  .catch(err => { console.error('FAIL: ' + err.message); process.exit(1); });
+JSEOF
+
+  local EXIT_CODE=$?
+  if [ $EXIT_CODE -eq 0 ]; then
+    green "smoke: PASS"
+  else
+    fail "cashGLBalanceQuery failed — see output above"
+  fi
+}
+
 # ── dispatch ──────────────────────────────────────────────────────────────────
 case "$SERVICE" in
   salesforce) smoke_salesforce ;;
   powerbi)    smoke_powerbi ;;
-  all)        smoke_salesforce; smoke_powerbi ;;
+  gmail)      smoke_gmail ;;
+  netsuite)   smoke_netsuite ;;
+  all)        smoke_salesforce; smoke_powerbi; smoke_gmail; smoke_netsuite ;;
   *)
     echo "Unknown service: $SERVICE"
-    echo "Available: salesforce, powerbi, all"
+    echo "Available: salesforce, powerbi, gmail, netsuite, all"
     exit 1
     ;;
 esac
