@@ -38,11 +38,10 @@ import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import Database from 'better-sqlite3';
 
-// ── Runtime imports (uncomment when Ch.3 Runtime ships) ─────────────────────
-// import {
-//   buildVerifierInput,
-//   VerifierInputContractViolation,
-// } from '../../apps/utility/src/verifier-assembler.js';
+import {
+  buildVerifierInput,
+  VerifierInputContractViolation,
+} from '../../apps/utility/src/verifier-assembler.js';
 
 // ── Ch.4 import (uncomment when Ch.4 Verifier ships) ────────────────────────
 // import { invokeVerifier } from '../../apps/utility/src/orchestrator/index.js';
@@ -82,11 +81,9 @@ describe('AC-7: B3 canary — VerifierInput contains no reasoning traces (ADR-00
     expect(content).toContain('claims_unverified');
   });
 
-  it('buildVerifierInput module exports VerifierInputContractViolation [RED: Runtime not shipped]', () => {
-    expect(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('../../apps/utility/src/verifier-assembler.js');
-    }).toThrow();
+  it('buildVerifierInput and VerifierInputContractViolation are exported from verifier-assembler', () => {
+    expect(typeof buildVerifierInput).toBe('function');
+    expect(typeof VerifierInputContractViolation).toBe('function');
   });
 
   it('VerifierInput JSON contains no reasoning trace markers [RED: Runtime not shipped]', () => {
