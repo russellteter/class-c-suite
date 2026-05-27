@@ -81,6 +81,10 @@
     "./playbook": {
       "import": "./dist/playbook.js",
       "types": "./dist/playbook.d.ts"
+    },
+    "./mcp": {
+      "import": "./dist/mcp.js",
+      "types": "./dist/mcp.d.ts"
     }
   },
   "scripts": {

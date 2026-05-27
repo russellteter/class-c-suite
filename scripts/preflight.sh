@@ -236,6 +236,39 @@ else
 fi
 fi   # end TEST_MODE=0 block
 
+# -------- §PowerBI: Python + venv + customer-dashboard (Ch.8 B18/B2) --------
+section "§PowerBI subprocess (Ch.8)"
+
+PBI_PROJECT="/Users/russellteter/Claude Code Projects/customer-dashboard"
+
+# Check python3 version ≥3.11
+if command -v python3 >/dev/null 2>&1; then
+  PY_VER=$(python3 --version 2>&1 | sed 's/Python //')
+  PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
+  PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
+  if [ "$PY_MAJOR" -gt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -ge 11 ]; }; then
+    green "python3 $PY_VER (≥3.11 required)"
+  else
+    fail "python3 $PY_VER is <3.11. Remediation: brew install python@3.12 (or pyenv install 3.12)"
+  fi
+else
+  fail "python3 not on PATH. Remediation: brew install python@3.12"
+fi
+
+# Check customer-dashboard project exists
+if [ -f "$PBI_PROJECT/src/main.py" ]; then
+  green "customer-dashboard project found at $PBI_PROJECT"
+else
+  fail "customer-dashboard not found at $PBI_PROJECT. Remediation: git clone https://github.com/russellteter/customer-dashboard \"$PBI_PROJECT\""
+fi
+
+# Check venv exists
+if [ -d "$PBI_PROJECT/.venv" ]; then
+  green "customer-dashboard .venv present"
+else
+  fail "customer-dashboard .venv missing. Remediation: cd \"$PBI_PROJECT\" && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt"
+fi
+
 # -------- Summary --------
 section "Summary"
 echo "  fails: $FAILS    warns: $WARNS"

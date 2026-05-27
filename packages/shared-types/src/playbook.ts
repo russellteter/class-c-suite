@@ -8,6 +8,14 @@
 // constraint. The two coexist; Phase B should reconcile them. Logged here per DOCTRINE law #9.
 
 import { z } from 'zod';
+import type {
+  SalesforceClient,
+  NetSuiteClient,
+  AwsClient,
+  GmailClient,
+  ChorusClient,
+  PowerBiClient,
+} from './mcp.js';
 
 // ── PlaybookId (short canonical names per ADR-0009 §3.2) ─────────────────────
 
@@ -67,14 +75,20 @@ export type DegradedSource =
 
 export type McpId = 'salesforce' | 'netsuite' | 'aws' | 'gmail' | 'chorus' | 'powerbi';
 
-// ── MCP + external client stubs (structural — real wiring in Ch.8) ──────────
+// ── MCP + external client interfaces (Ch.8 real shapes — imported from mcp.ts) ─
+// Ch.7 used stub interfaces ({ __kind: '...' }). Ch.8 replaces them with real
+// typed contracts from mcp.ts. Re-exported here for back-compat.
 
-export interface SalesforceClient { __kind: 'salesforce' }
-export interface NetSuiteClient { __kind: 'netsuite' }
-export interface AwsClient { __kind: 'aws' }
-export interface GmailClient { __kind: 'gmail' }
-export interface ChorusClient { __kind: 'chorus' }
-export interface PowerBiClient { __kind: 'powerbi' }
+export type {
+  SalesforceClient,
+  NetSuiteClient,
+  AwsClient,
+  GmailClient,
+  ChorusClient,
+  PowerBiClient,
+} from './mcp.js';
+
+// CalibrationReader is not an MCP client — local definition retained.
 export interface CalibrationReader { __kind: 'calibration' }
 
 // ── SafeWriteClient — structural alias for the existing safeWrite function ───

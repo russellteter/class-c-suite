@@ -23,3 +23,5 @@ export * from './run-state-schema.js';
 export * from './lens-context-bundle.js';
 // Ch.7: playbook framework types
 export * from './playbook.js';
+// Ch.8: MCP shared types
+export * from './mcp.js';
