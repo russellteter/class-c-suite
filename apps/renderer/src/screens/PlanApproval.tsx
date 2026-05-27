@@ -1,10 +1,26 @@
 // apps/renderer/src/screens/PlanApproval.tsx
 // Source: docs/decisions/0006-ch5-cash-lever-slice.md §3 (plan-approval screen contract)
 //         docs/decisions/0006-ch5-cash-lever-slice.md §8 AC-3, AC-10
+//         docs/decisions/0009-ch7-playbooks-home.md §12.4 (Open Q&A countdown)
+//         docs/research/phase-r-decisions.md Decision 6 (per-playbook countdown table)
 // Renders RunPlan for user approval before MCP fan-out.
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { sendIpc } from '../ipc-client.js';
+
+// Per-playbook auto-approve countdown (seconds). null = universal manual approval.
+// Source: phase-r-decisions.md Decision 6 + ADR-0009 §12.4 for open_qa.
+const COUNTDOWN_SECONDS: Record<string, number | null> = {
+  strategic_option: null,        // high-stakes; manual
+  restructure_decision: null,    // highest-stakes; manual
+  board_narrative: null,         // external-facing; manual
+  cash_lever: null,              // high-stakes (cash); manual
+  gtm_realloc: 30,               // 30s countdown
+  pre_mortem: 30,                // 30s countdown
+  stakeholder_1_1: 5,            // pre-meeting; 5s
+  quick_read: 0,                 // inline (no plan screen normally); 0s if shown
+  open_qa: 10,                   // 10s countdown
+};
 
 // Ch5RunPlan inlined here to avoid cross-package import from renderer.
 // Source: apps/utility/src/orchestrator/run-plan-builder.ts
@@ -37,6 +53,26 @@ interface PlanApprovalProps {
 export function PlanApproval({ plan, onApprove, onEdit, onCancel }: PlanApprovalProps): React.ReactElement {
   const [editMode, setEditMode] = useState(false);
   const [editedQuestion, setEditedQuestion] = useState(plan.question);
+  const initialCountdown = COUNTDOWN_SECONDS[plan.playbook] ?? null;
+  const [secondsRemaining, setSecondsRemaining] = useState<number | null>(initialCountdown);
+  const [paused, setPaused] = useState(false);
+  const approvedRef = useRef(false);
+
+  // Auto-approve countdown (Phase R Decision 6 + ADR-0009 §12.4).
+  // Pauses on edit, cancellation, or any blocking-degradation guard.
+  useEffect(() => {
+    if (secondsRemaining === null) return;
+    if (paused || editMode || approvedRef.current) return;
+    if (plan.degradations?.some(d => d.severity === 'block')) return;
+    if (secondsRemaining <= 0) {
+      approvedRef.current = true;
+      handleApprove();
+      return;
+    }
+    const t = setTimeout(() => setSecondsRemaining(s => (s === null ? null : s - 1)), 1000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secondsRemaining, paused, editMode, plan.degradations]);
 
   function handleApprove() {
     // AC-10: No MCP calls fire before run.plan.approved IPC is received.
@@ -46,6 +82,7 @@ export function PlanApproval({ plan, onApprove, onEdit, onCancel }: PlanApproval
 
   function handleEdit() {
     setEditMode(true);
+    setPaused(true);
   }
 
   function handleEditConfirm(e: React.FormEvent) {
@@ -174,9 +211,32 @@ export function PlanApproval({ plan, onApprove, onEdit, onCancel }: PlanApproval
             disabled={plan.degradations?.some(d => d.severity === 'block')}
             data-testid="plan-approve-btn"
             style={{ flex: 1 }}
+            aria-label={
+              secondsRemaining !== null && !paused
+                ? `Approve and run (auto-approves in ${secondsRemaining}s — click to pause)`
+                : 'Approve and run'
+            }
           >
             Approve &amp; Run
+            {secondsRemaining !== null && !paused && secondsRemaining > 0 && (
+              <span
+                data-testid="plan-countdown"
+                style={{ marginLeft: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px', opacity: 0.8 }}
+              >
+                ({secondsRemaining}s)
+              </span>
+            )}
           </button>
+          {secondsRemaining !== null && !paused && secondsRemaining > 0 && (
+            <button
+              className="glass-btn-secondary"
+              onClick={() => setPaused(true)}
+              data-testid="plan-pause-countdown-btn"
+              aria-label="Pause auto-approve countdown"
+            >
+              Pause
+            </button>
+          )}
           <button
             className="glass-btn-secondary"
             onClick={handleEdit}
