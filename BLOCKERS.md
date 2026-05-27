@@ -129,20 +129,21 @@
 ### B8 — Concurrent edits: Cowork `/deep` bypasses SafeWrite on shared zones `VERIFIED` `P2`
 **What.** PRD locks Cowork `/deep` as a fallback. Cowork does not implement SafeWrite. Concurrent C-Suite + Cowork writes to the same shared-zone file (workstream, decision, position) may produce conflicts.
 **Bites at.** Ch.2 (SafeWrite design) + Ch.5 first-slice ops.
-**Status.** **R2 verified 2026-05-26.** Sidecar pattern confirmed sufficient. One implementation detail required: Ch.2 architect must implement a file mtime/git-SHA check at write time — record file SHA at lens-context-bundle time; compare at write time; if diverged (Cowork wrote in between), create sidecar instead of overwriting. This is not in the current Ch.2 spec.
+**Status.** **R2 verified 2026-05-26. Ch.2 Audit/QA 2026-05-27: sidecar pattern ships, but fuzz test (AC-1) confirms Invariant 3 violation — content written by C-Suite (`result:'ok'`) can be silently overwritten by external writers (Cowork, Obsidian) with no sidecar produced. This is the open failure driving Ch.2 REOPEN. Fix-integration must resolve before CLOSE.** Sidecar pattern confirmed sufficient for intra-SafeWrite conflicts (AC-4 PASS). External-post-write overwrites are the gap.
 **Mitigation.**
 - Decide-and-log per Phase R decision #1 default: **don't block Cowork; sidecar handles it.**
 - Document Cowork as **read-mostly** post-ship; Russell uses Cowork for `/deep` fallback investigations and execution work, not for routine vault edits.
 - SafeWrite sidecars surface in UI; Russell merges manually.
-- Ch.2 architect: add pre-write SHA check to detect external modifications during the run window.
+- Ch.2 fix-integration: resolve fuzz Invariant 3 gap — options: post-write re-read check, flock, or git-SHA post-rename verification. See `docs/reviews/ch2-audit-qa-report.md` §2.
 
-### B9 — iCloud-synced vault → atomic-rename / git-corruption hazard `SEEDED` `P1`
+### B9 — iCloud-synced vault → atomic-rename / git-corruption hazard `VERIFIED` `P1`
 **What.** If the vault folder lives in iCloud Drive (default Documents folder behavior on modern macOS), file metadata sync can corrupt atomic-rename operations and confuse git.
 **Bites at.** Ch.2 (SafeWrite) + Ch.11 (setup runbook).
+**Status.** **Ch.2 Audit/QA 2026-05-27 VERIFIED MITIGATED (architecture).** `scripts/preflight.sh` lines 40-62 check vault path for iCloud sync attribute (`com.apple.ubiquity.ubiquityd-data` xattr) and FAIL with actionable message if detected. Also checks for Dropbox and Google Drive mounts (B33). `tests/unit/preflight-vault-commits.spec.ts` passes (5 tests). The preflight guard ships and is tested. Actual vault path (`/Users/russellteter/Documents/Claude/Projects/Business Planning/`) not verified during this audit (no on-Mac execution — B9 final confirmation at Ch.5 first-launch smoke test). Architecture mitigation is COMPLETE; runtime verification at Ch.5.
 **Mitigation.**
 - Verify vault is in a **non-syncing location** — Russell's vault is at `/Users/russellteter/Documents/Claude/Projects/Business Planning/`. Phase R R0 confirms whether `Documents/` is iCloud-synced on Russell's Mac (Sequoia default behavior).
 - If iCloud-synced, document prominently in Ch.11 setup runbook: move vault to a non-iCloud path (e.g. `/Users/russellteter/Vault/`) or disable iCloud Drive Documents sync.
-- Pre-flight check at C-Suite startup detects iCloud-sync attribute and refuses to operate if detected.
+- Pre-flight check at C-Suite startup detects iCloud-sync attribute and refuses to operate if detected (ships in `scripts/preflight.sh`).
 
 ### B10 — `isQuantOrNamed` classifier is load-bearing for 35% of rigor score; boundary is fuzzy `VERIFIED` `P2`
 **What.** The rigor formula gives 35 points for claim-source binding, gated by an `isQuantOrNamed(claim)` classifier. Quantitative or named-entity claims must cite; opinion claims need not. The boundary between "quantitative/named" and "opinion" is fuzzy; an LLM classifier would drift run-to-run.
@@ -228,7 +229,7 @@
 ### B22 — Vault git has zero commits `MITIGATED` `P0`
 **What.** Vault path is git-initialized (`/Users/russellteter/Documents/Claude/Projects/Business Planning/.git/` exists, mtime 2026-05-26) but `git log --oneline -5` returns `fatal: your current branch 'main' does not have any commits yet`. SafeWrite's auto-commit hook (`git add <path>; git commit -m "c-suite: ..."`) will produce orphan history; the institutional change-history reading depends on a non-empty `git log`.
 **Bites at.** Ch.2 (SafeWrite), all post-Ch.2 vault writes.
-**Status.** **MITIGATED (architecture) 2026-05-27 — PENDING EXECUTION at Ch.2 prep.** `scripts/vault-bootstrap.sh` exists. Idempotency implemented at lines 39-43 (skips if vault already has commits). Writes `.gitignore` before initial commit. Script must be executed by Russell before Ch.2 ships — do NOT auto-run. Evidence: `docs/reviews/ch0-audit-qa-report.md` §6.
+**Status.** **MITIGATED (architecture) 2026-05-27 — STILL ACTIVE PENDING RUSSELL EXECUTION.** `scripts/vault-bootstrap.sh` exists. Idempotency implemented at lines 39-43 (skips if vault already has commits). Writes `.gitignore` before initial commit. `scripts/preflight.sh` lines 54-61 detect zero-commit vault and FAIL with: "Vault has no commits — run scripts/vault-bootstrap.sh before starting C-Suite (B22)". `VaultNotInitializedError` thrown at `safeWrite.ts:100-110` on zero-commit detection. `tests/unit/preflight-vault-commits.spec.ts` 5/5 pass (zero-commit FAIL, ≥1-commit PASS, no-.git FAIL). **Ch.2 Audit/QA 2026-05-27: Russell has NOT run vault-bootstrap.sh. Vault at `/Users/russellteter/Documents/Claude/Projects/Business Planning/` still has zero commits. B22 remains ACTIVE. Defer resolution to Ch.5/setup (Russell must run bootstrap before first app launch).** Evidence: `docs/reviews/ch0-audit-qa-report.md` §6, `docs/reviews/ch2-audit-qa-report.md` §6.
 **Mitigation.**
 - Ch.0 setup: perform initial bulk commit of vault contents BEFORE Ch.2 ships. Use a `scripts/vault-bootstrap.sh` that runs `git -C <vault> add . && git commit -m "vault: pre-C-Suite SafeWrite baseline (manual snapshot)"`.
 - Vault `.gitignore` is absent — preflight should suggest adding `.DS_Store`, `*.tmp-*`, `*.proposed-*`, `_extracted_skills_for_c_suite.md` (if it's meant to be local-only) before the bootstrap commit.
