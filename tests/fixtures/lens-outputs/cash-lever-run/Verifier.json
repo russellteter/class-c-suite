@@ -1,0 +1,36 @@
+{
+  "_comment": "Hand-authored happy-path fixture for cash-lever stub-harness e2e. Replace with STUB_MODE=record capture when SDK is wired. rigor_score=83 (30+18+15+12+8) > 70 threshold for cash_lever playbook → ship_status=clean.",
+  "rigor_score": 83,
+  "ship_status": "clean",
+  "dimensions": {
+    "claim_source": {
+      "score": 30,
+      "claims_total": 4,
+      "claims_verified": 4,
+      "claims_unverified": []
+    },
+    "coverage": {
+      "score": 18,
+      "lenses_run": ["CFO", "COS"],
+      "lenses_cited_in_memo": ["CFO", "COS"],
+      "missing_findings": []
+    },
+    "red_team": {
+      "score": 15,
+      "addressed": 3,
+      "unaddressed": 0,
+      "unaddressed_details": []
+    },
+    "calibration": {
+      "score": 12,
+      "stale_position_citations": []
+    },
+    "falsifier": {
+      "score": 8,
+      "present": true,
+      "quality": "strong"
+    }
+  },
+  "failure_reasons": [],
+  "verifier_notes": "All four cash-lever claims (NS cash, SF pipeline, AWS spend, model rows) carry verified source_ids. Coverage complete across CFO + COS lenses. Red-team objections addressed in memo. No stale position citations. Falsifier section present and substantive. ship_status clean."
+}

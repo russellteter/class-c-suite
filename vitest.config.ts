@@ -54,6 +54,7 @@ export default defineConfig({
       '@c-suite/shared-types/lens-output': resolve(__dirname, 'packages/shared-types/src/lens-output.ts'),
       '@c-suite/shared-types/lens-context-bundle': resolve(__dirname, 'packages/shared-types/src/lens-context-bundle.ts'),
       '@c-suite/shared-types/verifier-input': resolve(__dirname, 'packages/shared-types/src/verifier-input.ts'),
+      '@c-suite/shared-types/verifier-output': resolve(__dirname, 'packages/shared-types/src/verifier-output.ts'),
       '@c-suite/shared-types/run-plan': resolve(__dirname, 'packages/shared-types/src/run-plan.ts'),
       '@c-suite/shared-types/memo': resolve(__dirname, 'packages/shared-types/src/memo.ts'),
       '@c-suite/shared-types/red-team': resolve(__dirname, 'packages/shared-types/src/red-team.ts'),

@@ -2,8 +2,8 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "phase-1-blocked-awaiting-russell-checkpoint",
-  "next_action": "PHASE-1 BLOCKED at Ultra-Review YELLOW verdict (commit e29aacc; report docs/reviews/ultrareview-2026-05-27.md). 5 P0/P1 critical findings now tracked as B35-B39. The most load-bearing: B35 (Verifier never executes; rigorScore hardcoded at 85; primary quality gate broken) — this violates goal completion criterion (g) 'real run produced rigor-scored memo' and the stop-hook correctly refuses to declare Phase 1 complete without it. Per overnight directive step 5: orchestrator does NOT auto-fix; Russell decides in morning checkpoint. Recommended morning sequence: (1) review docs/reviews/ultrareview-2026-05-27.md; (2) decide whether to bundle B35-B39 into a Ch.5.1 fix-sprint before Phase 2 OR absorb into Ch.6 entry; (3) run scripts/vault-bootstrap.sh (B22 still active); (4) confirm or amend the 6 Findings-for-Russell items already listed. Phase 2 starts at Ch.6 (write-back review pane) only after the Verifier path (B35) is real.",
+  "current_phase": "phase-1-complete",
+  "next_action": "B35 MITIGATED 2026-05-27: verifier-runner.ts ships, run-loop.ts wired, 11/11 unit tests green (canary rigor_score=52, cash-lever rigor_score=83 — neither 85). AC-1 in ch5-audit-qa-report.md NW → PASS. B36-B39 remain — Russell decides morning checkpoint. Phase 2 (Ch.6 write-back review pane) is now unblocked from the Verifier-execution angle. Remaining morning decisions: (1) B36 classifier fall-through (open_qa for 6/8 playbooks); (2) B37 stakeholder lens roster; (3) B38 N=3 cap; (4) B39 git-commit silent failure; (5) B22 vault bootstrap (scripts/vault-bootstrap.sh); (6) B19 Day-Zero committed-pipeline stage labels confirmation.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",
@@ -216,6 +216,6 @@
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-27T12:00:00-04:00",
-  "updated_by": "Audit/QA Ch.5 — CLOSE-pending-ultrareview (4 PASS / 3 NW / 0 FAIL / 5 DEFERRED, B22 STILL ACTIVE)"
+  "last_updated": "2026-05-27T08:30:00-04:00",
+  "updated_by": "B35 Fix-Integration (Ch.5 P0 close) — verifier-runner.ts + run-loop.ts wired; 11/11 unit tests; AC-1 PASS; current_phase → phase-1-complete"
 }

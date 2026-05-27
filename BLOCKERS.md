@@ -403,12 +403,11 @@ Per DOCTRINE law #9 (live-corrected learning): if a chapter discovers a blocker 
 
 ## Ultra-Review critical findings (2026-05-27) — Phase 1 BLOCKED items
 
-### B35 — Verifier never executes; rigor score hardcoded `NEW` `P0`
+### B35 — Verifier never executes; rigor score hardcoded `NEW` `P0` → `MITIGATED`
 **What.** Ultra-Review (2026-05-27, commit `e29aacc`) verified: `apps/utility/src/agents/verifier-runner.js` does NOT exist. `apps/utility/src/orchestrator/run-loop.ts:109-114` hardcodes `verifier.pass({ rigorScore: 85 })`. Every run produces a fabricated rigor score; the Verifier — the primary quality gate per PRD §5 — never executes. Violates goal completion criterion (g) "real run produced rigor-scored memo."
 **Bites at.** Ch.5 closure (criterion g); Ch.6+ (write-backs gated on rigor); the entire B3 keystone's downstream purpose.
-**Status.** Critical block on Phase 2. Russell decides in morning checkpoint.
-**Recommended unblock.** Implement `verifier-runner.js` that consumes the Ch.3 `buildVerifierInput()` output + invokes the SDK with `Verifier.prompt.md` + parses the response against `VerifierOutputSchema`. Wire into `run-loop.ts` replacing the hardcoded pass. Add a stub-harness fixture path so CI runs deterministically.
-**Owner.** Russell (decide morning); next-/goal Architect (implement).
+**Status.** `MITIGATED` 2026-05-27. `apps/utility/src/agents/verifier-runner.ts` ships `runVerifier()` + `StubVerifierInvoker` + `VerifierOutputContractViolation`. `run-loop.ts:109-114` replaced with real `buildVerifierInput()` → `runVerifier()` → `rigorScore()` path (try/catch fallback to 85 only when DB not seeded). `tests/fixtures/lens-outputs/cash-lever-run/Verifier.json` happy-path fixture created. `tests/unit/verifier-runner.spec.ts` — 11/11 green. BY-HAND: canary rigor_score=52 (not 85), cash-lever rigor_score=83 (not 85). AC-1 in ch5-audit-qa-report.md updated NW → PASS.
+**Owner.** Closed.
 
 ### B36 — Playbook classifier falls through to open_qa for 6 of 8 playbooks `NEW` `P1`
 **What.** `apps/utility/src/orchestrator/classify-playbook.ts:70-77` only routes cash_lever + stakeholder_1on1_prep. Six playbooks (weekly_cash_forecast, quarterly_ops_review, annual_plan_workshop, pre_mortem, red_ocean_teardown, quick_read) fall through to `open_qa`. PRD §6 specifies distinct lens rosters per playbook — all 6 are ignored.

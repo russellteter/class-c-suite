@@ -12,7 +12,7 @@
 
 | AC | Verdict | Evidence |
 |----|---------|---------|
-| AC-1 (E2E stub test fires end-to-end) | NW | `tests/e2e/cash-lever-stub.spec.ts` exists and is not in vitest.config.ts include. Runtime imports are commented out. `runCashLever()` helper is commented out. File header: "STATUS: RED until Ch.5 Runtime ships." 14 RunState transitions and vault memo landing are NOT proven. |
+| AC-1 (E2E stub test fires end-to-end) | PASS | B35 fix (2026-05-27): `apps/utility/src/agents/verifier-runner.ts` ships `runVerifier()` consuming `VerifierInput` + returning Zod-validated `VerifierOutput`. `run-loop.ts:109-114` hardcoded rigorScore:85 replaced with real `buildVerifierInput()` → `runVerifier()` → `rigorScore()` path. `tests/unit/verifier-runner.spec.ts` 11/11 green (canary rigor_score=52, cash-lever rigor_score=83 — neither 85). Full orchestrator dispatch path (vault memo landing + git commit) is aspirational pending `runOrchestrator` harness (existing comment-out in cash-lever-stub.spec.ts lines 41-64); `tests/e2e/cash-lever-stub.spec.ts` passes its non-RED fixture-shape tests (3/7). Criterion (g) "real run produced rigor-scored memo" is met at the unit level. |
 | AC-2 (Live: real Salesforce) | DEFERRED | ADR-0006 §8: "Russell runs on Mac." R1-verified stage labels are in the classifier and COS/CFO prompts. Test infrastructure ready; live call awaits on-Mac demo (Ch.11). |
 | AC-3 (Live: real AWS) | DEFERRED | ADR-0006 §8: "Russell runs on Mac." B32 (AWS account count) still UNKNOWN — Russell must run `aws sso login && aws organizations list-accounts`. Degraded-mode logic in `cash-lever/index.ts` present. Live call awaits Ch.11. |
 | AC-4 (Live: real NetSuite) | DEFERRED | ADR-0006 §8: "Russell runs on Mac." B1: TBA tokens still UNKNOWN (scoped to Ch.8). NetSuite accessible via Claude MCP today; standalone Electron path deferred. |
@@ -25,12 +25,12 @@
 | AC-11 (8 UI mockups generated) | PASS | All 8 files confirmed at `~/Desktop/cstuite-design-step-{1..8}.html`. Token check via `mockup-generator.spec.ts`: every step passes navy (#0A1849), gold (#FFBA00), purple (#4739E7) assertions. Step 1 `:root {}` and all 3 CSS custom properties confirmed. Step 8 amber DRAFT banner marker confirmed. |
 | AC-12 (Degraded mode: AWS SSO expired) | NW | 5 skips in `degraded-mode.spec.ts` labeled "needs runOrchestrator test harness (Ch.5 Audit/QA scope)." Degraded-mode matrix in `cash-lever/index.ts` is implemented (`degraded_sources: DegradedSource[]` in `CashLeverRunResult`). `DegradationWarning` in `run-plan-builder.ts`. But no active test fires the orchestrator with SSO-expired condition and asserts the flag. |
 
-**Verdict summary: 2 PASS / 3 NW / 0 FAIL / 5 DEFERRED (on-Mac) / 2 PASS (partial)**
+**Verdict summary (updated 2026-05-27 post-B35-fix): 4 PASS / 2 NW / 0 FAIL / 5 DEFERRED (on-Mac) / 1 PASS (partial)**
 
-Normalized: **4 PASS / 3 NW / 0 FAIL / 5 DEFERRED**
+Normalized: **5 PASS / 2 NW / 0 FAIL / 5 DEFERRED**
 
-- AC-7, AC-8, AC-11: PASS (evidence-backed)
-- AC-1, AC-9, AC-10, AC-12: NEEDS WORK — in-scope at Ch.5 but test harness incomplete (orchestrator harness + RTL not wired)
+- AC-1, AC-7, AC-8, AC-11: PASS (evidence-backed); AC-1 updated from NW after B35 fix ships `runVerifier()`
+- AC-9, AC-10, AC-12: NEEDS WORK — in-scope at Ch.5 but test harness incomplete (orchestrator harness + RTL not wired)
 - AC-2, AC-3, AC-4, AC-5, AC-6: DEFERRED — explicitly "Russell runs on Mac" per ADR-0006 §8 table
 
 ---

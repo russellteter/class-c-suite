@@ -75,17 +75,15 @@ const RUNCRITIC_DIMENSIONS = [
   { name: 'Memory hygiene',        weight: 15, key: 'memory_hygiene'        },
 ] as const;
 
-// ── Pre-flight: prompt files do not yet exist ─────────────────────────────────
+// ── Pre-flight: prompt files exist (Ch.4 Runtime shipped) ────────────────────
 
 describe('Handoff + RunCritic prompt files (pre-flight) [RED: Runtime not shipped]', () => {
   it('Handoff.prompt.md does not yet exist (expected RED)', () => {
-    // When Runtime ships: expect(existsSync(HANDOFF_PROMPT_PATH)).toBe(true);
-    expect(existsSync(HANDOFF_PROMPT_PATH)).toBe(false);
+    expect(existsSync(HANDOFF_PROMPT_PATH)).toBe(true);
   });
 
   it('RunCritic.prompt.md does not yet exist (expected RED)', () => {
-    // When Runtime ships: expect(existsSync(RUNCRITIC_PROMPT_PATH)).toBe(true);
-    expect(existsSync(RUNCRITIC_PROMPT_PATH)).toBe(false);
+    expect(existsSync(RUNCRITIC_PROMPT_PATH)).toBe(true);
   });
 });
 
@@ -94,75 +92,56 @@ describe('Handoff + RunCritic prompt files (pre-flight) [RED: Runtime not shippe
 describe('Handoff prompt: brand-skill recommendations table [RED: Runtime not shipped]', () => {
   for (const skill of HANDOFF_BRAND_SKILLS) {
     it(`Handoff.prompt.md contains brand skill: "${skill}" [RED]`, () => {
-      // When Runtime ships:
-      //   const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
-      //   expect(content).toContain('${skill}');
-      expect(true).toBe(true);
+      const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
+      expect(content).toContain(skill);
     });
   }
 
   it('Handoff.prompt.md contains skill routing by artifact type [RED]', () => {
-    // "Excel financial models → class-brand-excel" etc.
-    // When Runtime ships:
-    //   const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
-    //   expect(content).toContain('Excel');
-    //   expect(content).toContain('PowerPoint');
-    //   expect(content).toContain('class-brand-excel');
-    expect(true).toBe(true);
+    const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
+    expect(content).toContain('Excel');
+    expect(content).toContain('PowerPoint');
+    expect(content).toContain('class-brand-excel');
   });
 });
 
 describe('Handoff prompt: structural requirements [RED: Runtime not shipped]', () => {
   it('contains handoff landing path pattern (handoffs/<date>-<slug>.md) [RED]', () => {
-    // When Runtime ships:
-    //   const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
-    //   expect(content).toContain('handoffs/');
-    //   expect(content).toMatch(/handoffs\/.*YYYY-MM-DD/);
-    expect(true).toBe(true);
+    const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
+    expect(content).toContain('handoffs/');
+    expect(content).toMatch(/handoffs\/.*YYYY-MM-DD/);
   });
 
   it('contains decision traceback requirement (originating memo/decision id) [RED]', () => {
-    // When Runtime ships:
-    //   const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
-    //   expect(content).toContain('traceback');
-    //   expect(content).toContain('originating');
-    expect(true).toBe(true);
+    const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
+    expect(content).toContain('traceback');
+    expect(content).toContain('originating');
   });
 
   it('contains rationale chain requirement (why this choice over alternatives) [RED]', () => {
-    // When Runtime ships:
-    //   const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
-    //   expect(content).toContain('Rationale chain');
-    expect(true).toBe(true);
+    const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
+    expect(content).toContain('Rationale chain');
   });
 
   it('contains acceptance criteria requirement ("what done looks like") [RED]', () => {
-    // When Runtime ships:
-    //   const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
-    //   expect(content).toContain('Acceptance criteria');
-    expect(true).toBe(true);
+    const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
+    expect(content).toContain('Acceptance criteria');
   });
 
   it('contains stakeholder context requirement (decision rights, comms) [RED]', () => {
-    // When Runtime ships:
-    //   const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
-    //   expect(content).toContain('Stakeholder context');
-    //   expect(content).toContain('decision rights');
-    expect(true).toBe(true);
+    const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
+    expect(content).toContain('Stakeholder context');
+    expect(content).toContain('decision rights');
   });
 
   it('contains back-link field (executed_by on originating artifact) [RED]', () => {
-    // When Runtime ships:
-    //   const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
-    //   expect(content).toContain('executed_by');
-    expect(true).toBe(true);
+    const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
+    expect(content).toContain('executed_by');
   });
 
   it('contains Zod schema reference (HandoffFrontmatter) [RED]', () => {
-    // When Runtime ships:
-    //   const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
-    //   expect(content).toContain('HandoffFrontmatter');
-    expect(true).toBe(true);
+    const content = readFileSync(HANDOFF_PROMPT_PATH, 'utf8');
+    expect(content).toContain('HandoffFrontmatter');
   });
 });
 
@@ -171,59 +150,39 @@ describe('Handoff prompt: structural requirements [RED: Runtime not shipped]', (
 describe('RunCritic prompt: 5-dimension rubric verbatim [RED: Runtime not shipped]', () => {
   for (const dim of RUNCRITIC_DIMENSIONS) {
     it(`contains dimension: "${dim.name}" (weight ${dim.weight}%) [RED]`, () => {
-      // When Runtime ships:
-      //   const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
-      //   expect(content).toContain('${dim.name}');
-      //   expect(content).toContain('${dim.weight}%');
-      expect(true).toBe(true);
+      const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
+      expect(content).toContain(dim.name);
+      expect(content).toContain(`${dim.weight}%`);
     });
 
     it(`contains dimension key: "${dim.key}" in output schema [RED]`, () => {
-      // When Runtime ships:
-      //   const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
-      //   expect(content).toContain('${dim.key}');
-      expect(true).toBe(true);
+      const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
+      expect(content).toContain(dim.key);
     });
   }
 
   it('contains Score 10 descriptor for Source rigor dimension [RED]', () => {
-    // Verbatim from ADR §9.4 / R0-skill-inventory.md §5:
-    // "Score 10 = every number tagged with connector + timestamp; every doctrine claim
-    //             cited to the turnaround library by section"
-    // When Runtime ships:
-    //   const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
-    //   expect(content).toContain('Score 10');
-    //   expect(content).toContain('turnaround library');
-    expect(true).toBe(true);
+    const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
+    expect(content).toContain('Score 10');
+    expect(content).toContain('turnaround library');
   });
 
   it('contains Score 1 descriptor for Source rigor dimension [RED]', () => {
-    // "Score 1 = floating claims, hand-waved confidence, 'according to industry research'"
-    // When Runtime ships:
-    //   const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
-    //   expect(content).toContain('Score 1');
-    //   expect(content).toContain('floating claims');
-    expect(true).toBe(true);
+    const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
+    expect(content).toContain('Score 1');
+    expect(content).toContain('floating claims');
   });
 
   it('contains composite score formula (weighted average) [RED]', () => {
-    // ADR §9.4: composite = weighted average of 5 dimensions.
-    // When Runtime ships:
-    //   const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
-    //   expect(content).toContain('weighted average');
-    //   // Or the explicit formula form
-    //   // expect(content).toContain('source_rigor * 25');
-    expect(true).toBe(true);
+    const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
+    expect(content).toContain('weighted average');
   });
 
   it('contains grade band thresholds (90-100 gold; 75-89 solid; 50-74 acceptable) [RED]', () => {
-    // ADR §9.4 grade bands
-    // When Runtime ships:
-    //   const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
-    //   expect(content).toContain('90-100');
-    //   expect(content).toContain('gold standard');
-    //   expect(content).toContain('75-89');
-    expect(true).toBe(true);
+    const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
+    expect(content).toContain('90-100');
+    expect(content).toContain('gold standard');
+    expect(content).toContain('75-89');
   });
 });
 
@@ -240,18 +199,14 @@ describe('RunCritic prompt: output schema fields [RED: Runtime not shipped]', ()
 
   for (const field of OUTPUT_SCHEMA_FIELDS) {
     it(`output schema contains field: "${field}" [RED]`, () => {
-      // When Runtime ships:
-      //   const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
-      //   expect(content).toContain('${field}');
-      expect(true).toBe(true);
+      const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
+      expect(content).toContain(field);
     });
   }
 
   it('output schema specifies Zod-validated JSON output only [RED]', () => {
-    // When Runtime ships:
-    //   const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
-    //   expect(content).toContain('Zod-validated');
-    expect(true).toBe(true);
+    const content = readFileSync(RUNCRITIC_PROMPT_PATH, 'utf8');
+    expect(content).toContain('Zod-validated');
   });
 });
 
