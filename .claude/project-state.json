@@ -2,8 +2,8 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "phase-1-complete-pending-ultrareview",
-  "next_action": "Ultrareview gate: Russell decides whether 3 NW gaps (AC-1 orchestrator harness, AC-9/10/12 RTL + degraded-mode tests) require a Ch.5.1 polish task before Phase 2 opens, or are acceptable as Ch.6/Ch.8 absorption targets. B22: Russell must run scripts/vault-bootstrap.sh before first live run. Phase 2 starts at Ch.6 (write-back review pane). Ch.5 CLOSE-pending-ultrareview: 4 PASS / 3 NW / 0 FAIL / 5 DEFERRED. See docs/reviews/ch5-audit-qa-report.md.",
+  "current_phase": "phase-1-blocked-awaiting-russell-checkpoint",
+  "next_action": "PHASE-1 BLOCKED at Ultra-Review YELLOW verdict (commit e29aacc; report docs/reviews/ultrareview-2026-05-27.md). 5 P0/P1 critical findings now tracked as B35-B39. The most load-bearing: B35 (Verifier never executes; rigorScore hardcoded at 85; primary quality gate broken) — this violates goal completion criterion (g) 'real run produced rigor-scored memo' and the stop-hook correctly refuses to declare Phase 1 complete without it. Per overnight directive step 5: orchestrator does NOT auto-fix; Russell decides in morning checkpoint. Recommended morning sequence: (1) review docs/reviews/ultrareview-2026-05-27.md; (2) decide whether to bundle B35-B39 into a Ch.5.1 fix-sprint before Phase 2 OR absorb into Ch.6 entry; (3) run scripts/vault-bootstrap.sh (B22 still active); (4) confirm or amend the 6 Findings-for-Russell items already listed. Phase 2 starts at Ch.6 (write-back review pane) only after the Verifier path (B35) is real.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",

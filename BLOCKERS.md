@@ -398,3 +398,52 @@ These are not blockers but operating constraints that shape mitigation choices.
 5. **Commits to this file** use message format `blockers: <id> <action> — <why>` and auto-push.
 
 Per DOCTRINE law #9 (live-corrected learning): if a chapter discovers a blocker contradicts the plan, **update the plan AND this register** — never plow ahead on a stale premise.
+
+---
+
+## Ultra-Review critical findings (2026-05-27) — Phase 1 BLOCKED items
+
+### B35 — Verifier never executes; rigor score hardcoded `NEW` `P0`
+**What.** Ultra-Review (2026-05-27, commit `e29aacc`) verified: `apps/utility/src/agents/verifier-runner.js` does NOT exist. `apps/utility/src/orchestrator/run-loop.ts:109-114` hardcodes `verifier.pass({ rigorScore: 85 })`. Every run produces a fabricated rigor score; the Verifier — the primary quality gate per PRD §5 — never executes. Violates goal completion criterion (g) "real run produced rigor-scored memo."
+**Bites at.** Ch.5 closure (criterion g); Ch.6+ (write-backs gated on rigor); the entire B3 keystone's downstream purpose.
+**Status.** Critical block on Phase 2. Russell decides in morning checkpoint.
+**Recommended unblock.** Implement `verifier-runner.js` that consumes the Ch.3 `buildVerifierInput()` output + invokes the SDK with `Verifier.prompt.md` + parses the response against `VerifierOutputSchema`. Wire into `run-loop.ts` replacing the hardcoded pass. Add a stub-harness fixture path so CI runs deterministically.
+**Owner.** Russell (decide morning); next-/goal Architect (implement).
+
+### B36 — Playbook classifier falls through to open_qa for 6 of 8 playbooks `NEW` `P1`
+**What.** `apps/utility/src/orchestrator/classify-playbook.ts:70-77` only routes cash_lever + stakeholder_1on1_prep. Six playbooks (weekly_cash_forecast, quarterly_ops_review, annual_plan_workshop, pre_mortem, red_ocean_teardown, quick_read) fall through to `open_qa`. PRD §6 specifies distinct lens rosters per playbook — all 6 are ignored.
+**Bites at.** Ch.7 (8 playbooks complete); silently degrades any non-cash-lever Phase 1 run.
+**Recommended unblock.** Extend classifier with keyword maps per playbook; add unit tests for each playbook's keyword set; wire `run-plan-builder.ts` to honor the PRD §6 lens roster per classification.
+**Owner.** Russell decides Ch.7 timing; next-/goal implements.
+
+### B37 — `stakeholder_1on1_prep` wired to [CEO, COS]; PRD §6 specifies COS-only fast lane `NEW` `P1`
+**What.** `apps/utility/src/playbooks/runPlanBuilder.ts:92` hard-codes `lenses: ['CEO', 'COS']` for stakeholder_1on1_prep. PRD §6 explicitly: "COS only — single-agent fast lane."
+**Bites at.** PRD §6 compliance; Ch.7 playbook surface.
+**Recommended unblock.** One-line fix: change to `['COS']`. Add test.
+**Owner.** Next-/goal Runtime.
+
+### B38 — review→write-back N=3 iteration cap not enforced in code `NEW` `P1`
+**What.** Ch.3 `state-machine.ts:224-235` `review → write-back-proposed` transition has no max-iteration guard. Phase R Decision 3 locks N=3 (per `phase-r-decisions.md` §Decision 3); the code does not enforce it. Runaway feedback loop possible on live runs.
+**Bites at.** Ch.6 (iterative feedback) + runtime safety on every live run.
+**Recommended unblock.** Add `iteration_count` to RunState; throw `IterationCapReached` at N=3 with structured options for Russell.
+**Owner.** Next-/goal Architect (decide cap-reached UX) + Runtime.
+
+### B39 — `safeWrite` swallows git-commit failures silently `NEW` `P1`
+**What.** `packages/vault-writer/src/safeWrite.ts:227-229` catches git-commit failures without re-throwing or surfacing. PRD §5 mandates every C-Suite write is git-tracked; silent catch destroys that guarantee without detection.
+**Bites at.** PRD §5 compliance; every shared-zone write since Ch.2.
+**Recommended unblock.** Re-throw the catch OR emit `IpcMessage<'vault.commit.failed'>` + log error before continuing. Test: force a git failure (e.g., readonly vault); confirm event fires.
+**Owner.** Next-/goal Runtime; possibly a Ch.2 reopen.
+
+---
+
+## Ultra-Review important findings (2026-05-27) — for Phase 2 prep
+
+| ID candidate | What |
+|---|---|
+| B40 | 8 Cowork skills have no invocation path in apps/packages — inert files until codify-or-subprocess decision per skill (Ch.7/Ch.10 scope per `mcp.md`). |
+| B41 | AC-10 MCP-guard tests skipped (no active test confirms MCP calls blocked before `run.plan.approved`). |
+| B42 | No safeStorage credential scaffolding in Ch.0-5; Ch.8 starts with blank slate for MCP credentials. |
+| B43 | AC-9 RTL tests skipped (no active test confirms RoundTable.tsx renders substance during a run). |
+
+(Russell may upgrade to formal B-entries during the morning checkpoint if he wants explicit tracking.)
+
