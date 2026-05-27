@@ -6,6 +6,7 @@
 
 import { NAMED_ENTITY_REGISTRY } from '../registry/namedEntities.js';
 
+
 /**
  * Returns true if the claim text contains a quantitative value or named entity
  * that requires a source_id citation.

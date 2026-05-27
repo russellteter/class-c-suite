@@ -29,6 +29,54 @@
     "./verifier-output": {
       "import": "./dist/verifier-output.js",
       "types": "./dist/verifier-output.d.ts"
+    },
+    "./run-state": {
+      "import": "./dist/run-state.js",
+      "types": "./dist/run-state.d.ts"
+    },
+    "./run-state-schema": {
+      "import": "./dist/run-state-schema.js",
+      "types": "./dist/run-state-schema.d.ts"
+    },
+    "./agent-definition": {
+      "import": "./dist/agent-definition.js",
+      "types": "./dist/agent-definition.d.ts"
+    },
+    "./lens-output": {
+      "import": "./dist/lens-output.js",
+      "types": "./dist/lens-output.d.ts"
+    },
+    "./lens-context-bundle": {
+      "import": "./dist/lens-context-bundle.js",
+      "types": "./dist/lens-context-bundle.d.ts"
+    },
+    "./verifier-input": {
+      "import": "./dist/verifier-input.js",
+      "types": "./dist/verifier-input.d.ts"
+    },
+    "./run-plan": {
+      "import": "./dist/run-plan.js",
+      "types": "./dist/run-plan.d.ts"
+    },
+    "./memo": {
+      "import": "./dist/memo.js",
+      "types": "./dist/memo.d.ts"
+    },
+    "./red-team": {
+      "import": "./dist/red-team.js",
+      "types": "./dist/red-team.d.ts"
+    },
+    "./steelman": {
+      "import": "./dist/steelman.js",
+      "types": "./dist/steelman.d.ts"
+    },
+    "./writeback": {
+      "import": "./dist/writeback.js",
+      "types": "./dist/writeback.d.ts"
+    },
+    "./run-critique": {
+      "import": "./dist/run-critique.js",
+      "types": "./dist/run-critique.d.ts"
     }
   },
   "scripts": {
