@@ -3,7 +3,7 @@
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
   "current_phase": "ch-3-complete-ready-for-ch4",
-  "next_action": "Ch.3 Runtime Spine + Stub Harness (per ROADMAP §Ch.3). Lens isolation assertion + Verifier input contract. Ch.2 CLOSE confirmed: all 10 AC PASS (commits efec14b/24b71ed/06d9524). See docs/reviews/ch2-audit-qa-report.md for full findings.",
+  "next_action": "Ch.4 Prompts + Rigor (per ROADMAP §Ch.4). Verbatim 5 lens prompts; rigorScore() unit-tested; planted-claim canary; NAMED_ENTITY_REGISTRY loaded. Ch.3 CLOSE confirmed: B3 VERIFIED, AC-2 PASS, all 9 NW→PASS (commits fa3848e–2254b3f). See docs/reviews/ch3-audit-qa-report.md for full findings.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",
@@ -63,6 +63,13 @@
       "completed_on": "2026-05-27",
       "verdict": "REOPEN",
       "commits": []
+    },
+    {
+      "id": "ch-3-fix-integration",
+      "summary": "Ch.3 Fix-Integration: B3 keystone restored. (1) .passthrough() added to buildLensContextBundleSchema + buildLensContextBundle(role,raw) wrapper with pre-check. BY-HAND: buildLensContextBundle('CFO',{illegalLeak:{role:'CRO',...}}) throws LensIsolationViolation at $.illegalLeak. (2) All 9 AC test files activated: AC-1 startRun structural, AC-2 6 real leak assertions, AC-3 8 real VerifierInput contract assertions, AC-4+AC-9 resumeRun structural, AC-5 5 AGENT_REGISTRY assertions, AC-6 dispatchLens structural, AC-7 verifier-assembler structural, AC-8 4 transition() assertions. 758 tests passing / 40 failing (Ch.5 intentional RED). Ch.3 CLOSE.",
+      "completed_on": "2026-05-27",
+      "verdict": "CLOSE",
+      "commits": ["fa3848e", "dc12ab2", "8d140e1", "714996d", "391a3d6", "5a9b7c6", "c99194c", "0a56e4d", "2254b3f"]
     }
   ],
   "pending_tasks": [
@@ -151,7 +158,7 @@
       "SEEDED_remaining": 5
     },
     "notable": {
-      "B3": "VERIFIED P0 — Verifier input contract is the trust-defining wiring",
+      "B3": "VERIFIED P0 — Lens isolation restored (passthrough + raw-precheck, 2026-05-27); AC-2 keystone test green. Runtime isolation enforced.",
       "B21": "NEW P0 — type discriminator absent across all vault artifacts",
       "B22": "NEW P0 — vault git has zero commits",
       "B23": "NEW P0 — kebab/snake key naming chaos"
@@ -195,6 +202,6 @@
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-27T00:00:00-04:00",
-  "updated_by": "Audit/QA Ch.3 — REOPEN verdict (AC-2 FAIL, B3 ACTIVE P0)"
+  "last_updated": "2026-05-27T08:00:00-04:00",
+  "updated_by": "Fix-Integration Ch.3 — REOPEN resolved (B3 VERIFIED, AC-2 PASS, all 9 NW→PASS, 9 commits)"
 }
