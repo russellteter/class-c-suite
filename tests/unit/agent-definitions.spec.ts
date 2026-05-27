@@ -22,10 +22,8 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
-
-// ── Runtime import (uncomment when Ch.3 Runtime ships) ──────────────────────
-// import { AGENT_REGISTRY } from '../../apps/utility/src/agents/registry.js';
-// import type { AgentRole } from '../../packages/shared-types/src/agent-definition.js';
+import { AGENT_REGISTRY } from '../../apps/utility/src/agents/registry.js';
+import type { AgentRole } from '../../packages/shared-types/src/agent-definition.js';
 
 // ── All 12 agent roles per ADR §2 ────────────────────────────────────────────
 const ALL_12_ROLES = [
@@ -55,59 +53,39 @@ interface LensFixture {
 
 describe('AC-5: 12 AgentDefinitions parse seed fixtures (ADR-0004 §2 + §6)', () => {
 
-  it('AGENT_REGISTRY module exists [RED: Runtime not shipped]', () => {
-    // When Runtime ships:
-    //   import { AGENT_REGISTRY } from '../../apps/utility/src/agents/registry.js';
-    //   expect(AGENT_REGISTRY).toBeDefined();
-    //   expect(Object.keys(AGENT_REGISTRY)).toHaveLength(12);
-
-    expect(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('../../apps/utility/src/agents/registry.js');
-    }).toThrow();
+  it('AGENT_REGISTRY module exists and has 12 entries', () => {
+    expect(AGENT_REGISTRY).toBeDefined();
+    expect(Object.keys(AGENT_REGISTRY)).toHaveLength(12);
   });
 
-  it('all 12 roles are present in AGENT_REGISTRY [RED: Runtime not shipped]', () => {
-    // When Runtime ships:
-    //   for (const role of ALL_12_ROLES) {
-    //     expect(AGENT_REGISTRY[role]).toBeDefined();
-    //     expect(AGENT_REGISTRY[role].role).toBe(role);
-    //   }
-
-    // Structural test that passes now: confirms the role list is complete.
-    expect(ALL_12_ROLES).toHaveLength(12);
+  it('all 12 roles are present in AGENT_REGISTRY with correct role field', () => {
+    for (const role of ALL_12_ROLES) {
+      expect(AGENT_REGISTRY[role as AgentRole]).toBeDefined();
+      expect(AGENT_REGISTRY[role as AgentRole].role).toBe(role);
+    }
   });
 
-  it('each AgentDefinition has required fields (role, modelHint, inputSchema, outputSchema) [RED: Runtime not shipped]', () => {
-    // When Runtime ships:
-    //   for (const [role, def] of Object.entries(AGENT_REGISTRY)) {
-    //     expect(def.role).toBe(role);
-    //     expect(typeof def.systemPrompt).toBe('string');
-    //     expect(typeof def.inputSchema.parse).toBe('function');
-    //     expect(typeof def.outputSchema.parse).toBe('function');
-    //     expect(typeof def.citationRequired).toBe('boolean');
-    //     expect(Array.isArray(def.toolAllowlist)).toBe(true);
-    //   }
-
-    expect(true).toBe(true);
+  it('each AgentDefinition has required fields (role, systemPrompt, inputSchema, outputSchema, citationRequired, toolAllowlist)', () => {
+    for (const [role, def] of Object.entries(AGENT_REGISTRY)) {
+      expect(def.role).toBe(role);
+      expect(typeof def.systemPrompt).toBe('string');
+      expect(typeof def.inputSchema.parse).toBe('function');
+      expect(typeof def.outputSchema.parse).toBe('function');
+      expect(typeof def.citationRequired).toBe('boolean');
+      expect(Array.isArray(def.toolAllowlist)).toBe(true);
+    }
   });
 
-  it('Verifier uses claude-opus-4-7 (only agent on Opus per ADR §2.10) [RED: Runtime not shipped]', () => {
-    // When Runtime ships:
-    //   expect(AGENT_REGISTRY['Verifier'].modelHint).toBe('claude-opus-4-7');
-    //   for (const role of ALL_12_ROLES.filter(r => r !== 'Verifier')) {
-    //     expect(AGENT_REGISTRY[role].modelHint).toBe('claude-sonnet-4-6');
-    //   }
-
-    expect(true).toBe(true);
+  it('Verifier uses claude-opus-4-7 (only agent on Opus per ADR §2.10)', () => {
+    expect(AGENT_REGISTRY['Verifier'].modelHint).toBe('claude-opus-4-7');
+    for (const role of ALL_12_ROLES.filter(r => r !== 'Verifier')) {
+      expect(AGENT_REGISTRY[role as AgentRole].modelHint).toBe('claude-sonnet-4-6');
+    }
   });
 
-  it('Verifier toolAllowlist is empty (isolation requirement per ADR §2.10) [RED: Runtime not shipped]', () => {
+  it('Verifier toolAllowlist is empty (isolation requirement per ADR §2.10)', () => {
     // The Verifier must not make external tool calls — permanent requirement.
-    // When Runtime ships:
-    //   expect(AGENT_REGISTRY['Verifier'].toolAllowlist).toHaveLength(0);
-
-    expect(true).toBe(true);
+    expect(AGENT_REGISTRY['Verifier'].toolAllowlist).toHaveLength(0);
   });
 
   it('all 12 seed fixtures exist at tests/fixtures/lens-outputs/seed-run-001/ [RED: fixtures not yet captured]', () => {
