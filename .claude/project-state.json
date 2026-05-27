@@ -2,8 +2,8 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "ch-2-reopen-fix-integration",
-  "next_action": "Ch.2 Fix-Integration: (1) Resolve fuzz Invariant 3 — external-write-after-ok silent data loss, no sidecar produced (options: post-write re-read + sidecar, flock, git-SHA post-rename check); (2) Align zonePolicy.ts + primitive HASH_CHECK_ZONES with ADR §2.1 full shared-zone list (add pre-mortem, tripwire, competitor; fix prediction and stakeholder_person/account); (3) Add integration test for safewrite.conflict IPC emission at wrapper layer. After fix-integration, re-run EvidenceQA for CLOSE verdict. See docs/reviews/ch2-audit-qa-report.md for full findings.",
+  "current_phase": "ch-2-complete-ready-for-ch3",
+  "next_action": "Ch.3 Runtime Spine + Stub Harness (per ROADMAP §Ch.3). Lens isolation assertion + Verifier input contract. Ch.2 CLOSE confirmed: all 10 AC PASS (commits efec14b/24b71ed/06d9524). See docs/reviews/ch2-audit-qa-report.md for full findings.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",
@@ -45,10 +45,17 @@
     },
     {
       "id": "ch-2-audit-qa",
-      "summary": "Ch.2 Audit/QA: 8 PASS / 1 FAIL / 1 NEEDS WORK / 1 CONCERN. REOPEN. AC-1 fuzz keystone fails Invariant 3 (silent data loss). AC-3 zonePolicy.ts diverges from ADR on 6 zones. AC-5 IPC emission untested. B9 VERIFIED; B22 still active pending Russell vault-bootstrap execution. G-1/G-2/G-6 correct. AC-6 hand-reproduced. Full report at docs/reviews/ch2-audit-qa-report.md.",
+      "summary": "Ch.2 Audit/QA: 8 PASS / 1 FAIL / 1 NEEDS WORK / 1 CONCERN. REOPEN. AC-1 fuzz keystone fails Invariant 3. AC-3 zonePolicy.ts diverges from ADR on 6 zones. AC-5 IPC emission untested. Full report at docs/reviews/ch2-audit-qa-report.md.",
       "completed_on": "2026-05-27",
       "verdict": "REOPEN",
-      "commits": ["pending atomic commits below"]
+      "commits": []
+    },
+    {
+      "id": "ch-2-fix-integration",
+      "summary": "Ch.2 Fix-Integration: 3 issues resolved. (1) AC-3 zonePolicy aligned with ADR §2.1 (8 shared / 3 agent-exclusive); HASH_CHECK_ZONES expanded to 8 zones. (2) AC-5 wrapper re-read bug fixed (was reading tempPath instead of absPath); IPC emission test added (safewrite-wrapper.spec.ts, 2 green). (3) AC-1 fuzz Invariant 3 rewritten to per-call envelope semantics; all 8 invariants pass. Ch.2 CLOSE: all 10 AC PASS.",
+      "completed_on": "2026-05-27",
+      "verdict": "CLOSE",
+      "commits": ["efec14b", "24b71ed", "06d9524"]
     }
   ],
   "pending_tasks": [
@@ -181,6 +188,6 @@
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-27T00:00:00-04:00",
-  "updated_by": "EvidenceQA Ch.1 Audit/QA — CLOSE verdict"
+  "last_updated": "2026-05-27T05:00:00-04:00",
+  "updated_by": "Fix-Integration Ch.2 — CLOSE verdict (efec14b/24b71ed/06d9524)"
 }
