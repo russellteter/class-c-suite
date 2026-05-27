@@ -30,15 +30,16 @@ function computeFreshness(lastRunAt: Date | null): PlaybookTileData['freshness']
   return 'gray';
 }
 
+// Short PlaybookId names per ADR-0009 §3.2 canonical.
 const TILE_CATALOGUE: Omit<PlaybookTileData, 'lastRunAt' | 'freshness'>[] = [
-  { ordinal: 1, id: 'cash_lever_vs_trough',          name: 'Cash Lever vs Trough',   icon: '💰', keyboardHint: '⌘1' },
-  { ordinal: 2, id: 'gtm_resource_reallocation',      name: 'GTM Resource Realloc',   icon: '🎯', keyboardHint: '⌘2' },
-  { ordinal: 3, id: 'strategic_option_evaluation',    name: 'Strategic Option Eval',  icon: '♟️', keyboardHint: '⌘3' },
-  { ordinal: 4, id: 'stakeholder_1on1_prep',          name: 'Stakeholder 1:1 Prep',   icon: '🤝', keyboardHint: '⌘4' },
-  { ordinal: 5, id: 'board_narrative_prep',           name: 'Board Narrative / Deck', icon: '📊', keyboardHint: '⌘5' },
-  { ordinal: 6, id: 'restructure_decision',           name: 'Restructure Decision',   icon: '⚖️', keyboardHint: '⌘6' },
-  { ordinal: 7, id: 'pre_mortem_on_proposed_action',  name: 'Pre-mortem',             icon: '🔍', keyboardHint: '⌘7' },
-  { ordinal: 8, id: 'quick_multi_lens_read',          name: 'Quick Multi-Lens Read',  icon: '⚡', keyboardHint: '⌘8' },
+  { ordinal: 1, id: 'cash_lever',           name: 'Cash Lever vs Trough',   icon: '💰', keyboardHint: '⌘1' },
+  { ordinal: 2, id: 'gtm_realloc',          name: 'GTM Resource Realloc',   icon: '🎯', keyboardHint: '⌘2' },
+  { ordinal: 3, id: 'strategic_option',     name: 'Strategic Option Eval',  icon: '♟️', keyboardHint: '⌘3' },
+  { ordinal: 4, id: 'stakeholder_1_1',      name: 'Stakeholder 1:1 Prep',   icon: '🤝', keyboardHint: '⌘4' },
+  { ordinal: 5, id: 'board_narrative',      name: 'Board Narrative / Deck', icon: '📊', keyboardHint: '⌘5' },
+  { ordinal: 6, id: 'restructure_decision', name: 'Restructure Decision',   icon: '⚖️', keyboardHint: '⌘6' },
+  { ordinal: 7, id: 'pre_mortem',           name: 'Pre-mortem',             icon: '🔍', keyboardHint: '⌘7' },
+  { ordinal: 8, id: 'quick_read',           name: 'Quick Multi-Lens Read',  icon: '⚡', keyboardHint: '⌘8' },
 ];
 
 // ── Today's date display ──────────────────────────────────────────────────────

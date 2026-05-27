@@ -3,17 +3,19 @@
 // Shared type definitions for Ch.7 Home screen components.
 // All renderer-local; no cross-package import needed.
 
-// Playbook IDs mirror the canonical enum at packages/shared-types/src/ipc.ts:13-18.
-// Inlined here to avoid deep package coupling; keep in sync if the union changes.
+// Playbook IDs — short names per ADR-0009 §3.2 canonical.
+// Source of truth: packages/shared-types/src/playbook.ts:15-23.
+// Legacy long-name usages in classify-playbook.ts / run-plan-builder.ts / safewrite.ts /
+// ipc.ts are pre-Ch.7 debt; migration scheduled before end-to-end IPC wiring.
 export type PlaybookId =
-  | 'cash_lever_vs_trough'
-  | 'stakeholder_1on1_prep'
-  | 'quick_multi_lens_read'
-  | 'pre_mortem_on_proposed_action'
-  | 'gtm_resource_reallocation'
-  | 'strategic_option_evaluation'
-  | 'board_narrative_prep'
+  | 'cash_lever'
+  | 'gtm_realloc'
+  | 'strategic_option'
+  | 'stakeholder_1_1'
+  | 'board_narrative'
   | 'restructure_decision'
+  | 'pre_mortem'
+  | 'quick_read'
   | 'open_qa';
 
 // Lens roles used in decomposer preview chips.

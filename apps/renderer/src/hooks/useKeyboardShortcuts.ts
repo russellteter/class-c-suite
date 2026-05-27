@@ -9,15 +9,16 @@
 import { useEffect } from 'react';
 import type { PlaybookId } from '../components/HomeTypes.js';
 
+// Short names per ADR-0009 §3.2 canonical. Source: packages/shared-types/src/playbook.ts:15-23.
 const ORDINAL_TO_PLAYBOOK: Record<string, PlaybookId> = {
-  '1': 'cash_lever_vs_trough',
-  '2': 'gtm_resource_reallocation',
-  '3': 'strategic_option_evaluation',
-  '4': 'stakeholder_1on1_prep',
-  '5': 'board_narrative_prep',
+  '1': 'cash_lever',
+  '2': 'gtm_realloc',
+  '3': 'strategic_option',
+  '4': 'stakeholder_1_1',
+  '5': 'board_narrative',
   '6': 'restructure_decision',
-  '7': 'pre_mortem_on_proposed_action',
-  '8': 'quick_multi_lens_read',
+  '7': 'pre_mortem',
+  '8': 'quick_read',
 };
 
 export function useKeyboardShortcuts(): void {

@@ -35,6 +35,7 @@ export function useHomeData(): HomeData {
       }
 
       // TODO ch7-phase-b: wire home.workstreams variant when Runtime exposes it.
+      // Source: workstream_amounts_mirror SQLite table (ADR-0009 §13.3 + B12 mitigation).
       // Expected shape: { kind: 'home.workstreams', payload: { workstreams: WorkstreamSummary[] } }
       if ((msg as { kind: string }).kind === 'home.workstreams') {
         const payload = ((msg as unknown) as { kind: string; payload: { workstreams: WorkstreamSummary[] } }).payload;

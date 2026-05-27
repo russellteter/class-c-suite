@@ -13,7 +13,7 @@ afterEach(cleanup);
 function makeTileProps(overrides?: Partial<PlaybookTileProps>): PlaybookTileProps {
   return {
     ordinal: 1,
-    id: 'cash_lever_vs_trough',
+    id: 'cash_lever',
     name: 'Cash Lever',
     icon: '💰',
     lastRunAt: null,
@@ -50,9 +50,9 @@ describe('PlaybookTile — click interaction (ADR §11.3)', () => {
 
   it('click invokes onClick with the correct PlaybookId payload', async () => {
     const onClick = vi.fn();
-    render(<PlaybookTile {...makeTileProps({ id: 'pre_mortem_on_proposed_action', onClick })} />);
+    render(<PlaybookTile {...makeTileProps({ id: 'pre_mortem', onClick })} />);
     await userEvent.click(screen.getByRole('button'));
-    expect(onClick).toHaveBeenCalledWith('pre_mortem_on_proposed_action');
+    expect(onClick).toHaveBeenCalledWith('pre_mortem');
   });
 
 });
