@@ -5,6 +5,7 @@
 
 import { query } from '../sql/proxy.js';
 import { createLogger } from '../logger.js';
+import type Database from 'better-sqlite3';
 
 const log = createLogger();
 
@@ -35,10 +36,12 @@ export interface AgentInvocationRecord {
  *   6. Emit run.start IPC event with the resumed runId.
  *
  * Full Ch.3 implementation replaces the skeleton body below.
+ *
+ * @param db Optional in-process Database handle for testing (bypasses IPC proxy).
  */
-export async function resumeRun(runId: string): Promise<void> {
+export async function resumeRun(runId: string, db?: Database.Database): Promise<void> {
   log.info({ runId, message: 'resumeRun called — skeleton in Ch.1; full impl Ch.3' });
-  const completed = await loadCompletedInvocations(runId);
+  const completed = await loadCompletedInvocations(runId, db);
   log.info({ runId, message: `loaded ${completed.length} completed invocations for resume` });
   // Ch.3 reconstructs RunState and calls the orchestration loop here.
 }
@@ -50,10 +53,20 @@ export async function resumeRun(runId: string): Promise<void> {
  *
  * Resume invariant: a lens that crashed mid-output (status 'in_progress'
  * in agent_invocations) is treated as not completed — it re-runs from scratch.
+ *
+ * @param db Optional in-process Database handle for testing (bypasses IPC proxy).
  */
 export async function loadCompletedInvocations(
   runId: string,
+  db?: Database.Database,
 ): Promise<AgentInvocationRecord[]> {
+  if (db) {
+    // Test injection path: query the in-process SQLite handle directly.
+    const rows = db.prepare(
+      `SELECT * FROM agent_invocations WHERE run_id = ? AND status = 'completed' ORDER BY started_at ASC`
+    ).all(runId) as AgentInvocationRecord[];
+    return rows;
+  }
   const rows = await query(
     `SELECT * FROM agent_invocations WHERE run_id = ? AND status = 'completed' ORDER BY started_at ASC`,
     [runId]

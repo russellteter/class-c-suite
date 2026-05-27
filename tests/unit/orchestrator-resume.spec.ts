@@ -24,28 +24,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
 
-// Production module — does not exist yet. Uncomment when Runtime ships:
-// import { resumeRun, loadCompletedInvocations } from '../../../apps/utility/src/orchestrator.js';
-
-// Stubs so TypeScript compiles now.
-type AgentInvocationRecord = {
-  invocation_id: string;
-  run_id: string;
-  agent_role: string;
-  status: string;
-  structured_output_json: string | null;
-};
-
-async function resumeRun(_runId: string, _db?: Database.Database): Promise<void> {
-  throw new Error('resumeRun not implemented — Runtime dispatch pending');
-}
-
-async function loadCompletedInvocations(
-  _runId: string,
-  _db?: Database.Database,
-): Promise<AgentInvocationRecord[]> {
-  throw new Error('loadCompletedInvocations not implemented — Runtime dispatch pending');
-}
+import { resumeRun, loadCompletedInvocations } from '../../apps/utility/src/orchestrator/index.js';
+import type { AgentInvocationRecord } from '../../apps/utility/src/orchestrator/index.js';
 
 // ── Test helpers: seed in-memory SQLite with the Ch.1 schema subset ─────────
 
