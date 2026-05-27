@@ -59,10 +59,13 @@ const REQUIRED_BOOTSTRAP_ENTITIES = [
 ] as const;
 
 // Turnaround library entities (static extraction at build time per ADR §8.1)
+// Note: Campbell, Ramanujam, Bessemer appear in BOOTSTRAPPED_ENTITIES (not only here).
 const REQUIRED_TURNAROUND_ENTITIES = [
   'Apple', 'Netflix', 'Microsoft', 'IBM', 'Adobe', 'Slack',
   'Coursera', 'Instructure', 'PowerSchool',
   'Grove', 'Helmer', 'Christensen', 'McKinsey', 'BCG', 'Collins', 'Drucker',
+  // Also in BOOTSTRAPPED_ENTITIES (overlap is expected — Set deduplication handles it):
+  'Campbell', 'Ramanujam', 'Bessemer',
 ] as const;
 
 // ── Vault fixture builder ─────────────────────────────────────────────────────

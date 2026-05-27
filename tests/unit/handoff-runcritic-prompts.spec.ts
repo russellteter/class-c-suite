@@ -287,7 +287,8 @@ describe('AC-9: RunCritic composite score formula (25/20/20/20/15 weights)', () 
     expect(total).toBe(100);
   });
 
-  it('all 10s = composite 100 (gold standard)', () => {
+  it('all 10s = composite 10 (gold standard; /100 divisor with 0-10 scores)', () => {
+    // (10*25 + 10*20 + 10*20 + 10*20 + 10*15) / 100 = 1000/100 = 10
     const composite = computeComposite({
       source_rigor: 10,
       lens_balance: 10,
@@ -295,10 +296,11 @@ describe('AC-9: RunCritic composite score formula (25/20/20/20/15 weights)', () 
       deliverable_usefulness: 10,
       memory_hygiene: 10,
     });
-    expect(composite).toBe(100);
+    expect(composite).toBe(10);
   });
 
-  it('all 1s = composite 10 (weakest possible)', () => {
+  it('all 1s = composite 1 (weakest possible)', () => {
+    // (1*25 + 1*20 + 1*20 + 1*20 + 1*15) / 100 = 100/100 = 1
     const composite = computeComposite({
       source_rigor: 1,
       lens_balance: 1,
@@ -306,11 +308,11 @@ describe('AC-9: RunCritic composite score formula (25/20/20/20/15 weights)', () 
       deliverable_usefulness: 1,
       memory_hygiene: 1,
     });
-    expect(composite).toBe(10);
+    expect(composite).toBe(1);
   });
 
-  it('source_rigor=10, rest=5 = weighted 57.5 (source rigor is highest-weight dimension)', () => {
-    // source_rigor carries 25% weight — most important dimension
+  it('source_rigor=10, rest=5 = composite 6.25 (source rigor highest-weight dimension)', () => {
+    // (10*25 + 5*20 + 5*20 + 5*20 + 5*15) / 100 = (250+100+100+100+75)/100 = 625/100 = 6.25
     const composite = computeComposite({
       source_rigor: 10,
       lens_balance: 5,
@@ -318,11 +320,13 @@ describe('AC-9: RunCritic composite score formula (25/20/20/20/15 weights)', () 
       deliverable_usefulness: 5,
       memory_hygiene: 5,
     });
-    expect(composite).toBe(57.5);
+    expect(composite).toBe(6.25);
   });
 
-  it('source_rigor=5, rest=10 = weighted 92.5 (source rigor drags less than others)', () => {
-    // All others at 10: 5*25=125, then 10*(20+20+20+15)=750 → (125+750)/100 = 87.5
+  it('source_rigor=5, rest=10 = formula result 8.75 (scores 0-10, formula /100)', () => {
+    // Formula per ADR §9.4: (source_rigor * 25 + ... + memory_hygiene * 15) / 100
+    // With scores 0-10, result is 0-10 range (not 0-100).
+    // (5*25 + 10*20 + 10*20 + 10*20 + 10*15) / 100 = (125+200+200+200+150)/100 = 875/100 = 8.75
     const composite = computeComposite({
       source_rigor: 5,
       lens_balance: 10,
@@ -330,11 +334,13 @@ describe('AC-9: RunCritic composite score formula (25/20/20/20/15 weights)', () 
       deliverable_usefulness: 10,
       memory_hygiene: 10,
     });
-    expect(composite).toBe(87.5);
+    expect(composite).toBe(8.75);
   });
 
-  it('typical "solid run" profile: 8/7/7/10/6 → composite within 75-89 band', () => {
-    // Source rigor strong, lens balance good, red-team sharp, deliverable useful, memory ok
+  it('typical "solid run" profile: 8/7/7/10/6 → composite = 7.7 (formula /100)', () => {
+    // (8*25 + 7*20 + 7*20 + 10*20 + 6*15) / 100 = (200+140+140+200+90)/100 = 770/100 = 7.7
+    // Note: ADR scores are 0-10; formula /100 produces 0-10 range composite.
+    // Implementation may multiply by 10 before persisting to align with 0-100 grade bands.
     const composite = computeComposite({
       source_rigor: 8,
       lens_balance: 7,
@@ -342,21 +348,7 @@ describe('AC-9: RunCritic composite score formula (25/20/20/20/15 weights)', () 
       deliverable_usefulness: 10,
       memory_hygiene: 6,
     });
-    // (8*25 + 7*20 + 7*20 + 10*20 + 6*15) / 100 = (200+140+140+200+90)/100 = 770/100 = 7.7
-    // Wait: that's the unscaled sum. Recheck: scores are 0-10, weights 25/20/20/20/15.
-    // composite = (8*25 + 7*20 + 7*20 + 10*20 + 6*15)/100 = (200+140+140+200+90)/100 = 770/100 = 7.7
-    // But ADR says output is 0-100 composite. So formula is:
-    // composite = (source_rigor * 25 + ... + memory_hygiene * 15) / 10  [if scores are 0-10]
-    // OR composite = weighted average with weights summing to 100:
-    //   0.25*source_rigor + 0.20*lens_balance + 0.20*red_team + 0.20*deliverable + 0.15*memory_hygiene
-    // Per ADR §9.4 explicit formula: (source_rigor * 25 + ... + memory_hygiene * 15) / 100
-    // That means scores 0-10, composite 0-10 range... unless scores ARE 0-100.
-    // ADR §9.4 shows "Score 10 = ..." → scores ARE 0-10. Composite via the formula is 0-10.
-    // But ADR says "Composite = weighted average" with output 0-100 range.
-    // Resolution: divide by 10 not 100, OR multiply scores by 10 first.
-    // This is UNKNOWN (implementation contract ambiguity); test documents the formula as written.
-    expect(composite).toBeGreaterThan(0);
-    expect(composite).toBeLessThanOrEqual(100);
+    expect(composite).toBe(7.7);
   });
 
   it('deliverable_usefulness deferred ("assess in 7 days") does not crash formula [RED note]', () => {
