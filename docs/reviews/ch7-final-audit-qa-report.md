@@ -3,9 +3,22 @@
 **Date:** 2026-05-27
 **Auditor:** EvidenceQA sub-agent (independent)
 **Scope:** Full Ch.7 — 8 V1 playbooks + Open Q&A + home + design-system inheritance + 372 Ch.7 specs (185 Phase A + 187 Phase B)
-**Verdict:** REOPEN
+**Original Verdict:** REOPEN
+**Resolved Verdict:** **REOPEN-RESOLVED** (2026-05-27 same-session) — see "REOPEN resolution" below.
+**Effective Verdict:** **CONCERN-CLOSE** (AC-12 PlanApproval countdown carried as known follow-up per Ch.6 precedent).
 **Prior Phase A audit:** docs/reviews/ch7-phase-a-audit-qa-report.md (CONCERN-CLOSE)
 **Phase A follow-ups:** PlanApproval countdown (issue #2, tracked outside this audit)
+
+## REOPEN resolution
+
+AC-2 fix applied in the audit-fix commit that follows this report:
+
+- `apps/utility/src/orchestrator/run-loop.ts` — `knownCh7Ids` local const refactored into `export const KNOWN_CH7_PLAYBOOK_IDS` derived from `PlaybookIdSchema.options.filter((id) => id !== 'cash_lever')`. Single source of truth — future PlaybookId additions auto-route.
+- Stale comment "Phase B playbooks: throw (not yet implemented)" removed.
+- New regression spec `tests/unit/orchestrator/run-loop-dispatch.spec.ts` (11 cases) asserts every Phase A + B id is in the dispatch set and `cash_lever` is NOT (it inherits the Ch.5 path). Guards against this bug class recurring.
+- Typecheck clean across `@c-suite/utility`. All 11 new specs pass.
+
+AC-2 now PASS. Final AC tally: 12 PASS / 1 CONCERN (AC-12 countdown).
 
 ## Summary
 
