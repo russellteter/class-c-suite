@@ -23,6 +23,11 @@ import * as os from 'os';
 import * as path from 'path';
 import simpleGit from 'simple-git';
 
+// Plumbing: Vitest 3 ESM module namespaces are non-configurable.
+// vi.mock with spy:true hoists an autospy factory so vi.spyOn(fs, ...) works.
+// Source: https://vitest.dev/guide/mocking#mocking-esm — authorized plumbing fix.
+vi.mock('fs/promises', { spy: true });
+
 // safeWrite ships with Runtime (Ch.2). Import will fail until then.
 import { safeWrite, type SafeWriteOpts } from '../../packages/vault-writer/src/safeWrite.js';
 
