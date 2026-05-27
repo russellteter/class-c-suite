@@ -237,6 +237,28 @@ export const IpcMessage = z.discriminatedUnion('kind', [
       vaultPath: z.string().optional(),
     }),
   }),
+  // B38 (2026-05-27): run.iteration.cap_reached — review.iterate fired after N=3.
+  // Source: docs/research/phase-r-decisions.md §3 (N=3 hard cap)
+  //         docs/reviews/ultrareview-2026-05-27.md "Critical Fix 4"
+  z.object({
+    kind: z.literal('run.iteration.cap_reached'),
+    payload: z.object({
+      runId: z.string(),
+      writebackId: z.string(),
+      maxIterations: z.number().int(),
+    }),
+  }),
+  // B39 (2026-05-27): vault.commit.failed — SafeWrite git commit step errored.
+  // Write itself succeeded; commit is non-fatal but visible.
+  // Source: docs/reviews/ultrareview-2026-05-27.md "Critical Fix 5"
+  z.object({
+    kind: z.literal('vault.commit.failed'),
+    payload: z.object({
+      path: z.string(),
+      error: z.string(),
+      runId: z.string(),
+    }),
+  }),
 ]);
 
 export type IpcMessage = z.infer<typeof IpcMessage>;

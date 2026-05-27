@@ -259,3 +259,128 @@ describe('AC-8: transition() persists RunState to SQLite atomically (ADR-0004 §
     }
   });
 });
+
+// ── B38: N=3 review iteration cap ─────────────────────────────────────────────
+// Source: docs/research/phase-r-decisions.md §3 + docs/reviews/ultrareview-2026-05-27.md
+import { IterationCapReached, MAX_REVIEW_ITERATIONS, type EmitIpc } from '../../apps/utility/src/orchestrator/state-machine.js';
+import type { IpcMessage } from '../../packages/shared-types/src/ipc.js';
+
+describe('B38: review iteration cap N=3', () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = createTestDb();
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  function seedReviewRun(runId: string): void {
+    db.prepare(
+      `INSERT INTO runs (run_id, playbook, question, started_at, current_state, status)
+       VALUES (?, 'cash_lever', 'q', ?, ?, 'in_progress')`,
+    ).run(runId, Date.now(), '{}');
+  }
+
+  it('exports MAX_REVIEW_ITERATIONS = 3 (matches phase-r-decisions.md §3)', () => {
+    expect(MAX_REVIEW_ITERATIONS).toBe(3);
+  });
+
+  it('IterationCapReached is exported and named correctly', () => {
+    const err = new IterationCapReached('r-1', 'wb-1');
+    expect(err.name).toBe('IterationCapReached');
+    expect(err.runId).toBe('r-1');
+    expect(err.writebackId).toBe('wb-1');
+  });
+
+  it('shipped-clean → write-back-proposed initialises iteration=0', () => {
+    const runId = 'b38-init';
+    seedReviewRun(runId);
+    const next = transition(
+      { kind: 'shipped-clean', runId, memoPath: '/m.md', rigorScore: 80 },
+      { kind: 'writeback.proposed', drafts: [] },
+      db,
+    );
+    expect(next).not.toHaveProperty('code');
+    const r = next as RunState & { iteration?: number };
+    expect(r.kind).toBe('write-back-proposed');
+    expect(r.iteration).toBe(0);
+  });
+
+  it('write-back-proposed → review carries iteration through', () => {
+    const runId = 'b38-carry';
+    seedReviewRun(runId);
+    const next = transition(
+      { kind: 'write-back-proposed', runId, drafts: [], iteration: 2 },
+      { kind: 'writeback.sent', writebackId: 'wb-x' },
+      db,
+    );
+    expect(next).not.toHaveProperty('code');
+    const r = next as RunState & { iteration?: number };
+    expect(r.kind).toBe('review');
+    expect(r.iteration).toBe(2);
+  });
+
+  it('3 review.iterate cycles are allowed; 4th throws IterationCapReached and emits IPC', () => {
+    const runId = 'b38-cap';
+    seedReviewRun(runId);
+
+    const emitted: IpcMessage[] = [];
+    const emitIpc: EmitIpc = (m) => { emitted.push(m); };
+
+    // Start at review with iteration=0 (no iterates fired yet)
+    let state: RunState = { kind: 'review', runId, writebackId: 'wb-cap', iteration: 0 };
+
+    // Iterate #1 (iteration becomes 1) — OK
+    let r = transition(state, { kind: 'review.iterate' }, db, emitIpc);
+    expect(r).not.toHaveProperty('code');
+    expect((r as RunState).kind).toBe('write-back-proposed');
+    expect((r as { iteration: number }).iteration).toBe(1);
+
+    // round-trip back to review for next iterate
+    state = transition(r as RunState, { kind: 'writeback.sent', writebackId: 'wb-cap' }, db) as RunState;
+    expect(state.kind).toBe('review');
+    expect((state as { iteration: number }).iteration).toBe(1);
+
+    // Iterate #2
+    r = transition(state, { kind: 'review.iterate' }, db, emitIpc);
+    expect(r).not.toHaveProperty('code');
+    expect((r as { iteration: number }).iteration).toBe(2);
+    state = transition(r as RunState, { kind: 'writeback.sent', writebackId: 'wb-cap' }, db) as RunState;
+
+    // Iterate #3
+    r = transition(state, { kind: 'review.iterate' }, db, emitIpc);
+    expect(r).not.toHaveProperty('code');
+    expect((r as { iteration: number }).iteration).toBe(3);
+    state = transition(r as RunState, { kind: 'writeback.sent', writebackId: 'wb-cap' }, db) as RunState;
+
+    // Iterate #4 — must transition to failed with ITERATION_CAP_REACHED + emit IPC
+    expect(emitted.filter((m) => m.kind === 'run.iteration.cap_reached')).toHaveLength(0);
+    r = transition(state, { kind: 'review.iterate' }, db, emitIpc);
+    expect((r as RunState).kind).toBe('failed');
+    expect(((r as RunState & { error: { code: string } }).error.code)).toBe('ITERATION_CAP_REACHED');
+
+    const capEvents = emitted.filter((m) => m.kind === 'run.iteration.cap_reached');
+    expect(capEvents).toHaveLength(1);
+    expect(capEvents[0].payload).toEqual({
+      runId,
+      writebackId: 'wb-cap',
+      maxIterations: 3,
+    });
+  });
+
+  it('cap-reached transition is persisted to state_transitions as review → failed', () => {
+    const runId = 'b38-persist';
+    seedReviewRun(runId);
+    const state: RunState = { kind: 'review', runId, writebackId: 'wb-p', iteration: 3 };
+
+    transition(state, { kind: 'review.iterate' }, db);
+
+    const row = db.prepare(
+      `SELECT from_kind, to_kind FROM state_transitions WHERE run_id = ? ORDER BY ts DESC LIMIT 1`,
+    ).get(runId) as { from_kind: string; to_kind: string };
+    expect(row.from_kind).toBe('review');
+    expect(row.to_kind).toBe('failed');
+  });
+});

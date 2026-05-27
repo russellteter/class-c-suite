@@ -5,6 +5,30 @@ import type Database from 'better-sqlite3';
 import type { RunState, RunFailedError } from '@c-suite/shared-types/run-state';
 import type { AgentRole } from '@c-suite/shared-types/agent-definition';
 import type { RunCritiqueOutput } from '@c-suite/shared-types/run-critique';
+import type { IpcMessage } from '@c-suite/shared-types/ipc';
+
+/**
+ * B38: N=3 iteration cap on review → write-back-proposed transitions.
+ * Source: docs/research/phase-r-decisions.md §3 (Iterative feedback N=3 hard cap)
+ *         docs/reviews/ultrareview-2026-05-27.md "Critical Fix 4"
+ *
+ * Semantics: `iteration` counts review.iterate events fired so far.
+ *   - 0: no iterations yet (fresh draft from shipped-clean)
+ *   - 1..3: legal review.iterate transitions
+ *   - 4: would-be 4th iteration — rejected with IterationCapReached
+ */
+export const MAX_REVIEW_ITERATIONS = 3;
+
+export class IterationCapReached extends Error {
+  constructor(public readonly runId: string, public readonly writebackId: string) {
+    super(
+      `Review iteration cap reached (N=${MAX_REVIEW_ITERATIONS}). Commit, reject, or restart the run.`,
+    );
+    this.name = 'IterationCapReached';
+  }
+}
+
+export type EmitIpc = (msg: IpcMessage) => void;
 
 // --- RunEvent union ---
 
@@ -38,7 +62,7 @@ const LEGAL_TRANSITIONS: Record<string, string[]> = {
   'shipped-clean':       ['write-back-proposed', 'run-critic'],
   'shipped-draft':       ['run-critic'],
   'write-back-proposed': ['review'],
-  'review':              ['committed', 'write-back-proposed'],
+  'review':              ['committed', 'write-back-proposed', 'failed'],
   'committed':           ['run-critic'],
   'run-critic':          ['handoff'],
   'handoff':             [],  // terminal
@@ -62,6 +86,7 @@ export function transition(
   state: RunState,
   event: RunEvent,
   db: Database.Database,
+  emitIpc?: EmitIpc,
 ): RunState | RunFailedError {
   const fromKind = state.kind;
   let nextState: RunState | RunFailedError | null = null;
@@ -195,7 +220,8 @@ export function transition(
 
     case 'shipped-clean':
       if (event.kind === 'writeback.proposed') {
-        nextState = { kind: 'write-back-proposed', runId: state.runId, drafts: [] };
+        // B38: initial entry — zero review iterations have fired.
+        nextState = { kind: 'write-back-proposed', runId: state.runId, drafts: [], iteration: 0 };
       } else if (event.kind === 'run-critic.complete') {
         nextState = {
           kind: 'run-critic',
@@ -217,11 +243,12 @@ export function transition(
 
     case 'write-back-proposed':
       if (event.kind === 'writeback.sent') {
+        // B38: carry iteration count forward (count of review.iterate events so far).
         nextState = {
           kind: 'review',
           runId: state.runId,
           writebackId: event.writebackId,
-          iteration: 1,
+          iteration: state.iteration,
         };
       }
       break;
@@ -230,7 +257,33 @@ export function transition(
       if (event.kind === 'review.accepted') {
         nextState = { kind: 'committed', runId: state.runId };
       } else if (event.kind === 'review.iterate') {
-        nextState = { kind: 'write-back-proposed', runId: state.runId, drafts: [] };
+        const nextIteration = state.iteration + 1;
+        if (nextIteration > MAX_REVIEW_ITERATIONS) {
+          // B38: cap reached. Emit IPC for UI, transition to failed.
+          emitIpc?.({
+            kind: 'run.iteration.cap_reached',
+            payload: {
+              runId: state.runId,
+              writebackId: state.writebackId,
+              maxIterations: MAX_REVIEW_ITERATIONS,
+            },
+          });
+          nextState = {
+            kind: 'failed',
+            runId: state.runId,
+            error: makeFailedError(
+              'ITERATION_CAP_REACHED',
+              `Review iteration cap reached (N=${MAX_REVIEW_ITERATIONS}); commit or restart`,
+            ),
+          };
+        } else {
+          nextState = {
+            kind: 'write-back-proposed',
+            runId: state.runId,
+            drafts: [],
+            iteration: nextIteration,
+          };
+        }
       }
       break;
 

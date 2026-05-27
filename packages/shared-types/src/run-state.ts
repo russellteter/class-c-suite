@@ -26,7 +26,7 @@ export type RunState =
   | { kind: 'verifier';            runId: string; memo: Memo; verifierInput: VerifierInput }
   | { kind: 'shipped-clean';       runId: string; memoPath: string; rigorScore: number }
   | { kind: 'shipped-draft';       runId: string; memoPath: string; failureReasons: string[] }
-  | { kind: 'write-back-proposed'; runId: string; drafts: WritebackDraft[] }
+  | { kind: 'write-back-proposed'; runId: string; drafts: WritebackDraft[]; iteration: number }
   | { kind: 'review';              runId: string; writebackId: string; iteration: number }
   | { kind: 'committed';           runId: string }
   | { kind: 'handoff';             runId: string; handoffPath: string }
