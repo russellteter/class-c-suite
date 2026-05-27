@@ -197,28 +197,29 @@
 
 ## New blockers (added during Phase R or chapters)
 
-### B17 — Missing-skill register: 7 referenced skills not installed `NEW` `P1`
-**What.** PRD and CLAUDE.md reference these skills as if they exist in Russell's Claude Code environment, but `find ~/.claude` returns nothing for them:
-- **`russell-voice`** — referenced in PRD §6 + CLAUDE.md §4 as the voice rule-set for personal-facing memo content (executive summary, reco, open-questions).
-- **`run-critique`** — referenced in CLAUDE.md §4 as the rubric the Run-Critic agent uses at end of every run.
-- **`weekly-cash-forecast`** — referenced as the skill driving the Monday cash-forecast scheduled job.
-- **`covenant-tracker`** — referenced as the skill driving covenant proximity in tripwire scan.
-- **`renewal-forecast`** — referenced as the skill driving Sunday renewal sweep. Also flagged by ultraplan B7 (`Owner.Name` bug).
-- **`call-intelligence`** — referenced as the skill driving Chorus sweep.
-- **`system-check`** — referenced as the skill driving morning brief health check.
-- **`class-aws-connector`** — referenced as the skill driving AWS queries.
-
-Only `class-brand-voice`, `class-brand-document`, `class-brand-excel`, `class-brand-presentations` (4 brand skills) are actually installed.
+### B17 — Missing-skill register: 8 referenced skills not installed `MITIGATED` `P1`→`P3`
+**What.** PRD and CLAUDE.md reference these skills as if they exist in Russell's Claude Code environment, but `find ~/.claude/skills/` returned nothing for them: `russell-voice`, `run-critique`, `weekly-cash-forecast`, `covenant-tracker`, `renewal-forecast`, `call-intelligence`, `system-check`, `class-aws-connector`. Hypothesis confirmed: they lived as **Cowork plugin skills** under `/var/folders/.../claude-hostloop-plugins/.../skills/<name>/` — ephemeral temp-folder mount Cowork manages, not portable to local Claude Code.
 **Bites at.** Phase R R0 (skill inventory), Ch.4 (Run-Critic + Synthesizer voice rules), Ch.7 (playbook skill invocations), Ch.8 (MCP skill wrappers), Ch.10 (scheduled jobs).
-**Hypothesis.** These exist as **Cowork artifacts (project-level prompts/scripts inside Russell's Cowork project)** rather than as Claude Code skills under `~/.claude/skills/`. The original PRD/CLAUDE.md was written before the Cowork-vs-Claude-Code distinction crystallized.
-**Mitigation.**
-- **`docs/brand-voice-rules.md`** ships an inferred `russell-voice` rule-set extracted from `~/.claude/CLAUDE.md` + `~/.claude/rules/stop-slop-writing.md`. Used until `russell-voice` is installed.
-- Phase R R0 reads Cowork's project directory (if accessible) for the 7 unfound skills; extracts their logic; either:
-  - (a) packages each as a Claude Code skill at `~/.claude/skills/<name>/` (Russell's preferred discoverability), OR
-  - (b) codifies the logic directly into C-Suite modules (skipping skill-subprocess invocation), OR
-  - (c) flags any that genuinely don't exist for Russell to author.
-- Per-skill resolution recorded in `docs/research/R0-skill-inventory.md`.
-**Owner.** R0 sub-agent; Russell installs / authors any missing skills.
+**Status.** **MITIGATED 2026-05-26.** Russell ran the `scripts/cowork-extract-skills.md` prompt in Cowork; Cowork wrote `/Users/russellteter/Documents/Claude/Projects/Business Planning/_extracted_skills_for_c_suite.md` (2,369 lines, 8 skills, all verbatim). The local session ran `scripts/install-extracted-skills.py` which installed:
+- `~/.claude/skills/russell-voice/` (SKILL.md + 3 refs: phrases.md, structures.md, russell-lexicon.md)
+- `~/.claude/skills/run-critique/SKILL.md`
+- `~/.claude/skills/weekly-cash-forecast/SKILL.md`
+- `~/.claude/skills/covenant-tracker/SKILL.md`
+- `~/.claude/skills/renewal-forecast/SKILL.md`
+- `~/.claude/skills/call-intelligence/SKILL.md`
+- `~/.claude/skills/system-check/SKILL.md`
+- `~/.claude/skills/class-aws-connector/` (SKILL.md + 3 refs: common_queries.md, recovery.md, cash_model_context.md)
+
+All 8 now appear in the Claude Code skill registry (verified via system-reminder skill listing 2026-05-26 22:10 ET). preflight.sh confirms all skill rows green.
+
+**One known issue carried forward** (from the extraction): the `renewal-forecast` skill uses `Opportunity.Owner.Name` SOQL queries that surface terminated reps — the SAME bug as BLOCKERS B7. The corrected pattern (`Account_Manager__r` + `IsActive`) is now both documented in the skill's "Known issues" section AND verified live against the Class org (B7 verified). When the C-Suite invokes this skill, wrap with the corrected query OR fix the skill source directly.
+
+**Connector wiring note** from the extraction (relevant to mcp.md): the original Cowork skills reference Cowork-specific MCP UUIDs (`mcp__c1f73cc9-916c-4b4e-b5fc-db2960d27602__ns_runCustomSuiteQL`, etc.). When the C-Suite codifies these skill behaviors into its own modules at Ch.7/Ch.10, map skill intent to the C-Suite's wrapper interface — do not paste the Cowork UUIDs. R0 will document this mapping.
+
+**Slack-touching code paths in some skills (per extraction notes) are deferred to V1.5** — Slack is not a V1 MCP per PRD §6. Flag where present, defer the path.
+
+Severity downgraded P1 → P3 (residual risk: the codify-vs-invoke per-skill decision still needs to happen at Ch.7/Ch.10 boundary; tracked but no longer blocking).
+**Owner.** R0 documents per-skill codify-vs-invoke decision in `docs/research/R0-skill-inventory.md`; /goal applies at Ch.7/Ch.10.
 
 ---
 

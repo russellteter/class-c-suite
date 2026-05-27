@@ -21,6 +21,24 @@
       "id": "tier-1-execution-enhancements",
       "summary": "Pre-flight script, NetSuite TBA request template, brand-voice extraction, ADR template + ADR-0000, sub-agent dispatch templates (9 roles), rigor-cases + canary fixtures, project-state file, BLOCKERS B17 missing-skill register, README orchestrator quickstart.",
       "completed_on": "2026-05-26",
+      "commits": ["10559a9"]
+    },
+    {
+      "id": "downstream-blocker-remediation",
+      "summary": "pnpm installed by Russell; customer-dashboard repo located + cloned; preflight + mcp.md + BLOCKERS updated for the Python+43K-LOC reality (B18 NEW for subprocess implications, B2 downgraded); Cowork extraction prompt shipped at scripts/cowork-extract-skills.md.",
+      "completed_on": "2026-05-26",
+      "commits": ["5b16baa"]
+    },
+    {
+      "id": "salesforce-netsuite-r1-partial",
+      "summary": "Salesforce + NetSuite live access verified. R1 partial report at docs/research/R1-connector-reality.md. Two major Connector Playbook corrections caught: B19 (stage labels S4/S5/Commit/BestCase don't exist; real labels documented), B20 (renewal field is Renewal_Anniversary_Date__c not Renewal_Date__c). B7 verified live. B1 downgraded P1->P2 (NetSuite MCP fully usable for Phase R).",
+      "completed_on": "2026-05-26",
+      "commits": ["1d83daa"]
+    },
+    {
+      "id": "skill-extraction-install",
+      "summary": "Russell ran the Cowork extraction prompt; Cowork produced _extracted_skills_for_c_suite.md (2369 lines, all 8 skills full content). Installer script scripts/install-extracted-skills.py installed: russell-voice (+3 refs), run-critique, weekly-cash-forecast, covenant-tracker, renewal-forecast, call-intelligence, system-check, class-aws-connector (+3 refs). All 8 verified in skill registry. preflight green (0 fails). B17 MITIGATED P1->P3.",
+      "completed_on": "2026-05-26",
       "commits": []
     }
   ],
@@ -67,9 +85,27 @@
     },
     {
       "id": "B17",
-      "severity": "P1",
+      "severity": "P3",
+      "status": "MITIGATED",
+      "summary": "All 8 referenced skills extracted from Cowork and installed at ~/.claude/skills/<name>/. Residual: per-skill codify-vs-invoke decision at Ch.7/Ch.10; renewal-forecast skill source still has Owner.Name bug to fix on import."
+    },
+    {
+      "id": "B18",
+      "severity": "P2",
       "status": "NEW",
-      "summary": "Missing-skill register: russell-voice, run-critique, weekly-cash-forecast, covenant-tracker, renewal-forecast, call-intelligence, system-check, class-aws-connector referenced in PRD/CLAUDE.md but NOT installed as Claude Code skills. R0 reconciles (Cowork artifacts vs Claude Code skills) and either locates / installs / surfaces for Russell to author."
+      "summary": "Python subprocess from Electron utility process (customer-dashboard is 43K LOC Python). Ch.11 setup must include Python+venv install; electron-builder notarization does NOT include Python."
+    },
+    {
+      "id": "B19",
+      "severity": "P1",
+      "status": "VERIFIED",
+      "summary": "Connector Playbook stage labels (S4/S5/Commit/BestCase) don't exist in live org. Real labels documented in R1 report. Day-Zero form question needed to confirm Russell's 'committed' mental model."
+    },
+    {
+      "id": "B20",
+      "severity": "P1",
+      "status": "VERIFIED",
+      "summary": "Real renewal field is Renewal_Anniversary_Date__c (Account) and DH_Renewal_Date__c (Opportunity), NOT Renewal_Date__c. mcp.md typed builder corrected."
     }
   ],
   "file_manifest": {
@@ -93,6 +129,6 @@
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-26T21:15:00-04:00",
+  "last_updated": "2026-05-26T22:15:00-04:00",
   "updated_by": "scaffold session — Claude Opus 4.7 (1M context)"
 }
