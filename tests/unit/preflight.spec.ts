@@ -243,7 +243,7 @@ describe('Preflight §6.2 — Skill body line-count check (B29)', () => {
 // ── All-clean path ────────────────────────────────────────────────────────────
 
 describe('Preflight — all-clean path exits 0', () => {
-  it('exits 0 when vault is outside sync dirs and all skills are full-body', () => {
+  it('exits 0 when vault is outside sync dirs, git-initialized with ≥1 commit, and all skills are full-body', () => {
     const tempVault = makeTempDir('csuite-clean-vault2-');
     const tempSkills = makeTempDir('csuite-clean-skills-');
     const fullContent = Array(60).fill('# full skill line').join('\n');
@@ -253,6 +253,12 @@ describe('Preflight — all-clean path exits 0', () => {
       fs.mkdirSync(skillDir, { recursive: true });
       fs.writeFileSync(path.join(skillDir, 'SKILL.md'), fullContent);
     }
+
+    // Ch.2 B22: vault must be git-initialized with ≥1 commit for preflight to pass.
+    spawnSync('git', ['-c', 'init.defaultBranch=main', 'init'], { cwd: tempVault });
+    fs.writeFileSync(path.join(tempVault, '.gitkeep'), '');
+    spawnSync('git', ['-c', 'user.email=test@local', '-c', 'user.name=test', 'add', '.'], { cwd: tempVault });
+    spawnSync('git', ['-c', 'user.email=test@local', '-c', 'user.name=test', 'commit', '-m', 'baseline'], { cwd: tempVault });
 
     const { exitCode } = runPreflight({
       VAULT_PATH: tempVault,
