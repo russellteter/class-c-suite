@@ -2,8 +2,8 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "phase-1-complete",
-  "next_action": "B35 MITIGATED 2026-05-27: verifier-runner.ts ships, run-loop.ts wired, 11/11 unit tests green (canary rigor_score=52, cash-lever rigor_score=83 — neither 85). AC-1 in ch5-audit-qa-report.md NW → PASS. B36-B39 remain — Russell decides morning checkpoint. Phase 2 (Ch.6 write-back review pane) is now unblocked from the Verifier-execution angle. Remaining morning decisions: (1) B36 classifier fall-through (open_qa for 6/8 playbooks); (2) B37 stakeholder lens roster; (3) B38 N=3 cap; (4) B39 git-commit silent failure; (5) B22 vault bootstrap (scripts/vault-bootstrap.sh); (6) B19 Day-Zero committed-pipeline stage labels confirmation.",
+  "current_phase": "phase-1-polish-complete-awaiting-checkpoint",
+  "next_action": "POLISH 2026-05-27 closed all 8 UNITS: B36 per-playbook classifier (aac6117); B37 COS-only stakeholder roster (aac6117); B38 N=3 iteration cap + IPC event (bca3628); B39 SafeWrite git-failure surfacing — log+IPC+sqlite migration 004 (7e4b73c); B25 decisions INDEX rebuilt from on-disk DEC-*.md glob (vault commit f432ae3); B28 business-planning/ mirror deleted, fixtures preserved at fixtures/ (3e24f89); B6/UNIT-7 committed-pipeline definition locked via LIVE SOQL — ADR-0007 + isCommittedOpp() (965beb7); UNIT-8 vault wikilink backfill — 17 files via SafeWrite, 19/19 tests green (5b37078). Auto-push log clean (push OK on 5b37078). Russell does §1 checkpoint per C_Suite_Post_Goal_Next_Steps.md before Phase 2 /goal.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",
@@ -77,6 +77,13 @@
       "completed_on": "2026-05-27",
       "verdict": "CLOSE",
       "commits": []
+    },
+    {
+      "id": "polish-sprint-2026-05-27",
+      "summary": "8 polish UNITs closed in single session — B36/B37 classifier+roster; B38 N=3 cap; B39 git-failure surfacing; B25 INDEX rebuild; B28 mirror deletion; B6/UNIT-7 committed-pipeline lock (live SOQL); UNIT-8 vault wikilink backfill (17 files). 6 atomic commits + 1 vault commit. Test suite 867/884 (1 known timing flake in vaultwatcher AC-5 deletion, passes solo). ADR-0007 written. Migration 004 vault_commit_failures.sql.",
+      "completed_on": "2026-05-27",
+      "verdict": "CLOSE",
+      "commits": ["aac6117", "bca3628", "7e4b73c", "f432ae3", "3e24f89", "965beb7", "5b37078"]
     },
     {
       "id": "ch-5-audit-qa",
@@ -216,6 +223,6 @@
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-27T08:30:00-04:00",
-  "updated_by": "B35 Fix-Integration (Ch.5 P0 close) — verifier-runner.ts + run-loop.ts wired; 11/11 unit tests; AC-1 PASS; current_phase → phase-1-complete"
+  "last_updated": "2026-05-27T09:45:00-04:00",
+  "updated_by": "Polish sprint 2026-05-27 — 8 UNITs closed (B36/B37/B38/B39/B25/B28/B6+UNIT7/UNIT8); current_phase → phase-1-polish-complete-awaiting-checkpoint"
 }
