@@ -483,6 +483,57 @@ describe('IpcMessage — cost.usage (§3 variant 21)', () => {
   });
 });
 
+// ── vault.init.error (ADR-0003 §10 G-1 — new variant, not in Ch.0 union) ────
+//
+// Shape decision: payload: { message: string, vaultPath?: string }
+// This matches the structural convention of every other IpcMessage variant
+// (payload object, never top-level fields). ADR §7.2 shows { kind, message }
+// at the top level — that is inconsistent with the union; this spec normalizes
+// it to { kind, payload: { message, vaultPath? } }.
+// The IpcMessage union in packages/shared-types/src/ipc.ts must be extended
+// with this variant by Runtime (Ch.2) before these tests can pass (G-1).
+
+describe('IpcMessage — vault.init.error (ADR-0003 §10 G-1)', () => {
+  it('parses valid vault.init.error payload', () => {
+    const msg = validateIpc({
+      kind: 'vault.init.error',
+      payload: {
+        message: 'VaultNotInitialized',
+        vaultPath: '/Users/test/vault',
+      },
+    });
+    expect(msg.kind).toBe('vault.init.error');
+  });
+
+  it('parses vault.init.error with message only (vaultPath optional)', () => {
+    const msg = validateIpc({
+      kind: 'vault.init.error',
+      payload: { message: 'VaultNotInitialized' },
+    });
+    expect(msg.kind).toBe('vault.init.error');
+  });
+
+  it('throws when payload is missing entirely', () => {
+    expect(() => validateIpc({
+      kind: 'vault.init.error',
+    })).toThrow();
+  });
+
+  it('throws when message field is absent (wrong payload shape)', () => {
+    expect(() => validateIpc({
+      kind: 'vault.init.error',
+      payload: { vaultPath: '/Users/test/vault' },
+    })).toThrow();
+  });
+
+  it('throws when message is not a string', () => {
+    expect(() => validateIpc({
+      kind: 'vault.init.error',
+      payload: { message: 42 },
+    })).toThrow();
+  });
+});
+
 // ── Unknown kind rejection ───────────────────────────────────────────────────
 
 describe('validateIpc — unknown kind rejection', () => {
