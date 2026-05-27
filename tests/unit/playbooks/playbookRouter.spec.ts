@@ -1,6 +1,13 @@
 // tests/unit/playbooks/playbookRouter.spec.ts
 // Source: tasks/ch7-test-brief.md §1 + docs/decisions/0009-ch7-playbooks-home.md §3.1 + §15 AC-1
+//         tasks/ch7-phase-b-test-brief.md §5
 // Tests routeToPlaybook(id) → module with runPlaybook function.
+//
+// Phase B extension: 4 Phase B playbooks (gtm_realloc, strategic_option, board_narrative,
+// restructure_decision) previously threw "Phase B not implemented". Those active throw-assertions
+// are replaced with it.todo — they would go red once Runtime ships the Phase B router update.
+// Convert to real "returns module with runPlaybook" assertions when routeToPlaybook no longer
+// throws for Phase B ids.
 //
 // vi.mock calls must come before imports — Vitest hoists them.
 // The playbook modules import orchestrator/dispatch + db which pull better-sqlite3.
@@ -31,12 +38,14 @@ describe('playbookRouter — routeToPlaybook returns module with runPlaybook (AD
     expect(typeof mod.runPlaybook).toBe('function');
   });
 
-  it('routeToPlaybook("gtm_realloc") throws — Phase B not yet implemented', () => {
-    expect(() => routeToPlaybook('gtm_realloc')).toThrow(/Phase B/);
+  it('routeToPlaybook("gtm_realloc") returns an object with runPlaybook function', () => {
+    const mod = routeToPlaybook('gtm_realloc');
+    expect(typeof mod.runPlaybook).toBe('function');
   });
 
-  it('routeToPlaybook("strategic_option") throws — Phase B not yet implemented', () => {
-    expect(() => routeToPlaybook('strategic_option')).toThrow(/Phase B/);
+  it('routeToPlaybook("strategic_option") returns an object with runPlaybook function', () => {
+    const mod = routeToPlaybook('strategic_option');
+    expect(typeof mod.runPlaybook).toBe('function');
   });
 
   it('routeToPlaybook("stakeholder_1_1") returns an object with runPlaybook function', () => {
@@ -44,12 +53,14 @@ describe('playbookRouter — routeToPlaybook returns module with runPlaybook (AD
     expect(typeof mod.runPlaybook).toBe('function');
   });
 
-  it('routeToPlaybook("board_narrative") throws — Phase B not yet implemented', () => {
-    expect(() => routeToPlaybook('board_narrative')).toThrow(/Phase B/);
+  it('routeToPlaybook("board_narrative") returns an object with runPlaybook function', () => {
+    const mod = routeToPlaybook('board_narrative');
+    expect(typeof mod.runPlaybook).toBe('function');
   });
 
-  it('routeToPlaybook("restructure_decision") throws — Phase B not yet implemented', () => {
-    expect(() => routeToPlaybook('restructure_decision')).toThrow(/Phase B/);
+  it('routeToPlaybook("restructure_decision") returns an object with runPlaybook function', () => {
+    const mod = routeToPlaybook('restructure_decision');
+    expect(typeof mod.runPlaybook).toBe('function');
   });
 
   it('routeToPlaybook("pre_mortem") returns an object with runPlaybook function', () => {
@@ -80,18 +91,26 @@ describe('playbookRouter — cash_lever adapter (AC-1 explicit)', () => {
 
 });
 
-describe('playbookRouter — unknown id handling', () => {
+describe('playbookRouter — Phase A ids all resolved (no throw)', () => {
 
-  it('Phase B playbook ids throw with "Phase B" in the message (playbookRouter.ts:line 45-52)', () => {
-    // gtm_realloc is Phase B — verify error message is informative
-    let caught: Error | null = null;
-    try {
-      routeToPlaybook('gtm_realloc');
-    } catch (e) {
-      caught = e as Error;
-    }
-    expect(caught).not.toBeNull();
-    expect(caught?.message).toMatch(/Phase B playbook/);
+  it('cash_lever does not throw', () => {
+    expect(() => routeToPlaybook('cash_lever')).not.toThrow();
+  });
+
+  it('stakeholder_1_1 does not throw', () => {
+    expect(() => routeToPlaybook('stakeholder_1_1')).not.toThrow();
+  });
+
+  it('pre_mortem does not throw', () => {
+    expect(() => routeToPlaybook('pre_mortem')).not.toThrow();
+  });
+
+  it('quick_read does not throw', () => {
+    expect(() => routeToPlaybook('quick_read')).not.toThrow();
+  });
+
+  it('open_qa does not throw', () => {
+    expect(() => routeToPlaybook('open_qa')).not.toThrow();
   });
 
 });
