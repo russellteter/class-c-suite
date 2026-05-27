@@ -4,22 +4,37 @@
 // Receives MessagePort from main on startup, then all subsequent IPC uses the port.
 
 // Declare Electron utility process globals not in @types/electron for utility procs.
+// NOTE (B45 fix): In Electron utility processes, e.ports[] contains MessagePortMain objects
+// (NodeEventEmitter-based, .on() API). Typed as IpcPort here to match the proxy interface.
 declare const process: NodeJS.Process & {
   parentPort: {
-    once(event: 'message', handler: (e: { data: unknown; ports: MessagePort[] }) => void): void;
+    once(event: 'message', handler: (e: { data: unknown; ports: IpcPort[] }) => void): void;
   };
 };
 
 import { createLogger } from './logger.js';
-import { initSqlProxy } from './sql/proxy.js';
+import { initSqlProxy, type IpcPort } from './sql/proxy.js';
 import { checkAndResumeInProgressRun } from './orchestrator/index.js';
 import { initScheduler, getScheduler } from './scheduler/index.js';
 import { initSafeWrite } from './safewrite/index.js';
 
+// B45 diagnostic: emit runtime identity on startup so supervisor can log ABI + Node version.
+// This runs before any async work; if a later import crashes we get the env first.
+if (process.env.UTILITY_DIAG === '1') {
+  const diagLine = JSON.stringify({
+    nodeVersion: process.version,
+    modulesAbi: String(process.versions.modules),
+    electronVersion: process.versions.electron ?? 'none',
+    execPath: process.execPath,
+  });
+  process.stderr.write('UTILITY_DIAG:' + diagLine + '\n');
+}
+
 const log = createLogger();
 
 // IPC port received from main via __port_init handshake.
-let ipcPort: MessagePort | null = null;
+// Typed as IpcPort (structural) — Electron utility process receives MessagePortMain (NodeEventEmitter).
+let ipcPort: IpcPort | null = null;
 
 log.info({ message: 'utility process starting' });
 
@@ -28,7 +43,7 @@ process.parentPort.once('message', (e) => {
   const data = e.data as { kind?: string } | null;
   if (data?.kind === '__port_init' && e.ports.length > 0) {
     ipcPort = e.ports[0];
-    ipcPort.start();
+    ipcPort.start?.();   // MessagePortMain needs .start() to begin receiving; optional on IpcPort
 
     // Initialize SQL proxy with the port.
     initSqlProxy(ipcPort);
@@ -55,8 +70,10 @@ process.parentPort.once('message', (e) => {
     });
 
     // Listen for scheduler reset signal from main (5-hr window).
-    ipcPort.addEventListener('message', (event: MessageEvent<{ kind?: string }>) => {
-      if (event.data?.kind === 'scheduler:reset') {
+    // Use .on() — MessagePortMain (Electron utility process) is NodeEventEmitter, not EventTarget.
+    ipcPort.on('message', (event: { data: unknown }) => {
+      const msg = event.data as { kind?: string } | null;
+      if (msg?.kind === 'scheduler:reset') {
         getScheduler()?.reset();
       }
     });

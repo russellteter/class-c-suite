@@ -63,8 +63,9 @@ export function forkUtility(): Electron.UtilityProcess {
     env: {
       ...process.env,
       UTILITY_ROLE: 'orchestrator',
+      UTILITY_DIAG: '1',   // B45: emit env/ABI dump on startup for crash triage
     },
-    stdio: 'pipe',    // utility's stderr goes to main for crash logging
+    stdio: 'pipe',    // utility stderr+stdout piped to main for crash logging
   });
   return proc;
 }
@@ -93,11 +94,18 @@ export function startSupervision(
   logCrashToSQLite(db, 'start', {});
   log.info({ message: 'utility process started' });
 
-  // Capture utility stderr for crash logging.
+  // B45 instrumentation: buffer full stderr + stdout per crash cycle.
+  // Log on exit so we capture the complete output, not just the first chunk.
+  let stderrBuf = '';
+  let stdoutBuf = '';
+
   proc.stderr?.on('data', (chunk: Buffer) => {
-    const stack = chunk.toString();
-    logCrashToSQLite(db, 'crash', { stack });
-    log.error({ message: 'utility stderr', stack });
+    stderrBuf += chunk.toString();
+  });
+
+  // Pipe stdout too — some ESM resolution errors emit to stdout under certain Electron builds.
+  proc.stdout?.on('data', (chunk: Buffer) => {
+    stdoutBuf += chunk.toString();
   });
 
   proc.on('exit', (code) => {
@@ -114,8 +122,34 @@ export function startSupervision(
       .filter(t => now - t < RESTART_WINDOW_MS)
       .concat(now);
 
-    logCrashToSQLite(db, 'crash', { exitCode: code ?? undefined, restartCount: state.restarts.length });
-    log.error({ message: 'utility process crashed', exitCode: code, restartCount: state.restarts.length });
+    // B45: log full buffered stderr+stdout on crash so we get the complete error.
+    const crashStack = stderrBuf || '(no stderr captured)';
+    logCrashToSQLite(db, 'crash', { exitCode: code ?? undefined, stack: crashStack, restartCount: state.restarts.length });
+    log.error({ message: 'utility process crashed', exitCode: code, restartCount: state.restarts.length, stderr: stderrBuf, stdout: stdoutBuf });
+
+    // Parse the B45 UTILITY_DIAG env-dump line if present.
+    let diagPayload = { nodeVersion: 'unknown', modulesAbi: 'unknown', electronVersion: 'unknown', execPath: 'unknown' };
+    const diagLine = stderrBuf.split('\n').find(l => l.startsWith('UTILITY_DIAG:'));
+    if (diagLine) {
+      try {
+        diagPayload = JSON.parse(diagLine.slice('UTILITY_DIAG:'.length));
+      } catch { /* parse failure — leave defaults */ }
+    }
+
+    // Emit utility.crash.diagnostic IPC so renderer and any log aggregator can see it.
+    webContents.send('ipc:message', {
+      kind: 'utility.crash.diagnostic',
+      payload: {
+        ...diagPayload,
+        stderr: stderrBuf,
+        stdout: stdoutBuf,
+        exitCode: code ?? null,
+      },
+    });
+
+    // Reset buffers for next restart cycle.
+    stderrBuf = '';
+    stdoutBuf = '';
 
     if (state.restarts.length > MAX_RESTARTS) {
       // Surface to renderer and halt.
