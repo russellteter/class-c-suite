@@ -34,14 +34,27 @@
 - If TBA slips past Ch.8, ship Ch.8 with NetSuite skip-and-flag; close as post-V1 patch when tokens arrive.
 **Owner.** Russell (relay to Brian); `/goal` tracks.
 
-### B2 — PowerBI `customer-dashboard-poc` shape unknown to spec `SEEDED` `P1`
-**What.** The PowerBI dataset shape isn't documented in any operating-model artifact; the integration approach depends on what the poc actually does.
+### B2 — PowerBI `customer-dashboard` shape now partially known `DOWNGRADED` `P2`
+**What.** The PowerBI dataset shape isn't documented in operating-model artifacts; the integration approach depends on what the project actually does.
 **Bites at.** Ch.8 (MCP integration).
-**Status.** Phase R R1 reads the poc codebase end-to-end and documents shape + auth + query patterns.
+**Status.** Repo located + cloned at `/Users/russellteter/Claude Code Projects/customer-dashboard/` (from `https://github.com/russellteter/customer-dashboard`). **Confirmed from its own CLAUDE.md:** Python project, 43K LOC, 2,654 tests, 3 data sources (Power BI Usage + Power BI Collaborate + Google Sheets Master Renewal Playbook), join key `Account ID 18 Digit`, JSON export via `python src/main.py -j output/data.json`. Severity downgraded from P1 → P2 because location + language + entry point + tool-interface candidate are all now known. **B18 now tracks the Python-subprocess-from-Electron implication separately.**
 **Mitigation.**
-- R1 produces a stable interface contract for the integration (subprocess wrapper recommended unless R1 finds a cleaner path).
-- `docs/architecture/mcp.md` updated with the verified shape before Ch.8 design.
-- CRO/CPO lenses consume product-usage signal with citable `source_id` per PRD §6 Supplementary Data Source section.
+- R1 reads `customer-dashboard/src/` end-to-end (per docs/architecture/mcp.md §PowerBI 🔍 R1 ACTION).
+- Integration shape default: **Python subprocess invoked from utility process** with JSON output captured to a tool-call result (per the project's existing `-j` flag). Avoids rewriting 43K LOC of battle-tested Python.
+- `Account ID 18 Digit` is the canonical join key for any cross-source query.
+- CRO/CPO lenses consume product-usage + Google-Sheets-renewal signal with citable `source_id` per PRD §6 Supplementary Data Source section.
+
+### B18 — Python subprocess from Electron utility process — runtime + packaging implications `NEW` `P2`
+**What.** `customer-dashboard` is Python (not Node). The C-Suite is Electron + Node. Wrapping Python as a subprocess from the utility process introduces: (a) Python runtime dependency on the user's Mac (must install + version-pin), (b) the subprocess must run inside a venv (or pyenv) — the C-Suite's setup runbook needs to provision this, (c) `electron-builder` notarization of the C-Suite app does NOT include Python — Python is a separate user-installed prerequisite, (d) inter-process communication is JSON over stdout (per the project's `-j` flag), (e) error handling: if Python crashes, the utility process must catch + retry + degrade gracefully.
+**Bites at.** Ch.8 (PowerBI integration), Ch.11 (setup runbook + notarization).
+**Mitigation.**
+- Document Python + venv as an explicit prerequisite in `scripts/preflight.sh` (already checks `node`; add `python3` check).
+- `scripts/preflight.sh` checks that `customer-dashboard/` is git-initialized + has its venv set up, OR offers a `--bootstrap-poc` flag that runs the project's setup commands.
+- C-Suite utility process invokes via `child_process.spawn('python3', ['src/main.py', '-j', '/tmp/cdash-<runId>.json', '--validate'])` (read-only / dry-run path is the right default for V1 queries).
+- Subprocess result schema validated via Zod before lens consumption.
+- Ch.11 setup runbook: walks Russell through Python + venv install if not present; verifies the `-j` flag produces valid output before declaring setup complete.
+- If subprocess proves too brittle in Ch.8: fall back to "extract the SQL/DAX queries from `customer-dashboard/src/` and re-issue them directly from a Node Power BI client" — higher effort but eliminates the Python dependency.
+**Owner.** Ch.8 architect; R1 reports actual feasibility based on the codebase deep-read.
 
 ### B3 — Verifier reasoning-trace leak (rubber-stamp risk) `SEEDED` `P0`
 **What.** If the Verifier's input includes any lens reasoning trace (chain-of-thought, intermediate prompts), the Verifier will rubber-stamp instead of grading. **This is the single trust-defining wiring in the product.**

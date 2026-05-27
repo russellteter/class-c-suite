@@ -15,8 +15,13 @@
 set -uo pipefail
 
 VAULT_PATH="/Users/russellteter/Documents/Claude/Projects/Business Planning"
-POC_PATH="/Users/russellteter/Claude Code Projects/customer-dashboard-poc"
+# Both names possible — PRD originally said "-poc"; actual GH repo dropped the suffix.
+POC_PATHS=(
+  "/Users/russellteter/Claude Code Projects/customer-dashboard"
+  "/Users/russellteter/Claude Code Projects/customer-dashboard-poc"
+)
 SKILLS_DIR="$HOME/.claude/skills"
+EXTRACTED_SKILLS_FILE="/Users/russellteter/Documents/Claude/Projects/Business Planning/_extracted_skills_for_c_suite.md"
 
 QUIET=0; FIX_HOOKS=0
 for arg in "$@"; do
@@ -62,12 +67,24 @@ else
   fail "Vault does NOT contain C_Suite_PRD.md — source corpus not where expected"
 fi
 
-# -------- customer-dashboard-poc (PowerBI; PRD §6 + mcp.md + decision #9) --------
-section "customer-dashboard-poc (PowerBI)"
-if [ -d "$POC_PATH" ]; then
-  green "customer-dashboard-poc found at $POC_PATH"
+# -------- customer-dashboard (PowerBI; PRD §6 + mcp.md + decision #9) --------
+section "customer-dashboard (PowerBI)"
+POC_FOUND=""
+for p in "${POC_PATHS[@]}"; do
+  if [ -d "$p" ]; then POC_FOUND="$p"; break; fi
+done
+if [ -n "$POC_FOUND" ]; then
+  green "customer-dashboard found at $POC_FOUND"
 else
-  warn "customer-dashboard-poc not at expected path — R1 must locate"
+  warn "customer-dashboard not found at expected paths — clone from https://github.com/russellteter/customer-dashboard"
+fi
+
+# -------- Extracted skills file from Cowork (B17 remediation) --------
+section "Extracted-skills file (B17 remediation)"
+if [ -f "$EXTRACTED_SKILLS_FILE" ]; then
+  green "extracted-skills file present: $EXTRACTED_SKILLS_FILE — R0 reads + installs / codifies"
+else
+  warn "extracted-skills file missing — run scripts/cowork-extract-skills.md prompt in Cowork to generate"
 fi
 
 # -------- MEMORY.md (CLAUDE.md §6 + RESEARCH.md R0) --------

@@ -214,6 +214,20 @@ async function recentCallSummaries(opts: { sinceDays: number; accountFilter?: st
 
 **Phase R decision #9** resolves the integration shape. **The reading is REQUIRED at V1** — customer-facing playbooks (renewal risk if added, GTM reallocation, strategic option evaluation touching retention, board narrative) need product-usage substrate beyond Salesforce CRM.
 
+**Confirmed location:** `/Users/russellteter/Claude Code Projects/customer-dashboard/` (cloned from `https://github.com/russellteter/customer-dashboard`). PRD originally referenced `customer-dashboard-poc` — actual repo name dropped the `-poc` suffix.
+
+**What's actually in it (confirmed, not assumed — read from the project's own CLAUDE.md):**
+- **~43K LOC** Python (22K) + Jinja2/JS/CSS (19K). **NOT a thin poc.** It's a battle-tested production-grade tool with 2,654 tests across 48 files. Full CI/CD on GitHub Actions.
+- **Three data sources** (this changes the integration story — see B18):
+  1. **Power BI Class Usage** (DAX queries) — engagement metrics, feature adoption.
+  2. **Power BI Collaborate** (Monthly Collab/Class dataset) — Collaborate-side usage.
+  3. **Google Sheets — Master Renewal Playbook** (live API integration) — commercial / renewal data.
+- **Primary join key:** `Account ID 18 Digit` (Salesforce 18-character ID). Use this as the cross-source identifier whenever the C-Suite joins PowerBI + Salesforce data.
+- **Language:** Python (NOT Node/TypeScript). Implication: a Node subprocess wrapping it is the right pattern; rewriting in TS is high-effort + would lose the 2,654-test safety net.
+- **Entry point:** `python src/main.py` with flags `--power-automate` / `--local` / `--health-check` / `--validate` / `-j output/data.json` etc. JSON-export mode is the obvious tool-interface contract.
+
+🔍 R1 ACTION (refined from earlier): R1 reads `customer-dashboard/src/` end-to-end (using the project's own CLAUDE.md as the guide). Document: per-data-source query patterns, the `Account ID 18 Digit` join contract, the JSON-export schema (`-j` output), how `--health-check` and `--validate` behave, and Power BI auth flow.
+
 ### Three integration options (Phase R recommends one)
 
 **(a) Import poc patterns directly into C-Suite.** Copy the connection code, queries, and auth into a new C-Suite module. Pros: no subprocess overhead; full type safety. Cons: takes on maintenance burden; couples C-Suite to PowerBI client library versions.
