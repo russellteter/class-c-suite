@@ -45,7 +45,7 @@ const CASH_LEVER_QUESTION =
   'Should we shift our W30 trough mitigation from line-of-credit draw to deferred AWS spend?';
 
 const STAKEHOLDER_QUESTION =
-  'Help me prep my 1:1 with Sarah — she's been disengaged since the reorg';
+  "Help me prep my 1:1 with Sarah — she's been disengaged since the reorg";
 
 const OPEN_QA_QUESTION =
   'What are the top three things I should know about running a board meeting?';
