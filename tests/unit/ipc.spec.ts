@@ -279,6 +279,7 @@ describe('IpcMessage — writeback.proposed (§3 variant 12)', () => {
         writebackId: 'wb-001',
         artifactType: 'position',
         draftPath: 'positions/active/POS-NEW-draft.md',
+        topic: 'Cash',
       },
     });
     expect(msg.kind).toBe('writeback.proposed');
@@ -287,7 +288,7 @@ describe('IpcMessage — writeback.proposed (§3 variant 12)', () => {
   it('throws when draftPath is missing', () => {
     expect(() => validateIpc({
       kind: 'writeback.proposed',
-      payload: { runId: 'run-001', writebackId: 'wb-001', artifactType: 'position' },
+      payload: { runId: 'run-001', writebackId: 'wb-001', artifactType: 'position', topic: 'Cash' },
     })).toThrow();
   });
 });

@@ -33,15 +33,7 @@ import {
   PowerBIJsonInvalidError,
 } from './errors.js';
 import { preflightPowerBI, CUSTOMER_DASHBOARD_PATH } from './preflight.js';
-
-// ── McpHealth (local until shared-types ships the full McpClient interface) ──
-
-export interface McpHealth {
-  ok: boolean;
-  lastSuccessAt?: Date;
-  lastError?: string;
-  authMode: 'subprocess';
-}
+import type { McpClient, McpHealth } from '@c-suite/shared-types/mcp';
 
 // ── In-memory cache ───────────────────────────────────────────────────────────
 
@@ -80,7 +72,7 @@ function getTimeoutMs(): number {
 
 // ── PowerBIClient ─────────────────────────────────────────────────────────────
 
-export class PowerBIClient {
+export class PowerBIClient implements McpClient {
   readonly serviceId = 'powerbi' as const;
   private readonly projectPath: string;
   private _lastSuccessAt?: Date;
