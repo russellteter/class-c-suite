@@ -90,7 +90,7 @@
 ### B4 — Claude Max 220K/5-hr window blind to Russell's other Claude usage `DOWNGRADED` `P2`
 **What.** Russell also uses Claude.ai and Cowork on the same Max subscription. The C-Suite's scheduler cannot see external usage — risks throttling Russell's primary workflows or being throttled itself.
 **Bites at.** Ch.1 (scheduler) + Ch.10 (autonomy concurrency).
-**Status.** **R2 verified 2026-05-26. DOWNGRADED P1 → P2.** Anthropic announced 2026-05-06 that Claude Code 5-hr rate limits are **doubled** for Max subscribers and the peak-hours reduction is removed for Max (source: `https://www.anthropic.com/news/higher-limits-spacex`). Exact new ceiling is published as a table image (not scraped as plain text) — UNKNOWN precisely. The 180K conservative cap is now MORE conservative than needed, but remains correct practice. Claude.ai chat and Claude Code share the same Max subscription pool — the scheduler still cannot see external usage.
+**Status.** **R2 verified 2026-05-26. DOWNGRADED P1 → P2.** Anthropic announced 2026-05-06 that Claude Code 5-hr rate limits are **doubled** for Max subscribers and the peak-hours reduction is removed for Max (source: `https://www.anthropic.com/news/higher-limits-spacex`). Exact new ceiling is published as a table image (not scraped as plain text) — UNKNOWN precisely. The 180K conservative cap is now MORE conservative than needed, but remains correct practice. Claude.ai chat and Claude Code share the same Max subscription pool — the scheduler still cannot see external usage. **Ch.1 Audit/QA verified 2026-05-27:** `WINDOW_MS = 5 * 60 * 60 * 1000`, `windowCap = 180_000` confirmed in `apps/utility/src/scheduler/scheduler.ts`. Scheduler ships. CONCERN logged: `recordUsage()` double-count pattern untested (see ch1-audit-qa-report §6). No regression introduced.
 **Mitigation.**
 - Treat the effective ceiling as ~180K — conservative against the doubled post-announcement limit.
 - **Interactive runs strict-priority over scheduled jobs** in the scheduler.
@@ -101,7 +101,7 @@
 ### B5 — `maxBudgetUsd` / `total_cost_usd` semantics on Max unconfirmed `VERIFIED` `P2`
 **What.** The Claude Agent SDK's cost-meter fields may be USD-denominated (API-billing semantics) or may not exist for Max subscriptions.
 **Bites at.** Ch.1 (cost meter).
-**Status.** **R2 verified 2026-05-26.** `result.usage.total_cost_usd` exists in the TypeScript SDK on the final `ResultMessage`. Source: context7 `/nothflare/claude-agent-sdk-docs` cost-tracking guide (`console.log("Total cost:", result.usage.total_cost_usd)`). On Max subscriptions, this field contains an API-equivalent cost calculation (input/output tokens × published rates) — NOT a "subscription credits remaining" figure. The meter can show this as a reference cost, but must not imply it represents actual charges to Russell.
+**Status.** **R2 verified 2026-05-26.** `result.usage.total_cost_usd` exists in the TypeScript SDK on the final `ResultMessage`. Source: context7 `/nothflare/claude-agent-sdk-docs` cost-tracking guide (`console.log("Total cost:", result.usage.total_cost_usd)`). On Max subscriptions, this field contains an API-equivalent cost calculation (input/output tokens × published rates) — NOT a "subscription credits remaining" figure. The meter can show this as a reference cost, but must not imply it represents actual charges to Russell. **Ch.1 Audit/QA verified 2026-05-27:** `cost_ledger` table ships in `db/migrations/001_initial.sql` with `tokens_in`, `tokens_out`, `cost_usd_reference` columns. IPC `cost.usage` variant confirmed in `packages/shared-types/src/ipc.ts`. No regression. Status remains VERIFIED P2.
 **Mitigation.** Display token-based meter ("tokens used / window cap remaining") as the primary signal. `total_cost_usd` may be shown as a secondary "API-equivalent" label with tooltip. IPC message `cost.usage` carries `tokensIn`, `tokensOut`, `windowRemaining` — sufficient for the home-screen display. Hook: read from `ResultMessage.usage.total_cost_usd` after `SubagentStop` or accumulate via `onMessage` callback.
 
 ---
@@ -201,10 +201,10 @@
 - "Decide and log" under doctrine: **reward using the library** rather than only penalizing stale use. Memos with zero position citations don't get the 15 points but don't get penalized below threshold either.
 - If Russell wants stricter (penalize for not using library), surface as Day-Zero form question (currently recommended: NO — novel questions should not be artificially penalized).
 
-### B16 — Audit trail contains sensitive SF/NS excerpts — durability vs git-pushed vault `VERIFIED` `P3`
+### B16 — Audit trail contains sensitive SF/NS excerpts — durability vs git-pushed vault `MITIGATED` `P3`
 **What.** The audit trail records tool-call results including Salesforce / NetSuite excerpts. If the vault git repo is pushed to a private remote for off-machine backup, sensitive data crosses the network.
 **Bites at.** Ch.1 (audit trail storage).
-**Status.** **R2 verified 2026-05-26.** SQLite-local mitigation confirmed sufficient. The Synthesizer reads from in-memory run state, not from SQLite direct file reads — no code path writes `result_json` to vault files. The optional in-vault export path is user-initiated only. One implementation note added: SQLite data directory must be `app.getPath('userData')` (not `app.getPath('documents')`) to stay out of iCloud sync territory (B9 interaction).
+**Status.** **R2 verified 2026-05-26. MITIGATED — Ch.1 Audit/QA confirmed 2026-05-27.** `apps/main/src/db/open.ts` line 12: `const dbPath = path.join(app.getPath('userData'), 'runtime.db')`. Path resolves to `~/Library/Application Support/c-suite/runtime.db` — outside iCloud sync, outside vault git. Confirmed via source read: `openDatabase()` calls `app.getPath('userData')` exactly as specified. `db/migrations/001_initial.sql` creates `runs`, `agent_invocations`, `tool_calls`, `cost_ledger`, `process_events` tables in this local-only store. No vault write path exists in Ch.1 code. B16 MITIGATED — downgraded P3 → MITIGATED.
 **Mitigation.**
 - **Keep audit trail in SQLite (runtime metadata)**, not in the vault. SQLite is local-only by default.
 - SQLite data directory: `app.getPath('userData')` — never `documents` or any iCloud-synced path (B9 interaction).
@@ -328,21 +328,17 @@
 - Add to Ch.11 setup runbook.
 **Owner.** Ch.0 architect (preflight.sh extension); Ch.11 runbook author.
 
-### B34 — IPC stream event volume on long Opus Verifier runs may saturate renderer `NEW` `P3`
+### B34 — IPC stream event volume on long Opus Verifier runs may saturate renderer `MITIGATED` `P3`
 **What.** If the C-Suite relays all `SDKPartialAssistantMessage` token events from the Verifier (Opus 4.7, potentially 10K+ tokens) to the renderer over IPC, the event volume can saturate the IPC channel and cause UI jank or dropped events on weaker Macs.
 **Bites at.** Ch.3 (IPC event bus design), Ch.5 (round-table live view).
-**Status.** NEW — surfaced by R2 red-team 2026-05-26. Source: context7 `/nothflare/claude-agent-sdk-docs` TypeScript types — `SDKPartialAssistantMessage` is available via `includePartialMessages` option.
-**Mitigation.**
-- **Do NOT relay raw token events to the renderer.** Relay only a "heartbeat" event (once per 2 seconds or per 200 tokens) showing "agent X is generating…" indicator. This is already noted as optional in `docs/architecture/runtime.md` line 173.
-- Full token stream is optional; default to heartbeat-only. Implement token-level streaming as a Ch.5 enhancement if Russell specifically requests live word-by-word output.
+**Status.** NEW — surfaced by R2 red-team 2026-05-26. **MITIGATED — Ch.1 Audit/QA confirmed 2026-05-27.** `apps/utility/src/heartbeat.ts` ships the heartbeat-only relay: 250ms interval cap (`HEARTBEAT_INTERVAL_MS = 250`), `MAX_EMITS_PER_SEC = 4`, best-effort drop when backpressured (>2s no ack). `emitAgentComplete()` never dropped. Confirmed via source read: `shouldEmit()` enforces both interval and per-second caps; `isBackpressured()` guards against ack starvation. B34 MITIGATED at Ch.1.
 **Owner.** Ch.3 architect (IPC design); Ch.5 round-table UX.
 
-### B30 — Pre-existing SQLite at `c-suite/ruvector.db` of unknown schema `NEW` `P3`
+### B30 — Pre-existing SQLite at `c-suite/ruvector.db` of unknown schema `CLOSED`
 **What.** R0-Vault found a `ruvector.db` file in the repo root. data.md assumes a fresh SQLite store for runtime. If ruvector.db is related to an existing tool (Ruflo? RuVector memory graph?), it may conflict or coexist.
 **Bites at.** Ch.3 (SQLite migration runner).
-**Status.** **Ch.0 Audit/QA confirmed 2026-05-27 — still Ch.3 scope, no Ch.0 code touches it.** File confirmed present in repo root. Deferred to Ch.3 architect.
-**Mitigation.** Ch.3 architect: investigate ruvector.db schema (run `sqlite3 ruvector.db .schema`) before declaring a fresh SQLite store. Most likely unrelated to C-Suite (Ruflo plugin artifact), but verify.
-**Owner.** Ch.3 architect.
+**Status.** **CLOSED.** ADR-0002 §Context confirmed: `sqlite3 ruvector.db .schema` returned "not a database"; `xxd` confirmed magic bytes `72 65 64 62` = `redb` (Ruflo plugin artifact in Rust redb format, not SQLite). Zero path conflict with `runtime.db`. B30 closed. Ch.1 Audit/QA corrected BLOCKERS.md status from "Ch.3 scope deferred" to CLOSED — ADR-0002 §Context is the evidence, Ch.1 Runtime closed this during the build-log entry for Ch.1 ADR.
+**Owner.** CLOSED — no further action required.
 
 ---
 

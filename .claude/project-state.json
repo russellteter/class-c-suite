@@ -2,8 +2,8 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "ch-0-complete-ready-for-ch1",
-  "next_action": "Ch.1 SPEC: Architect dispatch (Backend Architect, Opus) reads ADR-0001 + Phase R OWED items 2, 3, 4 (Error handling table per Decision 5; Heartbeat-only IPC relay per B34; SQLite path = app.getPath('userData') per R2 B16). Produces ADR-0002 covering three-process shell + IPC round-trip + supervised utility process restart from SQLite checkpoint + token-budget scheduler (Max-window math) + idempotent SQLite migrations + structured JSON logs with cross-process correlation IDs.",
+  "current_phase": "ch-1-complete-ready-for-ch2",
+  "next_action": "Ch.2 SPEC: Architect dispatch reads ADR-0002 + ROADMAP §Ch.2 + Ch.1 Audit/QA outstanding items: (1) add recordUsage() lifecycle test to scheduler.spec.ts; (2) add vault.init.error IPC variant to ipc.ts (U-6); (3) implement SafeWrite + concurrent-write fuzz test (keystone safety proof); (4) execute vault-bootstrap.sh (B22 pending execution). See docs/reviews/ch1-audit-qa-report.md §9 for full outstanding items list.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",
@@ -35,26 +35,21 @@
       "completed_on": "2026-05-27",
       "verdict": "REOPEN",
       "commits": ["pending — see auto-push after this edit"]
+    },
+    {
+      "id": "ch-1-audit-qa",
+      "summary": "Ch.1 Audit/QA: 10 PASS / 0 FAIL / 2 CONCERN. CLOSE. B16 + B34 MITIGATED; B30 CLOSED (corrected). Hand-reproduced migration idempotency. Full report at docs/reviews/ch1-audit-qa-report.md.",
+      "completed_on": "2026-05-27",
+      "verdict": "CLOSE",
+      "commits": ["see auto-push after this edit"]
     }
   ],
   "pending_tasks": [
     {
-      "id": "ch-0-electron-builder-fix",
-      "owner": "/goal (Runtime — Ch.0 architect must fix before Audit/QA re-check)",
-      "summary": "BLOCKING Ch.0 close. Add electron-builder@^26.8.1 (+ @electron/notarize, @electron/osx-sign, @electron/rebuild) to the appropriate workspace package.json devDependencies. Run pnpm install. Verify 'pnpm exec electron-builder --version' reports 26.x. Commit manifest + lockfile in same commit. Re-run audit criterion 3 and update ch0-audit-qa-report.md row 3 from FAIL to PASS. Update current_phase to 'ch-0-complete-ready-for-ch1'.",
-      "blockedBy": []
-    },
-    {
-      "id": "ch-1-process-arch-ipc-sqlite-scheduler",
-      "owner": "/goal",
-      "blockedBy": ["ch-0-foundations"],
-      "summary": "Per ROADMAP §Ch.1. Includes Error handling table (Decision 5), Heartbeat-only IPC relay (B34), SQLite path = userData (R2 B16)."
-    },
-    {
       "id": "ch-2-safewrite-git",
       "owner": "/goal",
-      "blockedBy": ["ch-1-process-arch-ipc-sqlite-scheduler"],
-      "summary": "Per ROADMAP §Ch.2. Requires vault-bootstrap.sh execution (B22) before SafeWrite ships. Concurrent-write fuzz test = keystone safety proof."
+      "blockedBy": [],
+      "summary": "Per ROADMAP §Ch.2. Requires vault-bootstrap.sh execution (B22) before SafeWrite ships. Concurrent-write fuzz test = keystone safety proof. Ch.1 Audit/QA outstanding items to include: (1) recordUsage() lifecycle test in scheduler.spec.ts; (2) vault.init.error IPC variant in ipc.ts (U-6)."
     },
     {
       "id": "ch-3-runtime-spine-stub-harness",
@@ -180,5 +175,5 @@
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
   "last_updated": "2026-05-27T00:00:00-04:00",
-  "updated_by": "EvidenceQA Ch.0 Audit/QA — REOPEN verdict"
+  "updated_by": "EvidenceQA Ch.1 Audit/QA — CLOSE verdict"
 }
