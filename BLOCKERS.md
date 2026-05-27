@@ -76,41 +76,44 @@
 - If subprocess proves too brittle in Ch.8: fall back to "extract the SQL/DAX queries from `customer-dashboard/src/` and re-issue them directly from a Node Power BI client" — higher effort but eliminates the Python dependency.
 **Owner.** Ch.8 architect; R1 reports actual feasibility based on the codebase deep-read.
 
-### B3 — Verifier reasoning-trace leak (rubber-stamp risk) `SEEDED` `P0`
+### B3 — Verifier reasoning-trace leak (rubber-stamp risk) `VERIFIED` `P0`
 **What.** If the Verifier's input includes any lens reasoning trace (chain-of-thought, intermediate prompts), the Verifier will rubber-stamp instead of grading. **This is the single trust-defining wiring in the product.**
 **Bites at.** Ch.4 (Verifier prompt + input contract).
-**Status.** Architecture spec explicit; enforcement is the keystone.
+**Status.** **R2 verified 2026-05-26.** `docs/architecture/runtime.md` lines 123-131 define the Verifier Input Contract explicitly: lenses pass only structured outputs and the tool-call audit trail — never reasoning traces. The assembler throws `VerifierInputContractViolation` if any required input is missing; the run does not proceed. Planted-claim canary fixture is specified at `docs/architecture/prompts.md` lines 434-453 as `tests/verifier-canary.spec.ts` (fixture: `memo-with-unsourced-arr-claim`) — permanent regression guard, runs on every CI build. Architecture-spec gap: `NAMED_ENTITY_REGISTRY` must be pre-loaded from the stakeholder vault + turnaround library; Ch.4 architect must build this.
 **Mitigation.**
 - Verifier input assembled **only from structured outputs + audit trail** — never from lens transcripts.
 - Assertion throws on any lens-transcript content reaching the Verifier.
 - **Planted-unsourced-claim canary fixture** as permanent regression guard. Goes red if a future model makes the Verifier lenient.
 - Verifier output schema forces falsifier + missing-data flags; rejects null returns.
+- **5 required edge cases for `isQuantOrNamed` test suite** (documented in `docs/research/R2-feasibility-notes.md` §B10): (1) date in opinion claim, (2) named entity in hypothetical, (3) number in metaphor (word form), (4) percentage in projection, (5) currency abbreviation without digit.
 
-### B4 — Claude Max 220K/5-hr window blind to Russell's other Claude usage `SEEDED` `P1`
+### B4 — Claude Max 220K/5-hr window blind to Russell's other Claude usage `DOWNGRADED` `P2`
 **What.** Russell also uses Claude.ai and Cowork on the same Max subscription. The C-Suite's scheduler cannot see external usage — risks throttling Russell's primary workflows or being throttled itself.
 **Bites at.** Ch.1 (scheduler) + Ch.10 (autonomy concurrency).
-**Status.** Phase R R2 verifies actual Max rate-limit behavior + Russell's typical concurrent load.
+**Status.** **R2 verified 2026-05-26. DOWNGRADED P1 → P2.** Anthropic announced 2026-05-06 that Claude Code 5-hr rate limits are **doubled** for Max subscribers and the peak-hours reduction is removed for Max (source: `https://www.anthropic.com/news/higher-limits-spacex`). Exact new ceiling is published as a table image (not scraped as plain text) — UNKNOWN precisely. The 180K conservative cap is now MORE conservative than needed, but remains correct practice. Claude.ai chat and Claude Code share the same Max subscription pool — the scheduler still cannot see external usage.
 **Mitigation.**
-- Treat the 220K/5-hr ceiling as effectively ~180K to leave headroom for external usage.
+- Treat the effective ceiling as ~180K — conservative against the doubled post-announcement limit.
 - **Interactive runs strict-priority over scheduled jobs** in the scheduler.
 - Degrade-to-sequential under pressure (six lenses run serially if concurrent-window math says so).
 - Per-run cost meter surfaces credit-proximity in UI (PRD §6 home-screen + memo header).
+- **Russell action:** check `/cost` in Claude Code to observe actual window ceiling and confirm the 180K cap is appropriate or raise it.
 
-### B5 — `maxBudgetUsd` / `total_cost_usd` semantics on Max unconfirmed `SEEDED` `P2`
+### B5 — `maxBudgetUsd` / `total_cost_usd` semantics on Max unconfirmed `VERIFIED` `P2`
 **What.** The Claude Agent SDK's cost-meter fields may be USD-denominated (API-billing semantics) or may not exist for Max subscriptions.
 **Bites at.** Ch.1 (cost meter).
-**Status.** Phase R R2 verifies.
-**Mitigation.** If cost is non-metered on Max, the meter is **token-based not USD**. Surface as "tokens used / window cap remaining" rather than dollars.
+**Status.** **R2 verified 2026-05-26.** `result.usage.total_cost_usd` exists in the TypeScript SDK on the final `ResultMessage`. Source: context7 `/nothflare/claude-agent-sdk-docs` cost-tracking guide (`console.log("Total cost:", result.usage.total_cost_usd)`). On Max subscriptions, this field contains an API-equivalent cost calculation (input/output tokens × published rates) — NOT a "subscription credits remaining" figure. The meter can show this as a reference cost, but must not imply it represents actual charges to Russell.
+**Mitigation.** Display token-based meter ("tokens used / window cap remaining") as the primary signal. `total_cost_usd` may be shown as a secondary "API-equivalent" label with tooltip. IPC message `cost.usage` carries `tokensIn`, `tokensOut`, `windowRemaining` — sufficient for the home-screen display. Hook: read from `ResultMessage.usage.total_cost_usd` after `SubagentStop` or accumulate via `onMessage` callback.
 
 ---
 
 ## Product-shape risks (P1-P2)
 
-### B6 — Covenant terms are ASSUMED `SEEDED` `P2`
+### B6 — Covenant terms are ASSUMED `VERIFIED` `P2`
 **What.** The `covenant-tracker` skill's thresholds are not verbatim from Class's credit agreement with Barclays — they're best-effort guesses.
 **Bites at.** Ch.7 (playbook 1 prereqs + autonomy tripwire scan).
+**Status.** **R2 verified 2026-05-26.** Day-Zero form mitigation is sufficient. NetSuite has zero covenant-specific saved searches (confirmed R1) — the tracker derives from cash GL accounts via raw SuiteQL. The form must capture 6 fields: covenant name, verbatim threshold, measurement frequency, cure period, reporting obligation, grace period. Russell must complete this at Day-Zero before the first scheduled run.
 **Mitigation.**
-- Day-Zero form on first scheduled run captures the verbatim covenant cutoff + terms.
+- Day-Zero form on first scheduled run captures the verbatim covenant cutoff + terms (6 required fields per `docs/research/R2-feasibility-notes.md` §B6).
 - Until captured, covenant readings labeled "directional" with a banner in any memo that cites them.
 - Russell can paste credit-agreement excerpts into the form; Verifier source-checks against them.
 
@@ -123,13 +126,15 @@
 - Once `renewal-forecast` skill is extracted from Cowork (B17), explicitly correct the `Owner.Name` reference.
 - C-Suite invocations of the skill (if any) wrap with the corrected query.
 
-### B8 — Concurrent edits: Cowork `/deep` bypasses SafeWrite on shared zones `SEEDED` `P2`
+### B8 — Concurrent edits: Cowork `/deep` bypasses SafeWrite on shared zones `VERIFIED` `P2`
 **What.** PRD locks Cowork `/deep` as a fallback. Cowork does not implement SafeWrite. Concurrent C-Suite + Cowork writes to the same shared-zone file (workstream, decision, position) may produce conflicts.
 **Bites at.** Ch.2 (SafeWrite design) + Ch.5 first-slice ops.
+**Status.** **R2 verified 2026-05-26.** Sidecar pattern confirmed sufficient. One implementation detail required: Ch.2 architect must implement a file mtime/git-SHA check at write time — record file SHA at lens-context-bundle time; compare at write time; if diverged (Cowork wrote in between), create sidecar instead of overwriting. This is not in the current Ch.2 spec.
 **Mitigation.**
 - Decide-and-log per Phase R decision #1 default: **don't block Cowork; sidecar handles it.**
 - Document Cowork as **read-mostly** post-ship; Russell uses Cowork for `/deep` fallback investigations and execution work, not for routine vault edits.
 - SafeWrite sidecars surface in UI; Russell merges manually.
+- Ch.2 architect: add pre-write SHA check to detect external modifications during the run window.
 
 ### B9 — iCloud-synced vault → atomic-rename / git-corruption hazard `SEEDED` `P1`
 **What.** If the vault folder lives in iCloud Drive (default Documents folder behavior on modern macOS), file metadata sync can corrupt atomic-rename operations and confuse git.
@@ -139,18 +144,21 @@
 - If iCloud-synced, document prominently in Ch.11 setup runbook: move vault to a non-iCloud path (e.g. `/Users/russellteter/Vault/`) or disable iCloud Drive Documents sync.
 - Pre-flight check at C-Suite startup detects iCloud-sync attribute and refuses to operate if detected.
 
-### B10 — `isQuantOrNamed` classifier is load-bearing for 35% of rigor score; boundary is fuzzy `SEEDED` `P2`
+### B10 — `isQuantOrNamed` classifier is load-bearing for 35% of rigor score; boundary is fuzzy `VERIFIED` `P2`
 **What.** The rigor formula gives 35 points for claim-source binding, gated by an `isQuantOrNamed(claim)` classifier. Quantitative or named-entity claims must cite; opinion claims need not. The boundary between "quantitative/named" and "opinion" is fuzzy; an LLM classifier would drift run-to-run.
 **Bites at.** Ch.4 (rigor formula).
+**Status.** **R2 verified 2026-05-26.** Deterministic regex approach in `docs/architecture/prompts.md` lines 413-429 is sound — no LLM call, identical output per run. 5 required edge cases documented (see B3 update + `docs/research/R2-feasibility-notes.md` §B10). Architecture gap: `NAMED_ENTITY_REGISTRY` must be pre-loaded from stakeholder vault and turnaround library at utility-process startup; cannot be rebuilt per-run. Ch.4 architect owns this.
 **Mitigation.**
 - Ship a **frozen, unit-tested deterministic classifier** (regex + heuristics + unit-test fixtures). Two runs of the same memo score identically.
 - 50+ test cases covering edge cases (numbers in opinions, named entities in hypotheticals, etc.).
+- `NAMED_ENTITY_REGISTRY` loaded at utility-process startup from stakeholder + turnaround-library sources; cached in memory for the session.
 
-### B11 — Chorus exposes only AI summaries (no raw transcript) — weak health evidence `SEEDED` `P3`
+### B11 — Chorus exposes only AI summaries (no raw transcript) — weak health evidence `VERIFIED` `P3`
 **What.** Chorus's API gives AI-generated call summaries, not raw transcripts. Summaries are LLM-derived and can amplify hallucinations if treated as primary evidence.
 **Bites at.** Ch.8 (Chorus MCP).
+**Status.** **R2 verified 2026-05-26.** Chorus API (`https://api-docs.chorus.ai/`) endpoint list confirmed: Conversations, Video Conferences, Emails, Engagement filter, Scorecards, Playlists, Saved Searches, Reports, Sales Qualifications, Users, Teams. No raw transcript download or verbatim recording-to-text export listed. Use cases stated: "retrieve data about engagements (meetings and dialer calls), upload new recordings, delete recordings." Conclusion: Chorus-sourced claims are AI-summary-derived and must be capped.
 **Mitigation.**
-- **Cap Chorus-only-sourced claims at <70 confidence.**
+- **Cap Chorus-only-sourced claims at <70 confidence.** Enforced at Synthesizer level: claims tagged `source_type: chorus` have confidence ceiling of 69 in structured output schema.
 - Always pair Chorus claims with Salesforce or NetSuite corroboration before crossing the rigor threshold.
 - Memo footer notes when a claim is Chorus-only.
 
