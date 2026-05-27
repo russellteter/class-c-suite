@@ -26,12 +26,8 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
-
-// ── Runtime imports (uncomment when Ch.3 Runtime ships) ─────────────────────
-// NOTE: Ch.3 may keep the same orchestrator path as Ch.1 or introduce a new module.
-// Adjust the import path to match the actual Ch.3 export surface.
-// import { resumeRun, loadCompletedInvocations } from '../../apps/utility/src/orchestrator/index.js';
-// import { buildLensContextBundleSchema } from '../../packages/shared-types/src/lens-context-bundle.js';
+import { resumeRun, loadCompletedInvocations } from '../../apps/utility/src/orchestrator/index.js';
+import { buildLensContextBundleSchema } from '../../packages/shared-types/src/lens-context-bundle.js';
 
 // ── SQLite schema (mirrors Ch.1 + Ch.3 migration 002 additions) ─────────────
 
@@ -121,10 +117,11 @@ describe('AC-4: resumeRun re-dispatches only incomplete lenses (ADR-0004 §7)', 
     db.close();
   });
 
-  it('resumeRun module is available [RED: Runtime not shipped]', () => {
-    // When Runtime ships: import { resumeRun } from '../../apps/utility/src/orchestrator/index.js';
-    // Baseline Ch.1 skeleton exists but Ch.3 full impl is needed.
-    expect(true).toBe(true); // placeholder — Ch.1 skeleton exists, Ch.3 full impl needed
+  it('resumeRun and loadCompletedInvocations are exported from orchestrator/index', () => {
+    expect(typeof resumeRun).toBe('function');
+    expect(typeof loadCompletedInvocations).toBe('function');
+    // Also confirm buildLensContextBundleSchema is importable (used during resume isolation check)
+    expect(typeof buildLensContextBundleSchema).toBe('function');
   });
 
   it('re-dispatches exactly the 3 incomplete lenses after mid-run crash [RED: Runtime not shipped]', () => {
