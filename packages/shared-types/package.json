@@ -77,6 +77,10 @@
     "./run-critique": {
       "import": "./dist/run-critique.js",
       "types": "./dist/run-critique.d.ts"
+    },
+    "./playbook": {
+      "import": "./dist/playbook.js",
+      "types": "./dist/playbook.d.ts"
     }
   },
   "scripts": {

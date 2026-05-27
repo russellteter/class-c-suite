@@ -21,3 +21,5 @@ export * from './verifier-input.js';
 export * from './run-state.js';
 export * from './run-state-schema.js';
 export * from './lens-context-bundle.js';
+// Ch.7: playbook framework types
+export * from './playbook.js';
