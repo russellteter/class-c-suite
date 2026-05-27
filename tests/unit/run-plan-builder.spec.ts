@@ -28,16 +28,11 @@
 
 import { describe, it, expect } from 'vitest';
 
-// ── Runtime import (uncomment when Ch.5 Runtime ships) ──────────────────────
-// import {
-//   buildRunPlan,
-//   type RunPlan,
-// } from '../../apps/utility/src/orchestrator/run-plan-builder.js';
-
-// ── Stub (keeps TS happy until Runtime ships) ────────────────────────────────
-function buildRunPlan(_playbook: string, _question: string): never {
-  throw new Error('buildRunPlan not implemented — Ch.5 Runtime not yet dispatched');
-}
+// ── Runtime import — Ch.5 Runtime shipped ───────────────────────────────────
+import {
+  buildRunPlan,
+  type Ch5RunPlan,
+} from '../../apps/utility/src/orchestrator/run-plan-builder.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -53,61 +48,53 @@ const OPEN_QA_QUESTION =
 
 describe('AC-3 — buildRunPlan (Ch.5 Runtime RED)', () => {
   describe('cash_lever playbook', () => {
-    it('RED: returns lenses CFO and COS for default cash-lever question', () => {
-      // const plan = buildRunPlan('cash_lever', CASH_LEVER_QUESTION);
-      // expect(plan.lenses).toContain('CFO');
-      // expect(plan.lenses).toContain('COS');
-      expect(() => buildRunPlan('cash_lever', CASH_LEVER_QUESTION)).toThrow('not implemented');
+    it('returns lenses CFO and COS for default cash-lever question', () => {
+      const plan = buildRunPlan('cash_lever', CASH_LEVER_QUESTION);
+      expect(plan.lenses).toContain('CFO');
+      expect(plan.lenses).toContain('COS');
     });
 
-    it('RED: returns all 4 required MCPs for cash_lever', () => {
-      // const plan = buildRunPlan('cash_lever', CASH_LEVER_QUESTION);
-      // const expectedMcps = ['salesforce', 'aws', 'netsuite', 'cash_model_xlsx'];
-      // for (const mcp of expectedMcps) {
-      //   expect(plan.mcps, `Missing MCP: ${mcp}`).toContain(mcp);
-      // }
-      expect(() => buildRunPlan('cash_lever', CASH_LEVER_QUESTION)).toThrow('not implemented');
+    it('returns all 4 required MCPs for cash_lever', () => {
+      const plan = buildRunPlan('cash_lever', CASH_LEVER_QUESTION);
+      const expectedMcps = ['salesforce', 'aws', 'netsuite', 'cash_model_xlsx'];
+      for (const mcp of expectedMcps) {
+        expect(plan.mcps, `Missing MCP: ${mcp}`).toContain(mcp);
+      }
     });
 
-    it('RED: token estimate is a finite number ≤ scheduler windowCap (180K)', () => {
-      // const plan = buildRunPlan('cash_lever', CASH_LEVER_QUESTION);
-      // expect(typeof plan.tokenEstimate).toBe('number');
-      // expect(Number.isFinite(plan.tokenEstimate)).toBe(true);
-      // expect(plan.tokenEstimate).toBeGreaterThan(0);
-      // expect(plan.tokenEstimate).toBeLessThanOrEqual(SCHEDULER_WINDOW_CAP);
-      expect(() => buildRunPlan('cash_lever', CASH_LEVER_QUESTION)).toThrow('not implemented');
+    it('token estimate is a finite number ≤ scheduler windowCap (180K)', () => {
+      const plan = buildRunPlan('cash_lever', CASH_LEVER_QUESTION);
+      expect(typeof plan.tokenEstimate).toBe('number');
+      expect(Number.isFinite(plan.tokenEstimate)).toBe(true);
+      expect(plan.tokenEstimate).toBeGreaterThan(0);
+      expect(plan.tokenEstimate).toBeLessThanOrEqual(SCHEDULER_WINDOW_CAP);
     });
 
-    it('RED: memoPath matches vault pattern {vault}/memos/{date}-cash-lever-{slug}.md', () => {
-      // const plan = buildRunPlan('cash_lever', CASH_LEVER_QUESTION);
-      // expect(plan.memoPath).toMatch(/memos\/\d{4}-\d{2}-\d{2}-cash-lever-[\w-]+\.md$/);
-      expect(() => buildRunPlan('cash_lever', CASH_LEVER_QUESTION)).toThrow('not implemented');
+    it('memoPath matches vault pattern {vault}/memos/{date}-cash-lever-{slug}.md', () => {
+      const plan = buildRunPlan('cash_lever', CASH_LEVER_QUESTION);
+      expect(plan.memoPath).toMatch(/memos\/\d{4}-\d{2}-\d{2}-cash-lever-[\w-]+\.md$/);
     });
 
-    it('RED: no stamp on known playbook (cash_lever is not AD-HOC)', () => {
-      // const plan = buildRunPlan('cash_lever', CASH_LEVER_QUESTION);
-      // expect(plan.stamp).toBeUndefined();
-      expect(() => buildRunPlan('cash_lever', CASH_LEVER_QUESTION)).toThrow('not implemented');
+    it('no stamp on known playbook (cash_lever is not AD-HOC)', () => {
+      const plan = buildRunPlan('cash_lever', CASH_LEVER_QUESTION);
+      expect(plan.stamp).toBeUndefined();
     });
   });
 
   describe('open_qa playbook (ad-hoc decomposition)', () => {
-    it('RED: returns at least one lens for open_qa question', () => {
-      // const plan = buildRunPlan('open_qa', OPEN_QA_QUESTION);
-      // expect(plan.lenses.length).toBeGreaterThanOrEqual(1);
-      expect(() => buildRunPlan('open_qa', OPEN_QA_QUESTION)).toThrow('not implemented');
+    it('returns at least one lens for open_qa question', () => {
+      const plan = buildRunPlan('open_qa', OPEN_QA_QUESTION);
+      expect(plan.lenses.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('RED: stamps AD-HOC on open_qa plan', () => {
-      // const plan = buildRunPlan('open_qa', OPEN_QA_QUESTION);
-      // expect(plan.stamp).toBe('AD-HOC');
-      expect(() => buildRunPlan('open_qa', OPEN_QA_QUESTION)).toThrow('not implemented');
+    it('stamps AD-HOC on open_qa plan', () => {
+      const plan = buildRunPlan('open_qa', OPEN_QA_QUESTION);
+      expect(plan.stamp).toBe('AD-HOC');
     });
 
-    it('RED: open_qa token estimate is still ≤ scheduler windowCap', () => {
-      // const plan = buildRunPlan('open_qa', OPEN_QA_QUESTION);
-      // expect(plan.tokenEstimate).toBeLessThanOrEqual(SCHEDULER_WINDOW_CAP);
-      expect(() => buildRunPlan('open_qa', OPEN_QA_QUESTION)).toThrow('not implemented');
+    it('open_qa token estimate is still ≤ scheduler windowCap', () => {
+      const plan = buildRunPlan('open_qa', OPEN_QA_QUESTION);
+      expect(plan.tokenEstimate).toBeLessThanOrEqual(SCHEDULER_WINDOW_CAP);
     });
   });
 });

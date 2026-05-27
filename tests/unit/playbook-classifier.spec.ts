@@ -28,16 +28,11 @@
 
 import { describe, it, expect, vi } from 'vitest';
 
-// ── Runtime import (uncomment when Ch.5 Runtime ships) ──────────────────────
-// import {
-//   classifyPlaybook,
-//   type PlaybookClassification,
-// } from '../../apps/utility/src/orchestrator/classify-playbook.js';
-
-// ── Stub (keeps TS happy until Runtime ships) ────────────────────────────────
-function classifyPlaybook(_question: string): { playbook: string; stamp?: string } {
-  throw new Error('classifyPlaybook not implemented — Ch.5 Runtime not yet dispatched');
-}
+// ── Runtime import — Ch.5 Runtime shipped ───────────────────────────────────
+import {
+  classifyPlaybook,
+  type PlaybookClassification,
+} from '../../apps/utility/src/orchestrator/classify-playbook.js';
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -53,43 +48,37 @@ const OPEN_QA_QUESTION =
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('AC-2 — classifyPlaybook (Ch.5 Runtime RED)', () => {
-  it('RED: cash lever question → playbook key "cash_lever"', () => {
-    // const result = classifyPlaybook(CASH_LEVER_QUESTION);
-    // expect(result.playbook).toBe('cash_lever');
-    // expect(result.stamp).toBeUndefined(); // no AD-HOC stamp on known playbook
-    expect(() => classifyPlaybook(CASH_LEVER_QUESTION)).toThrow('not implemented');
+  it('cash lever question → playbook key "cash_lever"', () => {
+    const result = classifyPlaybook(CASH_LEVER_QUESTION);
+    expect(result.playbook).toBe('cash_lever');
+    expect(result.stamp).toBeUndefined(); // no AD-HOC stamp on known playbook
   });
 
-  it('RED: 1:1 prep question → playbook key "stakeholder_1on1_prep"', () => {
-    // const result = classifyPlaybook(STAKEHOLDER_QUESTION);
-    // expect(result.playbook).toBe('stakeholder_1on1_prep');
-    expect(() => classifyPlaybook(STAKEHOLDER_QUESTION)).toThrow('not implemented');
+  it('1:1 prep question → playbook key "stakeholder_1on1_prep"', () => {
+    const result = classifyPlaybook(STAKEHOLDER_QUESTION);
+    expect(result.playbook).toBe('stakeholder_1on1_prep');
   });
 
-  it('RED: unrecognized question → "open_qa" + AD-HOC stamp', () => {
-    // const result = classifyPlaybook(OPEN_QA_QUESTION);
-    // expect(result.playbook).toBe('open_qa');
-    // expect(result.stamp).toBe('AD-HOC');
-    expect(() => classifyPlaybook(OPEN_QA_QUESTION)).toThrow('not implemented');
+  it('unrecognized question → "open_qa" + AD-HOC stamp', () => {
+    const result = classifyPlaybook(OPEN_QA_QUESTION);
+    expect(result.playbook).toBe('open_qa');
+    expect(result.stamp).toBe('AD-HOC');
   });
 
-  it('RED: cash lever classification matches on W30 keyword alone', () => {
-    // const result = classifyPlaybook('What should we do about the W30 trough?');
-    // expect(result.playbook).toBe('cash_lever');
-    expect(() => classifyPlaybook('What should we do about the W30 trough?')).toThrow('not implemented');
+  it('cash lever classification matches on W30 keyword alone', () => {
+    const result = classifyPlaybook('What should we do about the W30 trough?');
+    expect(result.playbook).toBe('cash_lever');
   });
 
-  it('RED: cash lever classification matches on "line-of-credit" keyword alone', () => {
-    // const result = classifyPlaybook('Should we draw on our line-of-credit this quarter?');
-    // expect(result.playbook).toBe('cash_lever');
-    expect(() => classifyPlaybook('Should we draw on our line-of-credit this quarter?')).toThrow('not implemented');
+  it('cash lever classification matches on "line-of-credit" keyword alone', () => {
+    const result = classifyPlaybook('Should we draw on our line-of-credit this quarter?');
+    expect(result.playbook).toBe('cash_lever');
   });
 
-  it('RED: empty string → open_qa with AD-HOC stamp', () => {
-    // const result = classifyPlaybook('');
-    // expect(result.playbook).toBe('open_qa');
-    // expect(result.stamp).toBe('AD-HOC');
-    expect(() => classifyPlaybook('')).toThrow('not implemented');
+  it('empty string → open_qa with AD-HOC stamp', () => {
+    const result = classifyPlaybook('');
+    expect(result.playbook).toBe('open_qa');
+    expect(result.stamp).toBe('AD-HOC');
   });
 });
 
