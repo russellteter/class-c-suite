@@ -600,3 +600,77 @@ This is a forward-compatible addition (new discriminant, no existing variant mod
 ---
 
 
+
+## Ch.2 Audit/QA — SafeWrite + git + chokidar
+
+**Status:** REOPEN — AC-1 FAIL blocks CLOSE
+**Started:** 2026-05-27
+**Completed:** 2026-05-27
+**Owner:** EvidenceQA (Audit/QA agent — isolated from Build/Test per DOCTRINE law #7)
+**ADR:** `docs/decisions/0003-ch2-safewrite.md`
+**Full report:** `docs/reviews/ch2-audit-qa-report.md`
+**Test summary (unit):** 767 passed / 27 failed (all Ch.5 RED stubs) / 2 skipped (`pnpm run test:unit`)
+**Test summary (fuzz):** 1 FAILED — Invariant 3 fires (`pnpm test:fuzz`)
+
+### What got done
+
+- Verified all 10 ADR §8 acceptance criteria from primary evidence (source reads + 767/0 Ch.2 test confirmation).
+- Ran `pnpm test:fuzz` — keystone safety proof FAILS. Invariant 3: `WRITER-0-SEQ-0 from agent 0 silently dropped`. External-write-after-ok produces silent data loss with no sidecar. Ch.2 REOPEN mandatory.
+- Reproduced criterion AC-6 (git commit format) BY HAND — created temp git vault, called `safeWrite()` with `commitVault:true`, confirmed `git log --format=%B -1` output exactly matches `c-suite: <agent> wrote <relPath> during <playbook> run <runId>` (DOCTRINE law #2 satisfied).
+- Ran security pass (grep for direct writeFile/writeFileSync in vault paths) — CLEAN.
+- Verified G-1 (vault.init.error variant 23 in ipc.ts), G-2 (002_conflicts.sql), G-6 (simple-git CommitResult.commit field) — all landed correctly.
+- Identified zone policy divergence in `apps/utility/src/safewrite/zonePolicy.ts` vs ADR §2.1 (6 zones mismatched).
+- Identified missing IPC emission test for `safewrite.conflict` (AC-5 NEEDS WORK).
+- Updated BLOCKERS.md: B8 status updated with fuzz-confirmed gap; B9 promoted to VERIFIED; B22 confirmed STILL ACTIVE pending Russell execution.
+
+### Acceptance criteria
+
+| Criterion (ADR §8) | Verdict | Evidence |
+|---|---|---|
+| AC-1. Fuzz: 20 writers × N=20 ops, all 8 invariants pass | FAIL | Invariant 3: WRITER-0-SEQ-0 silently dropped. External overwrites post-ok have no sidecar protection. |
+| AC-2. Atomic APFS rename; no partial read | PASS | `fs.rename(tempPath, filePath)` at safeWrite.ts:200. Unit tests pass. |
+| AC-3. Zone-gated hash check per ADR §2.1 table | CONCERN | Primitive correct for 5 zones. zonePolicy.ts diverges on 6 zones (production path). |
+| AC-4. Conflict → sidecar at `<basename>.proposed-<ISO>.md` | PASS | Format confirmed at safeWrite.ts:190-197. Tests pass. |
+| AC-5. `safewrite.conflict` IPC emitted on hash mismatch | NEEDS WORK | Emission code exists in wrapper (index.ts). No test verifies it actually fires. |
+| AC-6. Git commit format `c-suite: <agent> wrote <relPath> ...` | PASS | BY-HAND REPRODUCED — exact match confirmed. |
+| AC-7. chokidar 1s debounce; temp/sidecar/git ignored | PASS | DEBOUNCE_MS=1000, 4 correct ignore patterns. Tests pass. |
+| AC-8. VaultNotInitializedError on zero commits; vault.init.error IPC | PASS | VaultNotInitializedError at safeWrite.ts:100-110. vault.init.error at ipc.ts:231-239. All tests pass. |
+| AC-9. Per-path Promise serialization (write queue) | PASS | writeQueue Map + withPathLock at safeWrite.ts:50-58. Tests pass. |
+| AC-10. chokidar exports WATCHER_IGNORED_PATTERNS + DEBOUNCE_MS constants | PASS | Both exported at watcher.ts:16-24. 6 static-config tests pass. |
+
+**Verdict counts: 8 PASS / 1 FAIL / 1 NEEDS WORK / 1 CONCERN**
+
+### Decisions made (under doctrine, not surfaced to Russell)
+
+- Classified Invariant 3 failure as FAIL not CONCERN — the fuzz test is the ADR-designated "keystone safety proof." A keystone that fails is a blocking issue.
+- Classified zonePolicy.ts divergence as CONCERN not FAIL — unit tests pass against the primitive; production divergence is serious but untested in suite.
+- Classified AC-5 as NEEDS WORK not FAIL — IPC emission code exists; the gap is test coverage, not implementation.
+- B22: confirmed STILL ACTIVE — Russell has not run vault-bootstrap.sh. Deferred to Ch.5/setup as documented.
+
+### Blocker deltas
+
+| Blocker | Old status | New status | Evidence |
+|---------|-----------|------------|----------|
+| B8 | VERIFIED P2 | VERIFIED P2 (gap confirmed by fuzz) | Fuzz Invariant 3 failure. Fix-integration owns resolution. |
+| B9 | SEEDED P1 | VERIFIED P1 | preflight.sh ships with iCloud-sync check. Arch mitigation complete; runtime verify at Ch.5. |
+| B22 | MITIGATED (arch) pending exec | STILL ACTIVE pending Russell execution | Vault still zero commits 2026-05-27. Deferred to Ch.5/setup. |
+
+### Outstanding items for Ch.2 Fix-Integration
+
+1. **AC-1 (FAIL — blocking):** Resolve fuzz Invariant 3. External-write-after-ok silent data loss. Options: post-write re-read + re-sidecar, flock, or git-SHA post-rename verification.
+2. **AC-3 (CONCERN):** Align `zonePolicy.ts` and primitive `HASH_CHECK_ZONES` with full ADR §2.1 shared-zone list (add pre-mortem, tripwire, competitor; fix prediction and stakeholder_person/account).
+3. **AC-5 (NEEDS WORK):** Add test for `safewrite.conflict` IPC emission at wrapper layer (mock emitFn, drive conflict, assert payload).
+4. **B22:** Russell must run `scripts/vault-bootstrap.sh` before Ch.5 first launch.
+
+### Files committed
+
+- `BLOCKERS.md` — B8/B9/B22 status updates
+- `docs/reviews/ch2-audit-qa-report.md` — full audit report
+- `docs/build-log.md` — this entry
+- `.claude/project-state.json` — current_phase updated to `ch-2-reopen-fix-integration`
+
+---
+
+[CH-2-AUDIT/QA] REOPEN: 8 PASS / 1 FAIL / 1 NEEDS WORK / 1 CONCERN. Fuzz keystone fails Invariant 3. Zone policy diverges on 6 zones. IPC emission untested. B22 still active. G-1/G-2/G-6 correct. AC-6 hand-reproduced. Fix-integration owns AC-1 root cause before CLOSE.
+
+---
