@@ -1,0 +1,108 @@
+/* apps/renderer/src/design/tokens.css
+ * Source: docs/architecture/ui.md §design-tokens
+ * Ch.6 ships this file (Ch.0 stub was absent).
+ * All Ch.6 screens import this; existing Home.tsx uses glassmorphic.css (unchanged).
+ */
+
+:root {
+  /* --- Navy palette (dark theme) --- */
+  --color-navy-900: #0a1849;
+  --color-navy-800: #0e2060;
+  --color-navy-700: #182a6b;
+  --color-navy-500: #2a3f8a;
+  --color-navy-300: #4a5fa8;
+
+  /* --- Accent --- */
+  --color-gold-500: #c9a14b;
+  --color-gold-300: #e0c07a;
+  --color-purple-500: #4739e7;
+  --color-purple-400: #6a5cf0;
+  --color-purple-200: #a99ef8;
+
+  /* --- Semantic status --- */
+  --color-success: #4fae6a;
+  --color-error: #ff5c5c;
+  --color-warning: #e9a840;
+  --color-info: #5bc0de;
+
+  /* --- Rigor --- */
+  --color-rigor-pass: #4fae6a;
+  --color-rigor-draft: #d6883a;
+  --color-rigor-fail: #c54848;
+
+  /* --- Text --- */
+  --color-text-primary: #f5f3ff;
+  --color-text-secondary: #b8b4d6;
+  --color-text-muted: #8b87a6; /* raised from #6b6788 — WCAG AA 4.5:1 on navy-900 */
+  --color-text-inverse: #0a1849;
+
+  /* --- Surfaces --- */
+  --color-surface-1: rgba(255, 255, 255, 0.04);
+  --color-surface-2: rgba(255, 255, 255, 0.07);
+  --color-surface-3: rgba(255, 255, 255, 0.10);
+  --color-surface-4: rgba(255, 255, 255, 0.14);
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-border-strong: rgba(255, 255, 255, 0.22);
+
+  /* --- Typography scale --- */
+  --text-2xs: 9px;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+
+  /* --- Line-height --- */
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* --- Spacing (4px base, 8px scale) --- */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* --- Border radius --- */
+  --radius-sm: 3px;
+  --radius-base: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* --- Motion --- */
+  --motion-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-base: 240ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-slow: 480ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --- Shadow --- */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-base: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+
+  /* --- Focus ring (WCAG 2.4.11 — visible for keyboard users) --- */
+  --focus-ring: 0 0 0 2px var(--color-purple-500);
+
+  /* --- Z-index --- */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-modal: 200;
+  --z-toast: 300;
+}
+
+/* Global keyboard focus ring — applies to all interactive elements when navigated by keyboard.
+ * Individual components may override box-shadow for hover states, but :focus-visible takes precedence. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
