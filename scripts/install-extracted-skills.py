@@ -28,6 +28,12 @@ from pathlib import Path
 SRC = Path.home() / "Documents/Claude/Projects/Business Planning/_extracted_skills_for_c_suite.md"
 SKILLS_DIR = Path.home() / ".claude" / "skills"
 
+# Repo-local skill bodies (business-planning/skills/<name>/SKILL.md).
+# When present, these are the canonical full-body source and are preferred
+# over the extracted-skills markdown (which wraps content in fences that
+# confuse the state-machine parser for skills with bare ``` inner blocks).
+REPO_SKILLS_DIR = Path(__file__).parent.parent / "business-planning" / "skills"
+
 FORCE = "--force" in sys.argv
 
 if not SRC.exists():
@@ -152,7 +158,27 @@ for s in skill_sections:
     skill_file = out_dir / "SKILL.md"
     refs_dir = out_dir / "references"
 
-    # Extract all top-level code blocks via state machine (B29 fix).
+    if skill_file.exists() and not FORCE:
+        results.append((skill_name, "SKIP", f"already installed at {skill_file} (use --force to overwrite)"))
+        continue
+
+    # Prefer repo-local full-body when available (avoids state-machine parse
+    # ambiguity for skills that use bare ``` inner blocks inside markdown fences).
+    repo_body = REPO_SKILLS_DIR / skill_name / "SKILL.md"
+    if repo_body.exists():
+        skill_content = repo_body.read_text(encoding="utf-8")
+        was_present = skill_file.exists()
+        out_dir.mkdir(parents=True, exist_ok=True)
+        skill_file.write_text(skill_content, encoding="utf-8")
+        action = "UPDATED" if was_present else "INSTALLED"
+        results.append((
+            skill_name,
+            action,
+            f"SKILL.md ({len(skill_content)} bytes) [from repo]",
+        ))
+        continue
+
+    # Fallback: extract from state-machine parser (for skills without repo body).
     try:
         code_blocks = extract_skill_body_blocks(section_text)
     except ValueError as e:
@@ -164,10 +190,6 @@ for s in skill_sections:
         continue
 
     skill_content = code_blocks[0]['content'].rstrip() + "\n"
-
-    if skill_file.exists() and not FORCE:
-        results.append((skill_name, "SKIP", f"already installed at {skill_file} (use --force to overwrite)"))
-        continue
 
     out_dir.mkdir(parents=True, exist_ok=True)
     skill_file.write_text(skill_content, encoding="utf-8")
