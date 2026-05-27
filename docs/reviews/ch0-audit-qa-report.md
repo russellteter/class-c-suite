@@ -5,7 +5,7 @@
 **ADR under review:** `docs/decisions/0001-ch0-foundations.md`
 **Head commits reviewed:** `62e25e4` (Phase R close) through `bcf5d3b` (cluster 1 fix)
 **Test run confirmed:** 170/170 PASS (`pnpm run test:unit`, 2026-05-27)
-**Verdict: CHAPTER REOPEN**
+**Verdict (updated 2026-05-27T01:24 ET): CHAPTER CLOSE — original REOPEN resolved via commit `8d63a43`. See §8 for resolution detail.**
 
 ---
 
@@ -15,7 +15,7 @@
 |---|-----------|----------------------|---------|---------|----------|
 | 1 | pnpm workspace resolves `@c-suite/shared-types`, `@c-suite/stub-harness` | `package.json`, `packages/*/package.json` | All 170 tests import across packages via vitest aliases | PASS | `pnpm install --frozen-lockfile` succeeds; all cross-package imports resolve in test run |
 | 2 | TypeScript strict mode; zero `any` leaks through zone map | `tsconfig.json`, `parseArtifact.ts` line 43 | `parseArtifact.spec.ts` | PASS | `tsconfig.json` has `"strict": true`; `ZoneToSchema` uses `satisfies Record<ArtifactZone, z.ZodTypeAny>`; tsc passes in CI |
-| 3 | `pnpm exec electron-builder --version` reports pinned major (26.x) | NOT IN ANY `package.json` | None | **FAIL** | `pnpm exec electron-builder --version` → "Command 'electron-builder' not found". electron-builder absent from root `package.json`, all workspace `package.json`s, and `pnpm-lock.yaml`. `electron-builder.yml` config exists but binary is not installed. |
+| 3 | `pnpm exec electron-builder --version` reports pinned major (26.x) | root `package.json` devDependencies; `pnpm-lock.yaml` | manual verify | **PASS** (resolved 2026-05-27T01:24 ET — commit `8d63a43`) | `pnpm exec electron-builder --version` → `26.8.1`. Added `electron-builder@^26.8.1` + `@electron/notarize@^2.5.0` + `@electron/osx-sign@^1.3.1` + `@electron/rebuild@^3.7.0` to root devDependencies; manifest + lockfile committed atomically (commit-lockfile-with-manifest rule). 170/170 tests still green post-install. |
 | 4 | `zoneFor()` returns correct zone for each of 11 path patterns | `parseArtifact.ts` lines 71-85 | `parseArtifact.spec.ts` — `zoneFor` tests | PASS | 11 zone cases visible in `ZoneToSchema` map; `zoneFor` tests cover all path patterns; no production zone returns wrong result |
 | 5 | `parseArtifact(rawYaml, zone)` injects `type` discriminator post-parse | `parseArtifact.ts` lines 56-58 | `parseArtifact.spec.ts` (37 tests) | PASS | Returns `{ ...parsed, type: zone }`. BY-HAND REPRODUCED — see §3 below. |
 | 6 | `normalizeKeys()` converts kebab → snake recursively; coerces Date → YYYY-MM-DD | `normalizeKeys.ts` | `normalizeKeys.spec.ts` (24 tests) | PASS | Recursive replace on all keys; `obj instanceof Date → .toISOString().slice(0,10)`. BY-HAND REPRODUCED — see §3 below. |
@@ -29,7 +29,7 @@
 | 14 | CI workflow runs on Ubuntu; `STUB_MODE=replay`; no live inference | `.github/workflows/ci.yml` | CI is the test runner | PASS | `runs-on: ubuntu-latest`; `STUB_MODE: replay` set at workflow level; zero `secrets.ANTHROPIC_API_KEY` or `secrets.` references other than implicit `GITHUB_TOKEN` |
 | 15 | `scripts/preflight.sh` checks Dropbox/Google Drive sync; B29 truncation detector | `scripts/preflight.sh` lines 65-93 (sync agents), 183-202 (truncation detector) | `tests/unit/preflight.spec.ts` | PASS | Dropbox ancestor walk at lines 70-83; Google Drive path/kextstat at lines 87-93; per-skill line-count check vs 50-line floor at lines 193-201 |
 
-**Verdict counts: 13 PASS / 1 FAIL / 1 CONCERN (row 7 IPC typo) / 2 CONCERN (rows 12, 13 working-as-designed)**
+**Verdict counts (updated 2026-05-27T01:24 ET): 14 PASS / 0 FAIL / 1 CONCERN (row 7 IPC typo) / 2 CONCERN (rows 12, 13 working-as-designed) + 1 deferred Ch.1 CONCERN (subpath exports)**
 
 ---
 
@@ -214,7 +214,13 @@ grep -rn "writeFile\|writeFileSync\|writeSync\|createWriteStream" packages/ apps
 
 ## 8. Verdict
 
-**Chapter verdict: REOPEN**
+**Chapter verdict (final, 2026-05-27T01:24 ET): CLOSE**
+
+**Resolution of original REOPEN:** electron-builder@26.8.1 + 3 companion packages (@electron/notarize@2.5.0, @electron/osx-sign@1.3.1, @electron/rebuild@3.7.0) added to root devDependencies; manifest + pnpm-lock.yaml committed atomically in `8d63a43`. `pnpm exec electron-builder --version` now reports `26.8.1`. 170/170 unit tests still green post-install. Criterion 3 verdict updated FAIL → PASS.
+
+---
+
+**Original REOPEN (preserved for audit trail):**
 
 **Single blocking issue:** electron-builder not installed (criterion 3 FAIL). The `electron-builder.yml` config exists and is correctly shaped, but the binary is absent from all `package.json` files and the lockfile. `pnpm exec electron-builder --version` returns a command-not-found error. The ADR explicitly requires this command to report the pinned major (26.x).
 

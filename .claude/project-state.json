@@ -2,8 +2,8 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "ch-0-reopen",
-  "next_action": "Ch.0 REOPEN: single blocking fix required — add electron-builder@^26.8.1 (+ @electron/notarize, @electron/osx-sign, @electron/rebuild) to the appropriate workspace package.json devDependencies. Run pnpm install, verify 'pnpm exec electron-builder --version' reports 26.x, commit manifest + lockfile atomically. Then re-run ch0-audit-qa-report criterion 3 only to confirm PASS. After fix, update current_phase to 'ch-0-complete-ready-for-ch1'.",
+  "current_phase": "ch-0-complete-ready-for-ch1",
+  "next_action": "Ch.1 SPEC: Architect dispatch (Backend Architect, Opus) reads ADR-0001 + Phase R OWED items 2, 3, 4 (Error handling table per Decision 5; Heartbeat-only IPC relay per B34; SQLite path = app.getPath('userData') per R2 B16). Produces ADR-0002 covering three-process shell + IPC round-trip + supervised utility process restart from SQLite checkpoint + token-budget scheduler (Max-window math) + idempotent SQLite migrations + structured JSON logs with cross-process correlation IDs.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",
