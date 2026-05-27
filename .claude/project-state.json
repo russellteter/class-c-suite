@@ -2,8 +2,8 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "ch6-spec-complete-design-gate-pending",
-  "next_action": "Ch.6 SPEC done — ADR-0008 committed (39ac7fa) locks Synthesizer-authors-proposals + .draft-<runId>.md sidecar + per-writeback N=3 (distinct from B38 run-level N=3) + schema verbatim to vault VAULT_GUIDE.md §3. 4 build briefs at tasks/ch6-{runtime,renderer,test,dev-script}-brief.md ready. Frontend Developer sub-agent (background) is rendering 6 mockups (3 screens × A/B variants) + approval form + local submit server to ~/Desktop/csuite-ch6-design/. RUSSELL ACTION on completion: run launch.sh, open http://127.0.0.1:8765/, pick variants per screen, submit. Answers persist to /tmp/csuite-ch6-decisions.json. Then next /goal turn writes APPROVED.md, dispatches parallel build sub-agents (Runtime + Renderer + Dev-Script concurrent; Test sequential), integrates, and routes to Audit/QA per ADR §4 acceptance criteria. B22 reclassified MITIGATED (preflight green; vault has 237 commits) — close formally at Ch.6 boundary.",
+  "current_phase": "ch6-complete-concern-close",
+  "next_action": "Ch.6 CLOSED CONCERN-CLOSE 2026-05-27 — 11 PASS / 1 CONCERN per Audit/QA (docs/reviews/ch6-audit-qa-report.md). 20+ commits 39ac7fa..66c3cd2 + tests commit. ADR-0008 + §10 locked. Writeback engine (6 drafters + accept/edit/reject/iterate) + 3 renderer screens (variant A + topic pill + expand-on-click + smaller font) + migration 005 + 5 new IPC variants + state-machine review-internal transitions + run-loop wiring + Synthesizer proposedWritebacks schema. 68/68 unit tests green (drafters + pure functions); engine API + integration + RTL coverage deferred to Ch.7. Electron pinned ^33.4.11 (better-sqlite3 12.x compat). pnpm dev launches main+DB+migrations+vault watcher+scaffold window cleanly; utility process crash-loops (B45 — likely better-sqlite3 dlopen inside utility import chain). B22 formally closed (vault has 240+ commits). NEXT /goal: dispatch focused diagnostic+fix sub-agent for B45 (and B44 — 3 apps/utility TS errors masked by build:soft) BEFORE Ch.7 runtime work begins. Then Ch.7 ritual: SPEC ADR-0009 → DESIGN GATE (8 playbook tiles + Open Q&A bar + home screen full-data) → parallel build (Runtime + Renderer + Test) → INTEGRATE → AUDIT/QA → close. Phase 2 remaining: Ch.7 → Ch.8 (parallel after Ch.6 schema lands) → Ch.9 → Ch.10 → emit PHASE-2 COMPLETE; do NOT enter Ch.11 (Russell on-Mac hard gate). Handoff doc at thoughts/shared/handoffs/general/2026-05-27_ch6-close.yaml.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",
@@ -232,6 +232,6 @@
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-27T15:30:00-04:00",
-  "updated_by": "/goal Phase 2 kickoff 2026-05-27 — Ch.6 SPEC ADR-0008 committed 39ac7fa; build briefs at tasks/ch6-*-brief.md; design gate dispatched in background to Frontend Developer (Sonnet); awaiting Russell variant approval"
+  "last_updated": "2026-05-27T19:25:00-04:00",
+  "updated_by": "/goal Phase 2 Ch.6 close 2026-05-27 — CONCERN-CLOSE per Audit/QA; 20+ commits + 68 tests green; B22 closed, B44+B45 added; next Ch.7 entry blocked on B45 sub-agent fix"
 }
