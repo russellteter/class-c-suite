@@ -10,6 +10,31 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { simpleGit } from 'simple-git';
 import type { ArtifactZone } from '@c-suite/shared-types/vault-schemas';
+import type { IpcMessage } from '@c-suite/shared-types/ipc';
+
+// ---------------------------------------------------------------------------
+// B39: vault.commit.failed surfacing
+// Source: docs/reviews/ultrareview-2026-05-27.md "Critical Fix 5"
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal logger surface SafeWrite uses to record a non-fatal commit failure.
+ * Compatible with pino (apps/utility/src/logger.ts) and console fallbacks.
+ */
+export interface SafeWriteLogger {
+  error: (obj: Record<string, unknown>, msg?: string) => void;
+}
+
+/**
+ * Minimal SQLite surface for recording vault_commit_failures rows.
+ * Accepts either a better-sqlite3 Database instance or a duck-typed object
+ * exposing prepare().run(...).
+ */
+export interface SafeWriteDb {
+  prepare(sql: string): { run(...params: unknown[]): unknown };
+}
+
+export type SafeWriteEmitIpc = (msg: IpcMessage) => void;
 
 // ---------------------------------------------------------------------------
 // B22: VaultNotInitializedError
@@ -130,6 +155,12 @@ export interface SafeWriteOpts {
   commitVault: boolean;
   /** ArtifactZone — determines hash-check policy. */
   zone: ArtifactZone;
+  /** B39: optional logger for git-commit failure (defaults to console.error). */
+  logger?: SafeWriteLogger;
+  /** B39: optional IPC emitter for vault.commit.failed event. */
+  emitIpc?: SafeWriteEmitIpc;
+  /** B39: optional SQLite db for vault_commit_failures audit row. */
+  db?: SafeWriteDb;
 }
 
 export type SafeWriteResult =
@@ -158,7 +189,7 @@ export async function safeWrite(
   content: string,
   opts: SafeWriteOpts,
 ): Promise<SafeWriteResult> {
-  const { agent, runId, playbook, commitVault, zone } = opts;
+  const { agent, runId, playbook, commitVault, zone, logger, emitIpc, db } = opts;
 
   // 1. Assert vault is initialized (throws VaultNotInitializedError if not).
   const vaultRoot = await assertVaultInitialized(filePath);
@@ -224,8 +255,44 @@ export async function safeWrite(
         const msg = `c-suite: ${agent} wrote ${relPath} during ${playbook} run ${runId}`;
         const result = await git.commit(msg, [filePath]);
         commitSha = result.commit;
-      } catch {
-        // Git commit failure is non-fatal: write succeeded.
+      } catch (err) {
+        // B39: write succeeded; commit failed. Non-fatal but VISIBLE.
+        // Source: docs/reviews/ultrareview-2026-05-27.md "Critical Fix 5"
+        const errorMessage = err instanceof Error ? err.message : String(err);
+
+        // (1) Log.
+        const log: SafeWriteLogger = logger ?? {
+          error: (obj, msg) => {
+            // eslint-disable-next-line no-console
+            console.error(JSON.stringify({ ...obj, message: msg ?? 'vault.commit.failed' }));
+          },
+        };
+        log.error(
+          { component: 'safeWrite', runId, path: filePath, agent, playbook, err: errorMessage },
+          'vault git commit failed (non-fatal)',
+        );
+
+        // (2) IPC event.
+        try {
+          emitIpc?.({
+            kind: 'vault.commit.failed',
+            payload: { path: filePath, error: errorMessage, runId },
+          });
+        } catch {
+          // emitIpc may itself fail (e.g., closed MessagePort). Never re-throw.
+        }
+
+        // (3) SQLite audit row for future retry.
+        if (db) {
+          try {
+            db.prepare(
+              `INSERT INTO vault_commit_failures (run_id, path, agent, playbook, error)
+               VALUES (?, ?, ?, ?, ?)`,
+            ).run(runId, filePath, agent, playbook, errorMessage);
+          } catch {
+            // Schema missing or db closed — log was already emitted; do not throw.
+          }
+        }
       }
     }
 

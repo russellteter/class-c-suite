@@ -496,3 +496,150 @@ describe('SafeWrite AC-9 — per-path lock serializes concurrent writes', () => 
     }
   });
 });
+
+// ── B39: vault.commit.failed surfacing ────────────────────────────────────────
+// Source: docs/reviews/ultrareview-2026-05-27.md "Critical Fix 5"
+// When git commit fails, write itself succeeds but the failure is logged,
+// emitted as IPC event, and persisted to vault_commit_failures sqlite table.
+
+import Database from 'better-sqlite3';
+
+describe('SafeWrite B39 — git-commit failure is logged + IPC + sqlite (non-fatal)', () => {
+  let vaultDir: string;
+  let filePath: string;
+  let db: Database.Database;
+
+  beforeEach(async () => {
+    vaultDir = await fs.mkdtemp(path.join(os.tmpdir(), 'csuite-safewrite-b39-'));
+    await makeGitVault(vaultDir);
+    await fs.mkdir(path.join(vaultDir, 'positions', 'active'), { recursive: true });
+    filePath = path.join(vaultDir, 'positions', 'active', 'POS-B39.md');
+    await fs.writeFile(filePath, '---\nid: POS-B39\nstatus: active\n---\n', 'utf8');
+    const git = simpleGit(vaultDir);
+    await git.add('.');
+    await git.commit('vault: seed POS-B39');
+
+    db = new Database(':memory:');
+    db.exec(`
+      CREATE TABLE vault_commit_failures (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id TEXT NOT NULL,
+        path TEXT NOT NULL,
+        agent TEXT,
+        playbook TEXT,
+        error TEXT NOT NULL,
+        ts INTEGER NOT NULL DEFAULT (unixepoch()),
+        retried_at INTEGER,
+        retry_status TEXT
+      );
+    `);
+  });
+
+  afterEach(async () => {
+    db.close();
+    await fs.rm(vaultDir, { recursive: true, force: true });
+  });
+
+  it('git commit failure: write succeeds + logger.error called + IPC event + sqlite row', async () => {
+    // Force a git commit failure by making .git read-only between the write and the commit.
+    // Easier: spy on simple-git via stubbing the file-system permission. Cleanest path
+    // here is to corrupt the index: rename .git so simpleGit.add throws.
+    const originalRename = fs.rename;
+    let renameSpy: ReturnType<typeof vi.spyOn> | undefined;
+    renameSpy = vi.spyOn(fs, 'rename').mockImplementation(async (src, dest) => {
+      const r = await originalRename(src as string, dest as string);
+      // After temp → target rename, break .git so the upcoming git add fails.
+      const gitDir = path.join(vaultDir, '.git');
+      const brokenDir = path.join(vaultDir, '.git-broken-' + Date.now());
+      try { await originalRename(gitDir, brokenDir); } catch { /* ok */ }
+      return r;
+    });
+
+    const errors: Array<{ obj: Record<string, unknown>; msg?: string }> = [];
+    const emitted: Array<{ kind: string; payload: unknown }> = [];
+
+    const result = await safeWrite(
+      filePath,
+      '---\nid: POS-B39\nstatus: active\n---\nForced commit failure.\n',
+      {
+        agent: 'Synthesizer',
+        runId: 'run-b39',
+        playbook: 'cash_lever',
+        commitVault: true,
+        zone: 'position',
+        logger: { error: (obj, msg) => errors.push({ obj, msg }) },
+        emitIpc: (m) => emitted.push({ kind: m.kind, payload: m.payload }),
+        db,
+      },
+    );
+    renameSpy.mockRestore();
+
+    // (a) write itself succeeded — result is ok, no exception thrown.
+    expect(result.result).toBe('ok');
+    if (result.result !== 'ok') return;
+    // No commitSha because the commit step failed.
+    expect(result.commitSha).toBeUndefined();
+    // Target file has the new content on disk.
+    const written = await fs.readFile(filePath, 'utf8');
+    expect(written).toContain('Forced commit failure.');
+
+    // (b) logger.error was called with structured error payload.
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+    const errPayload = errors[0]!.obj;
+    expect(errPayload.component).toBe('safeWrite');
+    expect(errPayload.runId).toBe('run-b39');
+    expect(errPayload.path).toBe(filePath);
+    expect(typeof errPayload.err).toBe('string');
+
+    // (c) IPC event emitted once.
+    const ipcEvents = emitted.filter((m) => m.kind === 'vault.commit.failed');
+    expect(ipcEvents).toHaveLength(1);
+    expect(ipcEvents[0].payload).toMatchObject({
+      path: filePath,
+      runId: 'run-b39',
+    });
+    expect(typeof (ipcEvents[0].payload as { error: string }).error).toBe('string');
+
+    // (d) sqlite row persisted for future Ch.10 retry.
+    const rows = db.prepare(
+      `SELECT run_id, path, agent, playbook, error, retried_at FROM vault_commit_failures WHERE run_id = ?`,
+    ).all('run-b39') as Array<{
+      run_id: string; path: string; agent: string; playbook: string; error: string; retried_at: number | null;
+    }>;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].path).toBe(filePath);
+    expect(rows[0].agent).toBe('Synthesizer');
+    expect(rows[0].playbook).toBe('cash_lever');
+    expect(rows[0].error.length).toBeGreaterThan(0);
+    expect(rows[0].retried_at).toBeNull();
+  });
+
+  it('happy path: no logger/IPC/sqlite calls when commit succeeds', async () => {
+    const errors: Array<{ obj: Record<string, unknown> }> = [];
+    const emitted: Array<{ kind: string }> = [];
+
+    const result = await safeWrite(
+      filePath,
+      '---\nid: POS-B39\nstatus: active\n---\nHappy path.\n',
+      {
+        agent: 'Synthesizer',
+        runId: 'run-b39-ok',
+        playbook: 'cash_lever',
+        commitVault: true,
+        zone: 'position',
+        logger: { error: (obj) => errors.push({ obj }) },
+        emitIpc: (m) => emitted.push({ kind: m.kind }),
+        db,
+      },
+    );
+
+    expect(result.result).toBe('ok');
+    if (result.result === 'ok') expect(result.commitSha).toBeTruthy();
+    expect(errors).toHaveLength(0);
+    expect(emitted.filter((m) => m.kind === 'vault.commit.failed')).toHaveLength(0);
+    const rows = db.prepare(
+      `SELECT COUNT(*) as n FROM vault_commit_failures WHERE run_id = ?`,
+    ).get('run-b39-ok') as { n: number };
+    expect(rows.n).toBe(0);
+  });
+});

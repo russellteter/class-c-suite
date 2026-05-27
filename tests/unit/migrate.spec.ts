@@ -46,16 +46,16 @@ describe('runMigrations — idempotency + schema correctness (§9 row 4)', () =>
   it('creates schema_version row on first run', () => {
     runMigrations(db);
     const row = db.prepare('SELECT COUNT(*) AS n FROM schema_version').get() as { n: number };
-    // Ch.2 adds 002_conflicts.sql, Ch.3 adds 003_state_transitions.sql — 3 migrations = 3 rows.
-    expect(row.n).toBe(3);
+    // Ch.2 002_conflicts.sql + Ch.3 003_state_transitions.sql + Ch.2-polish 004_vault_commit_failures.sql = 4 migrations.
+    expect(row.n).toBe(4);
   });
 
   it('is idempotent — second run produces no duplicate schema_version rows', () => {
     runMigrations(db);
     runMigrations(db);
     const row = db.prepare('SELECT COUNT(*) AS n FROM schema_version').get() as { n: number };
-    // Ch.2 adds 002_conflicts.sql, Ch.3 adds 003_state_transitions.sql — 3 migrations = 3 rows.
-    expect(row.n).toBe(3);
+    // Ch.2 002_conflicts.sql + Ch.3 003_state_transitions.sql + Ch.2-polish 004_vault_commit_failures.sql = 4 migrations.
+    expect(row.n).toBe(4);
   });
 
   it('second run produces no SQL errors', () => {
@@ -73,6 +73,7 @@ describe('runMigrations — idempotency + schema correctness (§9 row 4)', () =>
     'schema_version',
     'conflicts',          // Ch.2 G-2
     'state_transitions',  // Ch.3 ADR-0004 §1.5
+    'vault_commit_failures', // B39 polish — migration 004
   ];
 
   it.each(EXPECTED_TABLES)('table %s exists after migration', (tableName) => {
