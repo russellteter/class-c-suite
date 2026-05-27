@@ -14,6 +14,7 @@ import { runMigrations } from './db/migrate.js';
 import { createRendererWindow } from './window.js';
 import { registerIpcHandlers } from './ipc/handlers.js';
 import { startSupervision, type SupervisionState } from './supervisor.js';
+import { initVaultWatcher } from './vaultWatcher/index.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('main');
@@ -67,6 +68,12 @@ app.whenReady().then(() => {
   const state: SupervisionState = { restarts: [], proc: null, port: null };
   startSupervision(state, db, win.webContents);
 
+  // Start vault file watcher (chokidar, MAIN process).
+  // Emits vault.changed IPC messages to renderer via win.webContents.
+  const vaultWatcher = initVaultWatcher(
+    (msg) => win.webContents.send('ipc:message', msg)
+  );
+
   // 5-hour token-budget window reset timer — fires in main, proxied to scheduler.
   const WINDOW_MS = 5 * 60 * 60 * 1000;
   const armWindowReset = () => {
@@ -92,6 +99,7 @@ app.whenReady().then(() => {
     if (state.proc) {
       state.proc.kill();
     }
+    vaultWatcher.close().catch(() => {});
     db.close();
     tray?.destroy();
   });
