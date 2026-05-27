@@ -14,6 +14,7 @@ import { createLogger } from './logger.js';
 import { initSqlProxy } from './sql/proxy.js';
 import { checkAndResumeInProgressRun } from './orchestrator/index.js';
 import { initScheduler, getScheduler } from './scheduler/index.js';
+import { initSafeWrite } from './safewrite/index.js';
 
 const log = createLogger();
 
@@ -35,6 +36,15 @@ process.parentPort.once('message', (e) => {
     // Initialize scheduler with IPC emission capability.
     initScheduler((msg) => {
       ipcPort!.postMessage(msg);
+    });
+
+    // Initialize SafeWrite with IPC emission capability.
+    // Throws VaultNotInitializedError if vault has no commits (B22 mitigation).
+    // uncaughtException handler below will catch it and call process.exit(1),
+    // triggering supervisor restart after vault-bootstrap.sh is run.
+    initSafeWrite({ emit: (msg) => { ipcPort!.postMessage(msg); } }).catch((err: unknown) => {
+      log.error({ message: 'initSafeWrite failed', err: String(err) });
+      process.exit(1);
     });
 
     log.info({ message: 'utility IPC port initialized' });
