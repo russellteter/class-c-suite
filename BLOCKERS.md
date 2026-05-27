@@ -170,34 +170,44 @@
 - Tripwire scan + cash forecasting read the SQLite mirror.
 - A parser converts free-text → mirror on workstream write; ambiguous entries flag for Russell.
 
-### B13 — Decision frontmatter lacks machine-readable position/prediction links (Bases queries) `SEEDED` `P3`
+### B13 — Decision frontmatter lacks machine-readable position/prediction links (Bases queries) `VERIFIED` `P3`
 **What.** Existing `decisions/` frontmatter uses prose for cross-references rather than typed arrays. Obsidian Bases queries can't traverse without typed links.
 **Bites at.** Ch.6 (write-back schema + Bases-readable indexes).
+**Status.** **R2 verified 2026-05-26.** Additive plan confirmed sufficient. R0-Vault additionally found missing `tripwires`, `rationale`, `superseded_by` fields. Full additive field set for Ch.6 write-back engine: `linked_positions: []`, `predictions_spawned: []`, `tripwires: []`, `executed_by: null`. Note: Obsidian Bases (core plugin, Obsidian 1.9+) is now the primary query layer; Dataview is in maintenance mode (B32 tracks this separately). All typed arrays must use Bases-compatible plain YAML array syntax.
 **Mitigation.**
-- **Additive** `linked_positions: [...]` / `predictions_spawned: [...]` keys (Day-Zero Bases form captures the mapping Russell wants).
+- **Additive** `linked_positions: [...]` / `predictions_spawned: [...]` / `tripwires: [...]` / `executed_by: null` keys injected by Ch.6 write-back engine.
 - Doesn't break existing files; only enriches.
 - Synthesizer/Verifier populate the typed arrays on new decisions; back-fill is optional.
+- Use plain YAML arrays (not Dataview inline annotation syntax) for Bases compatibility.
 
-### B14 — better-sqlite3 + native-module notarization entitlements `SEEDED` `P2`
+### B14 — better-sqlite3 + native-module notarization entitlements `VERIFIED` `P2`
 **What.** Native node modules (better-sqlite3, possibly chokidar's OS-watcher backend) require correct electron-builder entitlements to pass Apple notarization. Pinning is touchy.
 **Bites at.** Ch.8 / Ch.11.
+**Status.** **R2 verified 2026-05-26.** Required `.plist` entitlement keys confirmed (source: `https://www.forasoft.com/blog/article/the-pain-of-publishing-electron-apps-on-macos-303`, updated 2026-04-26): `com.apple.security.cs.allow-jit` is the **minimum required** (V8 JIT). `com.apple.security.cs.disable-library-validation` needed only if electron-rebuild doesn't re-sign `better-sqlite3` pre-built binary. `altool --notarize-app` is dead (removed November 2023) — only `xcrun notarytool` is valid. Use `@electron/osx-sign` + `@electron/notarize` (scoped packages, not old unscoped). `electron-rebuild` must run as part of the CI build step, not only at dev install. **Spec correction needed:** architecture docs that reference "Sequoia 14.4+" are wrong — Darwin 24.x = macOS Sequoia 15.x. Sonoma = 14, Sequoia = 15.
 **Mitigation.**
-- **`electron-rebuild` pinned** to the Electron version in `package.json`.
+- **`electron-rebuild` runs in the CI/build step** (not just dev install) to compile native modules against the exact Electron Node.js ABI.
+- Minimum `entitlements.mac.plist` key: `com.apple.security.cs.allow-jit`. Add `disable-library-validation` only if pre-built binary signing fails.
+- **`xcrun notarytool`** is the only valid notarization tool (2026). Pipeline: sign → package → `notarytool submit --wait` → `xcrun stapler staple`.
+- Use `@electron/osx-sign` + `@electron/notarize` (scoped packages).
 - **Test notarization on a throwaway build mid-Ch.8** — don't wait for Ch.11 to discover this is broken.
-- Document the working entitlements + signing identity in the Ch.11 setup runbook.
+- Document working entitlements + signing identity in the Ch.11 setup runbook.
+- **Architecture-spec patch:** replace "Sequoia 14.4+" with "Sequoia 15.x+" in all architecture docs.
 
-### B15 — Calibration-freshness when zero positions cited — product-philosophy call `SEEDED` `P3`
+### B15 — Calibration-freshness when zero positions cited — product-philosophy call `VERIFIED` `P3`
 **What.** The rigor formula's calibration-freshness component (15 points) penalizes stale calibration use. But what if a memo legitimately cites zero positions because the question is novel? Penalty or pass?
 **Bites at.** Ch.4 (rigor formula edge case).
+**Status.** **R2 verified 2026-05-26.** Decide-and-log approach confirmed correct. A 70-point memo can pass with 0 calibration points if the other four dimensions are strong (35+20+15 = 70 without any calibration). The formula as specified does not penalize novel questions — it simply doesn't reward them. No spec change needed.
 **Mitigation.**
 - "Decide and log" under doctrine: **reward using the library** rather than only penalizing stale use. Memos with zero position citations don't get the 15 points but don't get penalized below threshold either.
-- If Russell wants stricter (penalize for not using library), surface as Day-Zero form question.
+- If Russell wants stricter (penalize for not using library), surface as Day-Zero form question (currently recommended: NO — novel questions should not be artificially penalized).
 
-### B16 — Audit trail contains sensitive SF/NS excerpts — durability vs git-pushed vault `SEEDED` `P3`
-**What.** The audit trail records tool-call results including Salesforce / NetSuite excerpts. If the vault git repo is push to a private remote for off-machine backup, sensitive data crosses the network.
+### B16 — Audit trail contains sensitive SF/NS excerpts — durability vs git-pushed vault `VERIFIED` `P3`
+**What.** The audit trail records tool-call results including Salesforce / NetSuite excerpts. If the vault git repo is pushed to a private remote for off-machine backup, sensitive data crosses the network.
 **Bites at.** Ch.1 (audit trail storage).
+**Status.** **R2 verified 2026-05-26.** SQLite-local mitigation confirmed sufficient. The Synthesizer reads from in-memory run state, not from SQLite direct file reads — no code path writes `result_json` to vault files. The optional in-vault export path is user-initiated only. One implementation note added: SQLite data directory must be `app.getPath('userData')` (not `app.getPath('documents')`) to stay out of iCloud sync territory (B9 interaction).
 **Mitigation.**
 - **Keep audit trail in SQLite (runtime metadata)**, not in the vault. SQLite is local-only by default.
+- SQLite data directory: `app.getPath('userData')` — never `documents` or any iCloud-synced path (B9 interaction).
 - Optional **in-vault export** of audit excerpts gated by Russell (separate review).
 - Vault git push remains for the artifact corpus; SQLite stays local.
 
@@ -282,6 +292,47 @@
 - Fix the installer (`scripts/install-extracted-skills.py`) to write full bodies, then re-run.
 - Add preflight check: SKILL.md line count >= 50 per installed skill.
 **Owner.** Ch.0 architect (preflight + installer fix); Russell at next session if codify-vs-invoke decision shifts.
+
+### B31 — globalShortcut registration fails silently if hotkey is already claimed `NEW` `P3`
+**What.** Electron's `globalShortcut.register()` returns `false` silently (no exception) if the accelerator is already claimed by another app. The C-Suite will silently fail to register its activation shortcut if, for example, another productivity app claims `Cmd+Shift+C` (VSCode uses it for format document; other apps may vary).
+**Bites at.** Ch.0 (app bootstrap), Ch.5 (first-slice activation).
+**Status.** NEW — surfaced by R2 red-team 2026-05-26. Source: `https://electronjs.org/docs/latest/api/global-shortcut` — "When the accelerator is already taken by other applications, this call will silently fail."
+**Mitigation.**
+- After `globalShortcut.register()`, call `globalShortcut.isRegistered()` to verify success.
+- If registration fails: surface a banner in the tray menu ("Hotkey unavailable — configure in settings") and open the shortcut-configuration panel.
+- Provide a user-configurable hotkey setting in preferences (persisted in SQLite).
+- Test at Day-Zero with Russell's full app stack running (VSCode, browsers, etc.).
+**Owner.** Ch.0 architect; Ch.5 UX polish.
+
+### B32 — Architecture spec references Dataview; Dataview is in maintenance mode `NEW` `P2`
+**What.** Obsidian Dataview's lead developer announced they would not continue active development (September 2025 per Medium article). Obsidian Bases is now a built-in core plugin (Obsidian 1.9+, May 2025) and is the primary frontmatter query layer. Architecture specs or vault tooling that assumes Dataview may target a plugin that won't receive updates or fixes.
+**Bites at.** Ch.6 (write-back schema design), Ch.1 (indexer frontmatter parsing), B13 (Bases query syntax).
+**Status.** NEW — surfaced by R2 red-team 2026-05-26. Source: Medium "Obsidian Dataview Is Dead. Long Live Bases." (Sep 2025); YouTube "Obsidian 1.9 preview — What the new Bases plugin can (not) do" (May 2025, `https://www.youtube.com/watch?v=lpyIuLmEidQ`).
+**Mitigation.**
+- Ch.6 write-back schema must use **Bases-compatible plain YAML array syntax** for all typed link fields (not Dataview inline annotation syntax).
+- Do NOT rely on Dataview for any query that the C-Suite runtime or vault-browsing workflow depends on.
+- Ask Russell at next session: "Will you use Bases or Dataview for manual vault queries?" If Bases, remove any Dataview query blocks from vault templates.
+- B13 additive fields already use plain YAML arrays — compatible with Bases.
+**Owner.** Russell (preference confirmation); Ch.6 architect (schema).
+
+### B33 — Preflight detects iCloud sync only; Dropbox/Google Drive sync also hazardous `NEW` `P2`
+**What.** B9's preflight checks for iCloud sync on the vault path. Dropbox and Google Drive sync agents also interfere with atomic rename (`rename(2)`) operations and can corrupt SafeWrite. If Russell ever moves the vault into a Dropbox or Google Drive folder, the app will operate without detecting the hazard.
+**Bites at.** Ch.2 (SafeWrite), Ch.11 (setup runbook).
+**Status.** NEW — surfaced by R2 red-team 2026-05-26.
+**Mitigation.**
+- Preflight check detects ALL sync agents on the vault path: iCloud (`com.apple.CloudDocs` extended attribute), Dropbox (`.dropbox` marker file in ancestor directories), Google Drive (`Google Drive.app` process running + vault under `~/Library/CloudStorage/GoogleDrive-*` or `~/Google Drive/`).
+- If any sync agent detected: refuse to start, surface clear error with remediation steps.
+- Add to Ch.11 setup runbook.
+**Owner.** Ch.0 architect (preflight.sh extension); Ch.11 runbook author.
+
+### B34 — IPC stream event volume on long Opus Verifier runs may saturate renderer `NEW` `P3`
+**What.** If the C-Suite relays all `SDKPartialAssistantMessage` token events from the Verifier (Opus 4.7, potentially 10K+ tokens) to the renderer over IPC, the event volume can saturate the IPC channel and cause UI jank or dropped events on weaker Macs.
+**Bites at.** Ch.3 (IPC event bus design), Ch.5 (round-table live view).
+**Status.** NEW — surfaced by R2 red-team 2026-05-26. Source: context7 `/nothflare/claude-agent-sdk-docs` TypeScript types — `SDKPartialAssistantMessage` is available via `includePartialMessages` option.
+**Mitigation.**
+- **Do NOT relay raw token events to the renderer.** Relay only a "heartbeat" event (once per 2 seconds or per 200 tokens) showing "agent X is generating…" indicator. This is already noted as optional in `docs/architecture/runtime.md` line 173.
+- Full token stream is optional; default to heartbeat-only. Implement token-level streaming as a Ch.5 enhancement if Russell specifically requests live word-by-word output.
+**Owner.** Ch.3 architect (IPC design); Ch.5 round-table UX.
 
 ### B30 — Pre-existing SQLite at `c-suite/ruvector.db` of unknown schema `NEW` `P3`
 **What.** R0-Vault found a `ruvector.db` file in the repo root. data.md assumes a fresh SQLite store for runtime. If ruvector.db is related to an existing tool (Ruflo? RuVector memory graph?), it may conflict or coexist.
