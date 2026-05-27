@@ -161,10 +161,12 @@ export async function safeWrite(args: SafeWriteArgs): Promise<SafeWriteResult> {
     await fs.mkdir(path.dirname(absPath), { recursive: true });
     await fs.writeFile(tempPath, content, 'utf8');
 
-    // 6. Re-read hash (hash what was actually written)
+    // 6. Re-read hash: re-read the TARGET (not temp) to detect external modification.
+    // Source: ADR §1.2 step 5 — "re-read + hash the target file".
+    // Bug fixed: was reading tempPath (always matched content) instead of absPath.
     let reReadHash: string | null = null;
     if (policy.hashCheck && preHash !== null) {
-      const reReadContent = await fs.readFile(tempPath, 'utf8');
+      const reReadContent = await fs.readFile(absPath, 'utf8');
       reReadHash = sha256(reReadContent);
     }
 
