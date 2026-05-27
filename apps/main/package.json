@@ -10,7 +10,8 @@
     "test:unit": "echo 'no unit tests in apps/main at Ch.0'",
     "test:integration": "echo 'no integration tests in apps/main at Ch.0'",
     "build": "tsc",
-    "dev": "tsc && electron . --inspect=5858"
+    "dev": "tsc && electron .",
+    "dev:debug": "tsc && electron . --inspect=5858"
   },
   "dependencies": {
     "@c-suite/shared-types": "workspace:*",
