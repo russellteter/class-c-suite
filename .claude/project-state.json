@@ -2,64 +2,101 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "scaffold-complete-ready-for-goal",
-  "next_action": "Open a fresh Claude Code session at this repo with auto-mode ON. Paste the /goal prompt from scripts/goal-prompt-v1.md verbatim. Scope: Phase R through Ch.5 first-end-to-end-slice. After Ch.5 closes, run /goal again for Ch.6-10. Final Ch.11 requires Russell to run the 8 on-Mac demos in person.",
+  "current_phase": "phase-r-complete-ready-for-ch0",
+  "next_action": "Ch.0 Foundations: SPEC step dispatched to Architect (Backend Architect / Plan sub-agent, Opus 4.7). Architect reads the 20-item architecture-spec patch list in docs/build-log.md §Phase R complete + the R0-Vault constraints ledger + R0-Skills inventory, and produces the Ch.0 ADR with corrected Zod schemas + IPC types + CI/stub-harness skeleton.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",
-      "summary": "Ingested ultraplan, audited against PRD/CLAUDE.md, authored 5 top-level doc-set + project CLAUDE.md + README + 6 architecture specs + build-log scaffold + augmented PRD/CLAUDE mirrors. Recorded as ADR-0000.",
+      "summary": "Doc-set spine + architecture specs + auto-push hook + Tier 1 enhancements + B17 mitigation + scaffold-session close.",
       "completed_on": "2026-05-26",
-      "commits": ["79bc9c6", "6e2ed6c", "ffd984e"]
+      "commits": ["79bc9c6", "6e2ed6c", "ffd984e", "10559a9", "5b16baa", "1d83daa", "670d29d", "61958fc"]
     },
     {
-      "id": "auto-push-hook-durable",
-      "summary": "Tracked hooks/post-commit + core.hooksPath=hooks + scripts/install-hooks.sh. Auto-push survives re-clone.",
+      "id": "phase-r-batch-1-r0",
+      "summary": "4 R0 sub-agents dispatched parallel (Spine, Vault, Skills, Code). All 4 reports written to docs/research/. 10 new BLOCKERS (B21-B30) added. R0-Code resolved Phase 0 decision #9 to (b) Python subprocess.",
       "completed_on": "2026-05-26",
-      "commits": ["ffd984e"]
+      "commits": ["d6f4e77", "43b9b0c", "c3a184a", "bb07a23"]
     },
     {
-      "id": "tier-1-execution-enhancements",
-      "summary": "Pre-flight script, NetSuite TBA request template, brand-voice extraction, ADR template + ADR-0000, sub-agent dispatch templates (9 roles), rigor-cases + canary fixtures, project-state file, BLOCKERS B17 missing-skill register, README orchestrator quickstart.",
+      "id": "phase-r-batch-2-r1r2",
+      "summary": "R1-Remaining (AWS/Gmail/Chorus/PowerBI) + R2-Adversarial dispatched parallel via general-purpose. R1 surfaced 10 mcp.md patches. R2 verified 11 blockers + added B31-B34.",
       "completed_on": "2026-05-26",
-      "commits": ["10559a9"]
+      "commits": ["a98a33c", "f8b449c"]
     },
     {
-      "id": "downstream-blocker-remediation",
-      "summary": "pnpm installed by Russell; customer-dashboard repo located + cloned; preflight + mcp.md + BLOCKERS updated for the Python+43K-LOC reality (B18 NEW for subprocess implications, B2 downgraded); Cowork extraction prompt shipped at scripts/cowork-extract-skills.md.",
+      "id": "phase-r-synthesis-close",
+      "summary": "10 Phase 0 decisions resolved at docs/research/phase-r-decisions.md. Simple arch-spec patches applied (B33 Sequoia 15.x; R1-Remaining mcp.md fixes). 20-item structural patch list enumerated for Ch.0 architect. Phase R exit-gate: all 8 criteria MET.",
       "completed_on": "2026-05-26",
-      "commits": ["5b16baa"]
-    },
-    {
-      "id": "salesforce-netsuite-r1-partial",
-      "summary": "Salesforce + NetSuite live access verified. R1 partial report at docs/research/R1-connector-reality.md. Two major Connector Playbook corrections caught: B19 (stage labels S4/S5/Commit/BestCase don't exist; real labels documented), B20 (renewal field is Renewal_Anniversary_Date__c not Renewal_Date__c). B7 verified live. B1 downgraded P1->P2 (NetSuite MCP fully usable for Phase R).",
-      "completed_on": "2026-05-26",
-      "commits": ["1d83daa"]
-    },
-    {
-      "id": "skill-extraction-install",
-      "summary": "Russell ran the Cowork extraction prompt; Cowork produced _extracted_skills_for_c_suite.md (2369 lines, all 8 skills full content). Installer script scripts/install-extracted-skills.py installed: russell-voice (+3 refs), run-critique, weekly-cash-forecast, covenant-tracker, renewal-forecast, call-intelligence, system-check, class-aws-connector (+3 refs). All 8 verified in skill registry. preflight green (0 fails). B17 MITIGATED P1->P3.",
-      "completed_on": "2026-05-26",
-      "commits": ["670d29d"]
-    },
-    {
-      "id": "goal-prompt-and-session-handoff",
-      "summary": "Fetched /goal docs from code.claude.com. Wrote scripts/goal-prompt-v1.md (Phase R + Ch.0-5 scope, 300-turn cap, 8 explicit (a)-(h) completion sub-conditions, decide-and-log default per DOCTRINE override). Wrote tasks/handoff.md capturing all 10 session work items + open issues + commit log. Session prepared for shutdown; next session runs the /goal prompt verbatim.",
-      "completed_on": "2026-05-26",
-      "commits": []
+      "commits": ["50b6c77"]
     }
   ],
   "pending_tasks": [
     {
-      "id": "phase-r-run",
-      "owner": "/goal",
-      "blocks": "ch-0-onwards",
-      "summary": "Run Phase R (R0 corpus + R1 connector-reality + R2 adversarial). Send NetSuite TBA request to Brian early in R1. Exit per RESEARCH.md §phase-r-exit-gate."
+      "id": "ch-0-foundations",
+      "owner": "/goal Architect dispatch (Backend Architect / Plan sub-agent, Opus 4.7)",
+      "summary": "Per ROADMAP §Ch.0: TypeScript monorepo + Zod/IPC contracts + CI + stub-harness skeleton. Architect's ADR consumes the 20-item architecture-spec patch list from docs/build-log.md §Phase R complete. Includes vault-bootstrap.sh (B22), normalizeKeys() middleware (B23), corrected Zod schemas (B21/B24/B26/B27), parser-time type injection (B21), NAMED_ENTITY_REGISTRY load requirement (B3), per-playbook precondition matrix (Decision 4), updated mcp.md NRR cohort note (R1 Patch 9), and 13 other patches enumerated."
     },
     {
-      "id": "ch-0-foundations",
+      "id": "ch-1-process-arch-ipc-sqlite-scheduler",
       "owner": "/goal",
-      "blockedBy": ["phase-r-run"],
-      "summary": "Repo scaffold, locked Zod/IPC contracts, CI, stub-harness skeleton. Per ROADMAP.md §Ch.0."
+      "blockedBy": ["ch-0-foundations"],
+      "summary": "Per ROADMAP §Ch.1. Includes Error handling table (Decision 5), Heartbeat-only IPC relay (B34), SQLite path = userData (R2 B16)."
+    },
+    {
+      "id": "ch-2-safewrite-git",
+      "owner": "/goal",
+      "blockedBy": ["ch-1-process-arch-ipc-sqlite-scheduler"],
+      "summary": "Per ROADMAP §Ch.2. Requires vault-bootstrap.sh execution (B22) before SafeWrite ships. Concurrent-write fuzz test = keystone safety proof."
+    },
+    {
+      "id": "ch-3-runtime-spine-stub-harness",
+      "owner": "/goal",
+      "blockedBy": ["ch-2-safewrite-git"],
+      "summary": "Per ROADMAP §Ch.3. Lens isolation assertion + Verifier input contract."
+    },
+    {
+      "id": "ch-4-prompts-rigor-verifier",
+      "owner": "/goal",
+      "blockedBy": ["ch-3-runtime-spine-stub-harness"],
+      "summary": "Per ROADMAP §Ch.4. Verbatim 5 lens prompts (CRO requires committed-stage-label correction per B19); CPO authored prompt; rigorScore() pure unit-tested; 12-case locked test table; planted-claim canary; NAMED_ENTITY_REGISTRY built and loaded."
+    },
+    {
+      "id": "ch-5-first-end-to-end-slice",
+      "owner": "/goal",
+      "blockedBy": ["ch-4-prompts-rigor-verifier"],
+      "summary": "Per ROADMAP §Ch.5. Cash lever playbook fires end-to-end. Click-any-claim → tool-call result. Design gate (4 mockups via html-driven-codev)."
+    }
+  ],
+  "findings_for_russell_at_next_session": [
+    {
+      "blocker_id": "B25",
+      "summary": "DEC-001 through DEC-004 referenced in vault decisions/INDEX.md but no files exist. Russell decides recovery strategy: rename existing files, restore from git history elsewhere, or update INDEX.",
+      "blocks": "Ch.1 (graceful-degradation only — not a hard block) and Ch.6 (write-back drafter)"
+    },
+    {
+      "blocker_id": "B28",
+      "summary": "business-planning/ mirror diverged from canonical vault (WS-01 status drift confirmed; 3 vault-only dirs missing). Russell picks: (a) keep + sync script, (b) delete (recommended), (c) symlink. Recommendation: (b) delete mirror, reference vault directly per data.md, but PRESERVE business-planning/skills/ + _extracted_skills_for_c_suite.md (install fixtures, not vault content).",
+      "blocks": "no immediate chapter; build-process integrity"
+    },
+    {
+      "blocker_id": "B29",
+      "summary": "scripts/install-extracted-skills.py wrote truncated SKILL.md stubs (6 of 8 are 15-29 lines; full bodies 168-232 lines at business-planning/skills/). Ch.0 architect fixes installer (state-machine parser per R2 Area 8); Russell re-runs after fix.",
+      "blocks": "Ch.10 scheduler may invoke truncated skill bodies"
+    },
+    {
+      "blocker_id": "B22",
+      "summary": "Vault git has zero commits. Ch.0 architect ships scripts/vault-bootstrap.sh; Russell runs it (or auto-runs at Ch.0 preflight). Required before Ch.2 SafeWrite ships.",
+      "blocks": "Ch.2"
+    },
+    {
+      "blocker_id": "B6 + B19",
+      "summary": "Day-Zero form questions needed: (1) verbatim Barclays covenant terms (covenant-tracker thresholds are ASSUMED); (2) Russell's mental model for 'committed pipeline' (drives SOQL filters in 5+ playbooks). These are captured at first scheduled run, not pre-Phase-1.",
+      "blocks": "Ch.7 covenant playbook + 5+ playbooks using committed-pipeline filter (degraded mode acceptable until captured)"
+    },
+    {
+      "blocker_id": "B32",
+      "summary": "Dataview is in maintenance mode (lead developer stepped back Sept 2025); Bases is now Obsidian's core query plugin (1.9+). Russell confirms: use Bases for vault queries? Affects Ch.6 write-back schema field-naming conventions.",
+      "blocks": "Ch.6 (schema decisions)"
     }
   ],
   "key_decisions": [
@@ -69,51 +106,33 @@
     },
     {
       "ref": "DOCTRINE.md operating-mode override",
-      "summary": "Per Russell directive ('I don't need to review anything ever'): default to decide-and-log; hard gates only at on-Mac verification, genuine product-shape forks, destructive/external actions."
+      "summary": "Per Russell directive: default to decide-and-log; hard gates only at on-Mac verification, genuine product-shape forks, destructive/external actions."
     },
     {
-      "ref": "README.md How-to-drive",
-      "summary": "Orchestrator is whatever Russell uses as /goal — custom command, subagent-driven-development, loop, etc. Doc-set is orchestrator-agnostic."
+      "ref": "docs/research/phase-r-decisions.md",
+      "summary": "10 Phase 0 decisions resolved. Notable: D9 PowerBI = (b) Python subprocess; D3 iteration N=3; D6 per-playbook plan-approval (high-stakes manual; low-stakes auto-countdown); D7 LaunchAgent; D8 token-based cost meter (not USD)."
+    },
+    {
+      "ref": "DOCTRINE amendment candidate",
+      "summary": "Proposed: every architecture-spec claim about external reality must carry [<source> verified <date>] tag or 🔍 VERIFY marker. Surfaced for ratification at Ch.0 boundary."
     }
   ],
-  "blockers": [
-    {
-      "id": "B1",
-      "severity": "P1",
-      "status": "SEEDED",
-      "summary": "NetSuite TBA admin enablement (Brian); longest external lead; request template at scripts/send-tba-request.md."
+  "blockers_summary": {
+    "total": 34,
+    "by_severity": { "P0": 4, "P1": 6, "P2": 13, "P3": 4, "deprecated_or_mitigated": 7 },
+    "by_status": {
+      "VERIFIED_or_DOWNGRADED": 14,
+      "NEW_from_phase_r": 14,
+      "MITIGATED": 1,
+      "SEEDED_remaining": 5
     },
-    {
-      "id": "B3",
-      "severity": "P0",
-      "status": "SEEDED",
-      "summary": "Verifier reasoning-trace leak = rubber-stamp risk. Canary fixture at tests/fixtures/canary-memo.md is the permanent regression guard."
-    },
-    {
-      "id": "B17",
-      "severity": "P3",
-      "status": "MITIGATED",
-      "summary": "All 8 referenced skills extracted from Cowork and installed at ~/.claude/skills/<name>/. Residual: per-skill codify-vs-invoke decision at Ch.7/Ch.10; renewal-forecast skill source still has Owner.Name bug to fix on import."
-    },
-    {
-      "id": "B18",
-      "severity": "P2",
-      "status": "NEW",
-      "summary": "Python subprocess from Electron utility process (customer-dashboard is 43K LOC Python). Ch.11 setup must include Python+venv install; electron-builder notarization does NOT include Python."
-    },
-    {
-      "id": "B19",
-      "severity": "P1",
-      "status": "VERIFIED",
-      "summary": "Connector Playbook stage labels (S4/S5/Commit/BestCase) don't exist in live org. Real labels documented in R1 report. Day-Zero form question needed to confirm Russell's 'committed' mental model."
-    },
-    {
-      "id": "B20",
-      "severity": "P1",
-      "status": "VERIFIED",
-      "summary": "Real renewal field is Renewal_Anniversary_Date__c (Account) and DH_Renewal_Date__c (Opportunity), NOT Renewal_Date__c. mcp.md typed builder corrected."
+    "notable": {
+      "B3": "VERIFIED P0 — Verifier input contract is the trust-defining wiring",
+      "B21": "NEW P0 — type discriminator absent across all vault artifacts",
+      "B22": "NEW P0 — vault git has zero commits",
+      "B23": "NEW P0 — kebab/snake key naming chaos"
     }
-  ],
+  },
   "file_manifest": {
     "doc_set_spine": ["PURPOSE.md", "DOCTRINE.md", "ROADMAP.md", "BLOCKERS.md", "RESEARCH.md"],
     "orientation": ["CLAUDE.md", "README.md"],
@@ -126,15 +145,32 @@
       "docs/architecture/delivery.md"
     ],
     "decisions": ["docs/decisions/ADR-template.md", "docs/decisions/0000-doc-set-scaffold.md"],
+    "phase_r_outputs": [
+      "docs/research/R0-knowledge-inventory.md",
+      "docs/research/R0-constraints-ledger.md",
+      "docs/research/R0-skill-inventory.md",
+      "docs/research/R0-customer-dashboard-readout.md",
+      "docs/research/R1-connector-reality.md",
+      "docs/research/R2-feasibility-notes.md",
+      "docs/research/phase-r-decisions.md"
+    ],
+    "phase_r_briefs": [
+      "tasks/phase-r-r0-spine-brief.md",
+      "tasks/phase-r-r0-vault-brief.md",
+      "tasks/phase-r-r0-skills-brief.md",
+      "tasks/phase-r-r0-code-brief.md",
+      "tasks/phase-r-r1-remaining-brief.md",
+      "tasks/phase-r-r2-adversarial-brief.md"
+    ],
     "agents": ["docs/agents/README.md", "docs/agents/dispatch-templates.md"],
     "brand_voice": ["docs/brand-voice-rules.md"],
     "ledger": ["docs/build-log.md"],
     "fixtures": ["tests/fixtures/rigor-cases.json", "tests/fixtures/canary-memo.md"],
-    "scripts": ["scripts/preflight.sh", "scripts/send-tba-request.md", "scripts/install-hooks.sh"],
+    "scripts": ["scripts/preflight.sh", "scripts/send-tba-request.md", "scripts/install-hooks.sh", "scripts/install-extracted-skills.py"],
     "hooks": ["hooks/post-commit"],
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-26T22:30:00-04:00",
-  "updated_by": "scaffold session — Claude Opus 4.7 (1M context) — session closing for /goal handoff"
+  "last_updated": "2026-05-26T23:35:00-04:00",
+  "updated_by": "/goal Phase R completion synthesis"
 }
