@@ -1,6 +1,5 @@
 import { defineConfig } from 'vitest/config';
 import { resolve, extname } from 'path';
-import { existsSync } from 'fs';
 import type { Plugin } from 'vite';
 
 /**
@@ -28,12 +27,16 @@ function remapJsToTs(): Plugin {
 export default defineConfig({
   plugins: [remapJsToTs()],
   test: {
-    include: ['tests/unit/**/*.spec.ts'],
+    include: ['tests/unit/**/*.spec.ts', 'tests/unit/**/*.spec.tsx'],
     exclude: ['**/node_modules/**', '**/dist/**'],
     reporters: ['verbose'],
+    environmentMatchGlobs: [
+      ['tests/unit/renderer/**', 'jsdom'],
+    ],
     env: {
       STUB_MODE: 'replay',
     },
+    setupFiles: ['tests/unit/renderer/setup.ts'],
     deps: {
       // Inline safeWrite/vaultWatcher packages so Vite processes them and
       // vi.spyOn(fs, ...) can intercept calls inside these modules.
