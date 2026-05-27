@@ -9,13 +9,15 @@
     "lint": "echo 'lint: no linter configured in Ch.0'",
     "test:unit": "echo 'no unit tests in apps/utility at Ch.0'",
     "test:integration": "echo 'no integration tests in apps/utility at Ch.0'",
-    "dev": "tsx watch src/index.ts"
+    "build": "tsc",
+    "build:soft": "tsc || true",
+    "dev": "tsc --watch"
   },
   "dependencies": {
     "@c-suite/shared-types": "workspace:*",
     "@c-suite/writeback-engine": "workspace:*",
     "chokidar": "^3.6.0",
-    "electron": "^42.3.0",
+    "electron": "^33.4.11",
     "pino": "^10.3.1",
     "simple-git": "^3.36.0",
     "zod": "^4.4.3"

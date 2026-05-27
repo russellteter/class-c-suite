@@ -10,8 +10,9 @@
     "test:unit": "echo 'no unit tests in apps/main at Ch.0'",
     "test:integration": "echo 'no integration tests in apps/main at Ch.0'",
     "build": "tsc",
-    "dev": "tsc && electron .",
-    "dev:debug": "tsc && electron . --inspect=5858"
+    "build:soft": "tsc || true",
+    "dev": "pnpm --filter @c-suite/utility build:soft && (tsc || true) && electron .",
+    "dev:debug": "pnpm --filter @c-suite/utility build:soft && (tsc || true) && electron . --inspect=5858"
   },
   "dependencies": {
     "@c-suite/shared-types": "workspace:*",

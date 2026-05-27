@@ -19,7 +19,8 @@ const RESTART_WINDOW_MS = 60_000;   // 5 restarts within 60s triggers halt
 const RESTART_DELAY_MS = 500;       // wait 500ms before respawning
 
 // Resolved at runtime — compiled utility entry.
-const UTILITY_PATH = path.join(__dirname, '..', '..', 'utility', 'index.js');
+// __dirname = apps/main/dist → utility dist entry at apps/utility/dist/index.js
+const UTILITY_PATH = path.join(__dirname, '..', '..', 'utility', 'dist', 'index.js');
 
 /** Structural IPC-sender subset used by supervisor to emit run.failed to renderer. */
 export interface IpcSender {
