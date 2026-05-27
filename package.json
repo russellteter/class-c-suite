@@ -15,6 +15,7 @@
     "typecheck": "pnpm -r --parallel run typecheck",
     "lint": "pnpm -r --parallel run lint",
     "test:unit": "vitest run",
+    "test:fuzz": "vitest run --config vitest.fuzz.config.ts",
     "test:integration": "echo 'no integration tests at Ch.0'",
     "build:packages": "pnpm --filter @c-suite/shared-types build && pnpm --filter @c-suite/stub-harness build && pnpm --filter @c-suite/soql-builder build"
   },
