@@ -985,3 +985,72 @@ The gap between "architecture proven" and "first usable product" is the 3 NW ite
 [POLISH-COMPLETE 2026-05-27] 8 UNITs closed (B36-B39 critical + B25/B28/B6 carried + vault wikilink backfill). Phase 2 unblocked pending Russell §1 checkpoint per C_Suite_Post_Goal_Next_Steps.md.
 
 ---
+
+## 2026-05-27 — Side project: Obsidian vault sophistication upgrade
+
+**Status:** complete
+**Started:** 2026-05-27T10:30 ET
+**Completed:** 2026-05-27T11:30 ET
+**Owner:** /goal (main thread, single-session)
+**Triggered by:** Russell directive — "use /obsidian-cli to improve the vault … highly sophisticated, useful, working, reliable, self-teaching."
+
+### What got done — 6 VAULT-NN units + 6 vault commits
+
+| Unit | Output | Result |
+|---|---|---|
+| VAULT-1 | `scripts/vault-inbody-link-fixup.ts` — body-text bare-ID → aliased wikilinks via SafeWrite | 846 wikilinks inserted across 105 vault files; idempotent |
+| VAULT-2 | 6 Obsidian v1.12 Bases at `<vault>/_bases/*.base` | Positions / Decisions / Workstreams / Pre-Mortems / Predictions / Tripwires — 22 typed views total |
+| VAULT-3 | `<vault>/_templates/` (6 templates) + `.obsidian/templates.json` registering folder | Cmd-P → "Templates: Insert template" works |
+| VAULT-4 | `scripts/vault-tag-backfill.ts` — structural tags (#type/_, #status/_, #health/_, etc.) | 112 files tagged; tag census jumped from 15 sparse to 100+ structural |
+| VAULT-5 | `<vault>/_HOME.md` MOC + 12 Obsidian bookmarks (via CLI) | One-click navigation from Obsidian sidebar to every Base + key file |
+| VAULT-6 | `<vault>/VAULT_GUIDE.md` self-teaching manual (13 sections) | Any future Claude session can read this and learn the whole vault system |
+
+### Acceptance
+| Criterion | PASS / FAIL | Evidence |
+|---|---|---|
+| Wikilink graph dramatically improved | PASS | POS-003 backlinks: 0 → 6; PM-001: 0 → 8; WS-01: 0 → 8 (verified via `obsidian backlinks`) |
+| Bases queryable via CLI | PASS | `obsidian base:query path="_bases/Workstreams.base" format=md` renders full health table |
+| Templates registered | PASS | `obsidian templates` lists all 6; Cmd-P "Templates: Insert" works |
+| Tag taxonomy live | PASS | `obsidian tags counts` shows #type/* + #status/* + #health/* + #state/* etc. |
+| MOC + bookmarks navigable | PASS | `obsidian bookmarks` lists 12 entries; _HOME wikilinks all resolve |
+| Self-teaching guide exists | PASS | VAULT_GUIDE.md at vault root, 13 sections, links from _HOME |
+| Pre-existing YAML quality fixes | PASS | POS-015 + TW-FIN-004 customer-concentration quoted (caught by tag backfill) |
+
+### C-suite repo commits (auto-pushed to GitHub)
+- `03137f4` vault: two new maintenance scripts for the side-project sophistication upgrade
+
+### Vault commits (local-only — no remote per PRD §5; off-Mac backup pending)
+- `1ea3bf0` vault: track bookmarks + templates config; gitignore volatile Obsidian state
+- `744f636` vault: _HOME — fix .base wikilink aliases + SCORECARD path
+- `ac53137` vault: side-project sophistication upgrade — Bases, templates, _HOME, VAULT_GUIDE, MOC
+- 17 VaultBackfill commits (UNIT-8 wikilinks)
+- 112 VaultTagBackfill commits (VAULT-4 tags)
+- 105 VaultInBodyLinkFix commits (VAULT-1)
+- (~234 vault commits total this session)
+
+### Decisions made under doctrine
+- **Vault remote skipped this session.** PRD §5 calls for off-Mac backup via private remote; Russell deferred via AskUserQuestion. Risk: vault commits are local-only until remote is wired. Flagged in the doc-set; not blocking.
+- **Workspace presets skipped in favour of bookmarks.** Persisting Obsidian workspace layouts via .obsidian/workspaces.json was too fragile from the CLI; bookmarks give the same one-click navigation without risking layout corruption. Documented in VAULT_GUIDE.md §7 + §13.
+- **`Class-C-Suite/` stub vault deleted.** Empty default-Welcome vault Obsidian auto-created earlier today (08:42 ET) inside the real vault. Confirmed empty before deletion.
+- **`.obsidian/` selectively tracked.** bookmarks.json + templates.json committed (durable, valuable); workspace.json, graph.json, plugins/*/data.json, etc. gitignored (mutate constantly).
+- **Bases lookup syntax for `.base` files** required aliased wikilinks `[[_bases/Decisions.base|Decisions]]` — fixed in `_HOME.md` after initial broken-link batch.
+
+### Discoveries that changed the plan
+- Obsidian's `unresolved` and `orphans` CLI commands show stale-cache data even after `obsidian reload`; the metadata cache only fully rebuilds on UI-side reindex. Backlink counts via `obsidian backlinks <path>` are the authoritative live check.
+- The Obsidian Bases v1.12 syntax (no public CLI reference for `.base` files) had to be sourced from help.obsidian.md via firecrawl — wired into `.firecrawl/obsidian-bases-*.md` for future reference (gitignored).
+- Two pre-existing vault files had broken YAML frontmatter (unquoted colons in `source:` and `title:` fields). Tag backfill caught both via js-yaml parse errors; quoted inline.
+
+### Repeat-issue tally
+- Obsidian-CLI cache lag: 1 session — codify if it happens 3x (consider a small "wait + retry" wrapper).
+- YAML quoting bugs in vault content: 2 files — below codification threshold but worth a future lint script.
+
+### Files touched / commits
+- Repo: `scripts/vault-inbody-link-fixup.ts`, `scripts/vault-tag-backfill.ts`, `.gitignore` (added `.firecrawl/`)
+- Vault: `_HOME.md`, `VAULT_GUIDE.md`, `_bases/*.base` (6), `_templates/*.md` (6), `.obsidian/templates.json`, `.obsidian/bookmarks.json`, `.gitignore`
+- Side artifacts: `.firecrawl/obsidian-bases-{syntax,views,functions}.md` (cached docs, gitignored), 2 screenshots in `_overnight_briefings/` (gitignored)
+
+---
+
+[VAULT-UPGRADE COMPLETE 2026-05-27] 6 VAULT units closed. Graph view + Bases + tags + templates + MOC + self-teaching guide all live. C-suite repo commits auto-pushed. Vault commits local-only (no remote per PRD §5; backup not yet wired).
+
+---

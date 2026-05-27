@@ -86,6 +86,15 @@
       "commits": ["aac6117", "bca3628", "7e4b73c", "f432ae3", "3e24f89", "965beb7", "5b37078"]
     },
     {
+      "id": "vault-sophistication-upgrade-2026-05-27",
+      "summary": "Side-project: Obsidian vault sophistication upgrade via /obsidian-cli. 6 VAULT units closed — 846 in-body wikilinks inserted (105 files); 6 Bases (22 views total: Positions/Decisions/Workstreams/Pre-Mortems/Predictions/Tripwires); 6 templates registered at _templates/; 112 files tagged with structural taxonomy (#type/* #status/* #health/* etc.); _HOME.md MOC + 12 bookmarks; VAULT_GUIDE.md self-teaching manual (13 sections). 2 pre-existing YAML quality fixes (POS-015, TW-FIN-004). C-suite commit auto-pushed; vault commits local-only (no remote per PRD §5; backup not yet wired — flagged for Russell).",
+      "completed_on": "2026-05-27",
+      "verdict": "CLOSE",
+      "commits": ["03137f4"],
+      "vault_commits_local_only": ["1ea3bf0", "744f636", "ac53137", "and ~234 SafeWrite commits via the 3 backfill scripts"],
+      "deferred": "Wire vault to a private GitHub remote so vault commits land off-Mac (PRD §5 design)."
+    },
+    {
       "id": "ch-5-audit-qa",
       "summary": "Ch.5 Audit/QA: 4 PASS / 3 NW / 0 FAIL / 5 DEFERRED (on-Mac). CLOSE-pending-ultrareview. BY-HAND: AC-7 queryToolCallBySourceId against SQLite returns salesforce.committedPipelineQuery + 2 opportunities. AC-8 SafeWrite .draft.md proven. AC-11 all 8 mockups confirmed + token-validated. AC-1 NW: orchestrator harness unwired. AC-9/10/12 NW: RTL + degraded-mode tests unwired. ACs 2-6 DEFERRED to Russell on-Mac (Ch.11). B22 STILL ACTIVE (vault zero commits). B19 stage labels in code; Day-Zero pending. Full report at docs/reviews/ch5-audit-qa-report.md.",
       "completed_on": "2026-05-27",
@@ -223,6 +232,6 @@
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-27T09:45:00-04:00",
-  "updated_by": "Polish sprint 2026-05-27 — 8 UNITs closed (B36/B37/B38/B39/B25/B28/B6+UNIT7/UNIT8); current_phase → phase-1-polish-complete-awaiting-checkpoint"
+  "last_updated": "2026-05-27T11:30:00-04:00",
+  "updated_by": "Vault sophistication upgrade (side project) 2026-05-27 — 6 VAULT units closed via /obsidian-cli; Bases + templates + tags + MOC + VAULT_GUIDE all live"
 }
