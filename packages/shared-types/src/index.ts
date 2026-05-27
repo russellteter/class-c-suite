@@ -6,3 +6,4 @@ export * from './ipc.js';
 export * from './vault-schemas.js';
 export * from './parseArtifact.js';
 export * from './normalizeKeys.js';
+export * from './verifier-output.js';

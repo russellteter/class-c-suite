@@ -25,6 +25,10 @@
     "./ipc": {
       "import": "./dist/ipc.js",
       "types": "./dist/ipc.d.ts"
+    },
+    "./verifier-output": {
+      "import": "./dist/verifier-output.js",
+      "types": "./dist/verifier-output.d.ts"
     }
   },
   "scripts": {
