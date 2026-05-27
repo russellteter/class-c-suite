@@ -20,21 +20,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Production module — does not exist yet. Uncomment when Runtime ships:
-// import { HeartbeatEmitter } from '../../../apps/utility/src/heartbeat.js';
-
-// Stub so TypeScript compiles now.
-class HeartbeatEmitter {
-  constructor() {
-    throw new Error('HeartbeatEmitter not implemented — Runtime dispatch pending');
-  }
-  shouldEmit(_agentId: string): boolean {
-    throw new Error('not implemented');
-  }
-  record(_agentId: string): void {
-    throw new Error('not implemented');
-  }
-}
+import { HeartbeatEmitter } from '../../apps/utility/src/heartbeat.js';
 
 // ── §9 row 6 — Heartbeat rate ≤ 45 events over 10s ──────────────────────────
 
