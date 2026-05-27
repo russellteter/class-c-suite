@@ -1,0 +1,23 @@
+{
+  "name": "@c-suite/writeback-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint: no linter configured at Ch.6'",
+    "test:unit": "echo 'tests written by Test sub-agent'"
+  },
+  "dependencies": {
+    "@c-suite/shared-types": "workspace:*",
+    "@c-suite/vault-writer": "workspace:*",
+    "js-yaml": "^4.1.0",
+    "better-sqlite3": "^9.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/better-sqlite3": "^7.6.13"
+  }
+}
