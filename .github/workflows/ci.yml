@@ -1,0 +1,63 @@
+# Source: docs/architecture/delivery.md §CI pipeline (lines 189-205).
+# Zero live inference. E2E + sign/notarize run locally on Russell's Mac (Ch.11).
+
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest        # delivery.md L194 — no notarize in CI
+    timeout-minutes: 20
+
+    env:
+      STUB_MODE: replay           # delivery.md L176 — CI never calls live Claude
+      CI: 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10               # pin major; lockfile resolves exact
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Rebuild native modules for current Node ABI
+        # NOTE: this is CI Node ABI rebuild, not Electron ABI (which happens
+        # in the build step on Ch.11). better-sqlite3 must rebuild against
+        # the CI runner's Node 22 ABI for unit/integration tests to load it.
+        run: pnpm rebuild
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test:unit
+
+      - name: Integration tests (stub-harness)
+        run: pnpm test:integration
+        env:
+          STUB_MODE: replay
+
+      # Fuzz suite added at Ch.2 (SafeWrite). Skip if step missing.
+      - name: Fuzz tests
+        if: ${{ hashFiles('tests/fuzz/**/*') != '' }}
+        run: pnpm test:fuzz
+
+      # E2E + sign/notarize NOT in CI — run on Russell's Mac at Ch.11.
