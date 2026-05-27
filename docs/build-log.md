@@ -1177,3 +1177,26 @@ The gap between "architecture proven" and "first usable product" is the 3 NW ite
 ---
 
 [CH-6 COMPLETE 2026-05-27] Write-backs + iterative feedback live; CONCERN-CLOSE per Audit/QA (B45 utility-fork debt deferred). Next: Ch.7 (8 playbooks + Open Q&A + home screen), preceded by a focused dependency-cleanup sub-agent to resolve B45 so Ch.7 runtime work has a working `pnpm dev`.
+
+---
+
+## B45 diagnostic + fix mini-session (2026-05-27)
+
+**Goal.** Resolve the utility crash-loop so `pnpm dev` is fully usable before Ch.7.
+
+**Root causes identified (two sequential).** H1 per brief was partially correct (ESM resolution), but the actual crash chain was:
+1. `@c-suite/stub-harness` not in `apps/utility/package.json` deps — pnpm never linked it; compiled `run-loop.js` imported `@c-suite/stub-harness/stub` which resolved to nothing. Fix: add `"@c-suite/stub-harness": "workspace:*"` to utility deps + `pnpm install`.
+2. After fix 1, buffered stderr instrumentation surfaced the next crash: `TypeError: port.addEventListener is not a function` at `apps/utility/dist/sql/proxy.js:16`. Root cause: `e.ports[0]` in a utility process `parentPort.once('message')` callback is `MessagePortMain` (Electron, NodeEventEmitter) not a Web API `MessagePort`. `MessagePortMain` uses `.on()` not `addEventListener`. Same bug in `index.ts` line 70. Fix: introduce `IpcPort` structural interface in `sql/proxy.ts`, replace `addEventListener` with `.on()` in proxy.ts and index.ts.
+
+**Also fixed (B44 as side-effect).**
+- `run-loop.ts:15` — stub-harness dep now declared.
+- `run-loop.ts:121` — cast `synthState` to `RunState & { kind: 'synthesizer' }` to satisfy `buildVerifierInput` parameter.
+- `run-loop.ts:151` — replaced ternary union with explicit if/else branches so TypeScript narrows each `RunEvent` discriminant.
+- Rebuilt `packages/shared-types` dist (stale dist was missing `topic` field in `writeback.proposed` — caused `writeback-engine:161` TS error).
+- Removed `build:soft` from `apps/main` and `apps/utility` (both now `tsc` exit-0 clean).
+
+**Also shipped (Step 1 instrumentation — always-on).** Supervisor now: buffers full stderr+stdout per crash cycle; emits `utility.crash.diagnostic` IPC with ABI/Node/execPath + full buffers; adds `UTILITY_DIAG=1` env var to fork so utility emits a JSON env-dump on startup.
+
+**Verification.** Electron 33.4.11: `process_events` shows one `start` row, zero `crash` rows after 40s; clean `utility process exited cleanly` on SIGTERM. UTILITY_DIAG confirms `nodeVersion: v20.18.3, modulesAbi: 130, electronVersion: 33.4.11`. 68/68 writeback-engine tests green.
+
+**B44 status.** CLOSED. **B45 status.** MITIGATED. Ch.7 entry unblocked.

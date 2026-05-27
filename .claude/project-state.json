@@ -232,6 +232,6 @@
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-27T19:25:00-04:00",
-  "updated_by": "/goal Phase 2 Ch.6 close 2026-05-27 — CONCERN-CLOSE per Audit/QA; 20+ commits + 68 tests green; B22 closed, B44+B45 added; next Ch.7 entry blocked on B45 sub-agent fix"
+  "last_updated": "2026-05-27T20:00:00-04:00",
+  "updated_by": "B45 diagnostic mini-session 2026-05-27 — B45 MITIGATED + B44 CLOSED. Root causes: (1) @c-suite/stub-harness missing from utility deps; (2) MessagePortMain uses .on() not addEventListener. IpcPort interface introduced. Supervisor instrumentation added (buffered stderr/stdout + utility.crash.diagnostic IPC). pnpm dev stable 40s+. 68/68 tests green. Ch.7 unblocked."
 }
