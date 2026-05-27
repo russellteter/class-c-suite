@@ -76,10 +76,12 @@
 - If subprocess proves too brittle in Ch.8: fall back to "extract the SQL/DAX queries from `customer-dashboard/src/` and re-issue them directly from a Node Power BI client" — higher effort but eliminates the Python dependency.
 **Owner.** Ch.8 architect; R1 reports actual feasibility based on the codebase deep-read.
 
-### B3 — Verifier reasoning-trace leak (rubber-stamp risk) `VERIFIED` `P0`
+### B3 — Verifier reasoning-trace leak (rubber-stamp risk) `ACTIVE` `P0`
 **What.** If the Verifier's input includes any lens reasoning trace (chain-of-thought, intermediate prompts), the Verifier will rubber-stamp instead of grading. **This is the single trust-defining wiring in the product.**
-**Bites at.** Ch.4 (Verifier prompt + input contract).
+**Bites at.** Ch.3 Fix-Integration (AC-2 runtime isolation) + Ch.4 (Verifier prompt + input contract).
 **Status.** **R2 verified 2026-05-26. Ch.0 Audit/QA confirmed 2026-05-27 — still Ch.4 scope, no Ch.0 code touches Verifier path.** `docs/architecture/runtime.md` lines 123-131 define the Verifier Input Contract explicitly: lenses pass only structured outputs and the tool-call audit trail — never reasoning traces. The assembler throws `VerifierInputContractViolation` if any required input is missing; the run does not proceed. Planted-claim canary fixture is specified at `docs/architecture/prompts.md` lines 434-453 as `tests/verifier-canary.spec.ts` (fixture: `memo-with-unsourced-arr-claim`) — permanent regression guard, runs on every CI build. Architecture-spec gap: `NAMED_ENTITY_REGISTRY` must be pre-loaded from the stakeholder vault + turnaround library; Ch.4 architect must build this.
+
+**Ch.3 Audit/QA 2026-05-27 — REOPEN.** `buildLensContextBundleSchema<R>(role)` in `packages/shared-types/src/lens-context-bundle.ts` uses `z.object({...5 fields...}).superRefine(validator)`. In Zod v4.4.3 (pinned `^4.0.0`, resolved `4.4.3`), a plain `z.object()` strips unknown keys BEFORE the `.superRefine()` callback receives data. Result: a malformed bundle with `illegalLeak: { role: 'CRO', ... }` passes `schema.safeParse()` with `success: true` — the violation is silently swallowed. BY-HAND confirmed: `findCrossLensLeaks(bundleWithCROLeak, 'CFO', '')` returns `[{leakedRole:'CRO', path:'$.illegalLeak'}]` (detection function is correct), but `schema.safeParse(bundleWithCROLeak)` returns `success: true` because `illegalLeak` is stripped before `superRefine` runs. The assembler's reasoning-trace isolation (reads only `output_json`) is architecturally sound and confirmed by security grep — no `thinking`/`chain_of_thought`/`reasoning_trace` in production code. Fix-Integration scope: fix AC-2 via `.passthrough()` before `.superRefine()` (Zod v4 API must be verified) or validate raw object before parse.
 **Mitigation.**
 - Verifier input assembled **only from structured outputs + audit trail** — never from lens transcripts.
 - Assertion throws on any lens-transcript content reaching the Verifier.
