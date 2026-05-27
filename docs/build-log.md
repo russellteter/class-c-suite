@@ -167,4 +167,60 @@ The first entry `/goal` writes will be Phase R kickoff. It should look like:
 
 See top of file for the template format. `/goal` writes new entries below this scaffold-session entry, in chronological order.
 
+---
+
+## 2026-05-26 — Phase R kickoff
+
+**Status:** in-progress
+**Started:** 2026-05-26T22:45 ET
+**Owner:** /goal + 6 parallel research sub-agents (staged: R0×4 first, then R1+R2, then synthesis)
+
+### Dispatch strategy (per advisor feedback)
+
+Staged, not all-at-once. Batch 2 needs Batch 1's findings to verify against; running them in parallel would force re-runs.
+
+- **Batch 1 (R0 corpus deep-read)** — 4 parallel Sonnet sub-agents, each writes its own report:
+  - R0-Spine — 11 operating-model files + MEMORY.md → `docs/research/R0-knowledge-inventory.md`
+  - R0-Vault — 10 artifact directories + schema reality → `docs/research/R0-constraints-ledger.md`
+  - R0-Skills — 12 installed skills (8 op-logic + 4 brand) → `docs/research/R0-skill-inventory.md`
+  - R0-Code — `customer-dashboard/` Python end-to-end (43K LOC) → `docs/research/R0-customer-dashboard-readout.md`
+- **Batch 2 (R1 remaining + R2 adversarial)** — 2 parallel Sonnet sub-agents:
+  - R1-Remaining-Connectors — AWS / Gmail / Chorus / PowerBI auth + schemas (Salesforce + NetSuite already verified at `docs/research/R1-connector-reality.md`)
+  - R2-Adversarial — verify B1-B20 + hunt new risks (macOS Sequoia, SDK drift, Obsidian plugins, native-module notarization, renderer security)
+- **Synthesis** — orchestrator-driven:
+  - Resolve 10 Phase 0 decisions from `C_Suite_CLAUDE.md` §2 → `docs/research/phase-r-decisions.md`
+  - Surface `scripts/send-tba-request.md` as ready (DOCTRINE law #10: Russell sends, agent does not)
+  - Fold R0/R1/R2 corrections back into `docs/architecture/*.md` (replacing 🔍 VERIFY markers)
+  - Update `BLOCKERS.md` statuses + `.claude/project-state.json`
+  - Write Phase R completion entry below + emit `[PHASE-R] COMPLETE` with per-criterion receipts
+
+### Acceptance criteria (Phase R exit gate per RESEARCH.md)
+
+| Criterion | Status |
+|---|---|
+| R0 Knowledge Inventory complete; every required read logged | pending |
+| R0 Constraints Ledger complete; every binding rule sourced | pending |
+| R0 Skill Inventory complete; brand-voice patterns extracted | pending |
+| R1 Connector-Reality Report complete; folded into mcp.md | partial (SF+NS verified 2026-05-26; AWS/Gmail/Chorus/PowerBI pending) |
+| NetSuite TBA request surfaced (Russell sends when Ch.8 starts) | pending |
+| R2 BLOCKERS fully populated; every item statused | partial (B1/B7/B17 already addressed; B2/B3/B4/B5/B6/B8-B16 pending verification) |
+| Every architecture-spec assumption verified-or-flagged | pending |
+| 10 additional Phase 0 decisions resolved | pending |
+| Phase R completion entry in build-log | self-referential |
+
+### Pre-flight (committed before dispatch)
+- preflight.sh: 0 fails / 2 warns (context7 + github-search plugin reachability — non-blocking)
+- DOCTRINE.md auto-mode quote softened ("don't"→"rarely") — commit `4a625bb`
+- MEMORY dir candidate pre-resolved: most-recent space at `~/Library/Application Support/Claude/local-agent-mode-sessions/fa5c2f7e-5fb9-4e29-a76c-e706355df1a1-f2ae62ca-b383-441b-9a66-f02d2b790532` (mtime 2026-05-11 18:25)
+- 11 stale tasks deleted; 5 Phase R tasks remain. Chapter tasks created at chapter boundaries per advisor guidance (DOCTRINE law #9 — discoveries may shift specs).
+
+### Initial token-budget reservation
+- R0 reads: ~80-150K input across 11 spine + ~30 artifact files + 12 skills + customer-dashboard codebase
+- R1 remaining: ~20-40K
+- R2 adversarial: ~30-60K
+- Synthesis + architecture folding + 10 decisions: ~40-80K
+- Total Phase R estimate: ~170-330K tokens (Max-subscription, no $ cost)
+
+---
+
 
