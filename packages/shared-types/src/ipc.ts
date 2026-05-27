@@ -259,6 +259,50 @@ export const IpcMessage = z.discriminatedUnion('kind', [
       runId: z.string(),
     }),
   }),
+  // Ch.6 ADR-0008 §3.3 — per-writeback iteration + accept/reject/edit IPC events.
+  // Do NOT modify writeback.proposed / writeback.committed (existing shapes above).
+  z.object({
+    kind: z.literal('writeback.iteration.requested'),
+    payload: z.object({
+      writebackId: z.string(),
+      russellFeedback: z.string(),
+      requestedAt: z.number(),
+    }),
+  }),
+  z.object({
+    kind: z.literal('writeback.iteration.completed'),
+    payload: z.object({
+      writebackId: z.string(),
+      iterationNumber: z.number(),
+      newDraftPath: z.string(),
+      verifierScoreAfter: z.number().nullable(),
+      completedAt: z.number(),
+    }),
+  }),
+  z.object({
+    kind: z.literal('writeback.iteration.cap_reached'),
+    payload: z.object({
+      writebackId: z.string(),
+      surfaceChoices: z.array(z.enum(['commit', 'reject', 'escalate-full-rerun'])),
+    }),
+  }),
+  z.object({
+    kind: z.literal('writeback.rejected'),
+    payload: z.object({
+      writebackId: z.string(),
+      rationale: z.string(),
+      archivedPath: z.string(),
+      rejectedAt: z.number(),
+    }),
+  }),
+  z.object({
+    kind: z.literal('writeback.edited'),
+    payload: z.object({
+      writebackId: z.string(),
+      editedPath: z.string(),
+      editedAt: z.number(),
+    }),
+  }),
 ]);
 
 export type IpcMessage = z.infer<typeof IpcMessage>;
