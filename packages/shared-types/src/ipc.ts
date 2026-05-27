@@ -262,6 +262,42 @@ export const IpcMessage = z.discriminatedUnion('kind', [
       runId: z.string(),
     }),
   }),
+  // Ch.7 ADR-0009 §6 — playbook lifecycle IPC variants.
+  // playbook.routed: emitted by open_qa when deterministic/LLM decomposer routes to a known playbook.
+  z.object({
+    kind: z.literal('playbook.routed'),
+    payload: z.object({
+      from: z.literal('open_qa'),
+      to: z.string(),   // PlaybookId short name (ADR-0009 §3.2)
+      runId: z.string(),
+    }),
+  }),
+  // playbook.prereq.blocked: emitted by evaluatePrereqs when a playbook run is hard-blocked.
+  z.object({
+    kind: z.literal('playbook.prereq.blocked'),
+    payload: z.object({
+      playbookId: z.string(),
+      reason: z.string(),
+      remediation: z.string(),
+    }),
+  }),
+  // playbook.prereq.degraded: emitted when prereq check returns degrade path.
+  z.object({
+    kind: z.literal('playbook.prereq.degraded'),
+    payload: z.object({
+      playbookId: z.string(),
+      flags: z.array(z.string()),   // DegradedSource[]
+    }),
+  }),
+  // playbook.stakeholder.skeleton_created: emitted when stakeholder_1_1 auto-creates a skeleton.
+  z.object({
+    kind: z.literal('playbook.stakeholder.skeleton_created'),
+    payload: z.object({
+      skeletonPath: z.string(),
+      slug: z.string(),
+      runId: z.string(),
+    }),
+  }),
   // B45 instrumentation: utility.crash.diagnostic — first-crash env dump + buffered stderr.
   // Emitted by supervisor once per crash cycle before the restart loop begins.
   // Renderer can ignore; useful for dev-mode diagnostics and crash triage.
