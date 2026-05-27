@@ -160,7 +160,10 @@ function withPathLock<T>(absPath: string, fn: () => Promise<T>): Promise<T> {
   let resolve!: () => void;
   const next = new Promise<void>(r => { resolve = r; });
   writeQueue.set(absPath, next);
-  return prev.then(fn).finally(resolve);
+  return prev.catch(() => {}).then(fn).finally(resolve);
+  // NOTE: `.catch(() => {})` is required before `.then(fn)`. Without it, if `fn` rejects,
+  // the `next` promise never settles, and all subsequent writes to this path are silently
+  // skipped (queue is permanently blocked). Runtime dispatch must use this form verbatim.
   // Map entry is never deleted (unbounded growth for long sessions).
   // Acceptable: vault paths are bounded (~100 files total, R0 ledger §1).
 }
@@ -224,11 +227,12 @@ When step 5 of the algorithm detects `reReadHash !== preHash`:
 ```
 Pattern:  <absPath>.proposed-<isoStamp>.md
 isoStamp: YYYY-MM-DDTHHMMSS-mmm
+          (date portion uses hyphens per brief spec; time portion is compact; milliseconds after hyphen)
 
 Example:
   absPath = /vault/positions/active/POS-042.md
-  isoStamp = 20260527T143052-481
-  sidecarPath = /vault/positions/active/POS-042.md.proposed-20260527T143052-481.md
+  isoStamp = 2026-05-27T143052-481
+  sidecarPath = /vault/positions/active/POS-042.md.proposed-2026-05-27T143052-481.md
 ```
 
 Format derivation:
@@ -242,7 +246,9 @@ function isoStamp(): string {
   const mm = String(d.getMinutes()).padStart(2, '0');
   const SS = String(d.getSeconds()).padStart(2, '0');
   const mmm = String(d.getMilliseconds()).padStart(3, '0');
-  return `${YYYY}${MM}${DD}T${HH}${mm}${SS}-${mmm}`;
+  // Format: YYYY-MM-DDTHHMMSS-mmm (hyphens in date, compact time, hyphen before ms)
+  // Colons and extra dots removed for APFS filename safety.
+  return `${YYYY}-${MM}-${DD}T${HH}${mm}${SS}-${mmm}`;
 }
 ```
 
@@ -588,7 +594,7 @@ describe('SafeWrite concurrent-write fuzz', () => {
 | I-5 | No C-Suite writer throws an unhandled exception | `Promise.allSettled` rejected count = 0 for indices 2-19 |
 | I-6 | No orphaned `.tmp-*` files remain | `ls` in positions/active; filter `.tmp-*`; expect empty |
 | I-7 | All commit messages match the exact format `c-suite: <agent> wrote <relPath> during <playbook> run <runId>` | `git log --format=%s \| grep -E '^c-suite: '` |
-| I-8 | Sidecar filename timestamp is ISO 8601 millisecond format (no colons or dots) | Regex `\d{8}T\d{6}-\d{3}` on each sidecar filename |
+| I-8 | Sidecar filename timestamp matches `YYYY-MM-DDTHHMMSS-mmm` format (date hyphens, compact time, hyphen before ms) | Regex `\d{4}-\d{2}-\d{2}T\d{6}-\d{3}` on each sidecar filename |
 
 ---
 
@@ -636,7 +642,7 @@ Source: `ROADMAP.md` §Ch.2 exit criteria lines 71-77.
 | AC-1 | Concurrent-write fuzz passes: zero data loss under N=20 concurrent writers (Obsidian + Cowork + 18 C-Suite agents) | `tests/fuzz/safewrite-concurrent.spec.ts` — all 8 invariants (Section 6.2) pass | Test author |
 | AC-2 | Atomic rename works on Russell's APFS (B9 verified non-iCloud) | Unit test: write temp, `fs.rename` to target; verify target has content and temp is gone; run on macOS only | Test author |
 | AC-3 | Shared-zone writes trigger hash-check; agent-exclusive writes do not | Unit test: mock `fs.readFile`; assert it is called 2× for `zone='position'` and 0× for `zone='memo'` | Test author |
-| AC-4 | Conflict sidecar naming matches format `*.proposed-YYYYMMDDTHHMMSS-mmm.md` | Unit test: force conflict (preHash ≠ reReadHash); assert sidecar filename regex | Test author |
+| AC-4 | Conflict sidecar naming matches format `*.proposed-YYYY-MM-DDTHHMMSS-mmm.md` (date hyphens, compact time, hyphen before ms) | Unit test: force conflict (preHash ≠ reReadHash); assert sidecar filename regex `\d{4}-\d{2}-\d{2}T\d{6}-\d{3}` | Test author |
 | AC-5 | `safewrite.conflict` IPC event emitted on every conflict; NOT emitted on successful write | Unit test: spy on IPC emit; verify call count | Test author |
 | AC-6 | Vault git commit message format matches `c-suite: <agent> wrote <relPath> during <playbook> run <runId>` | Integration test: run safeWrite against temp vault; `git log --format=%s -1`; assert exact format | Test author |
 | AC-7 | chokidar debounce: rapid external edits within 1s produce exactly one `vault.changed` IPC event | Unit test: fire 5 `change` events within 900ms on same path; assert IPC emit count = 1 | Test author |
@@ -685,6 +691,7 @@ Source: `docs/architecture/data.md` §SafeWrite line 214 — "withFileLock" — 
 | G-3 | `gray-matter` vs manual YAML split for chokidar event handler frontmatter extraction (Section 5.2). Ch.0 ADR does not specify a YAML parsing library. | Minor — only affects chokidar event handler. | Use `js-yaml` (already a dependency of `gray-matter`; simpler) or `gray-matter` if already in the lockfile. Ch.2 Runtime dispatch decides and pins. |
 | G-4 | Vault remote policy when Russell adds a remote in Ch.11: does `git push` on every SafeWrite commit create unacceptable latency? | Latency impact unknown. If vault has a remote, simple-git's `commit()` will not push unless explicitly called. | No action needed in Ch.2: vault remote is opt-in at Ch.11; push is never automatic from SafeWrite. Document in Ch.11 runbook: "vault push is manual only." |
 | G-5 | `zoneFor` returns `null` for `investigations/` and `deliverables/` (Ch.0 ADR §2.10 line 483). SafeWrite spec says throw `TypeError` for null zone. But Cowork writes to `deliverables/` — is there a future C-Suite write path there? | If Ch.9 Handoff write-back targets `deliverables/`, it would hit this TypeError. | Ch.9 architect must either extend `ArtifactZone` to include `deliverables` or explicitly exclude that directory from SafeWrite scope. Surfaced here; Ch.9 owns resolution. |
+| G-6 | `simple-git` 3.x `git.commit()` return shape: Section 4.2 claims `commitResult.commit` contains the new commit SHA. This is taken from API memory — context7 resolved "simple-git" to generic Git documentation only (no simple-git library docs returned). **UNKNOWN.** | If `commitResult.commit` is `undefined` or the field name differs in 3.x, `SafeWriteResult.commitSha` will be `undefined` for every vault commit, breaking any caller that checks commit SHA. | Ch.2 Runtime dispatch must verify: `import simpleGit from 'simple-git'; const r = await git.commit(msg); console.log(Object.keys(r));` against actual 3.x types or inspect `node_modules/simple-git/typings/`. If the field is `r.commit`, the spec is correct; if it differs, update Section 4.2 before implementation. |
 
 ---
 
