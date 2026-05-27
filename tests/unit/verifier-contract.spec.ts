@@ -3,7 +3,7 @@
  * Test owner: Ch.3 Test dispatch (writer ≠ grader, DOCTRINE law #7)
  * Source: docs/decisions/0004-ch3-runtime-spine.md §5 + §8 AC-3
  *
- * STATUS: RED until Ch.3 Runtime ships.
+ * STATUS: GREEN — buildVerifierInput and VerifierInputContractViolation are shipped.
  *
  * Spec intent: buildVerifierInput() FAILS CLOSED — throws VerifierInputContractViolation
  * when any required input field is missing from SQLite state. One test per missing
@@ -16,22 +16,14 @@
  *   6. steelmanOutput
  *
  * VerifierInputContractViolation.missing[] enumerates which fields are absent.
- *
- * Activating when Runtime ships:
- *   1. Uncomment the two import lines below.
- *   2. Verify buildVerifierInput signature: (runId, state, db) => VerifierInput | never
- *   3. Verify VerifierInputContractViolation.missing: string[] field.
- *   4. Remove the `expect(() => require(...)).toThrow()` placeholder at top.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
-
-// ── Runtime imports (uncomment when Ch.3 Runtime ships) ─────────────────────
-// import {
-//   buildVerifierInput,
-//   VerifierInputContractViolation,
-// } from '../../apps/utility/src/verifier-assembler.js';
+import {
+  buildVerifierInput,
+  VerifierInputContractViolation,
+} from '../../apps/utility/src/verifier-assembler.js';
 
 // ── SQLite schema for tests ───────────────────────────────────────────────────
 
@@ -171,128 +163,107 @@ describe('AC-3: buildVerifierInput() fails closed on missing required fields (AD
     db.close();
   });
 
-  it('buildVerifierInput module is exported from verifier-assembler [RED: Runtime not shipped]', () => {
-    expect(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('../../apps/utility/src/verifier-assembler.js');
-    }).toThrow();
+  it('buildVerifierInput and VerifierInputContractViolation are exported from verifier-assembler', () => {
+    expect(typeof buildVerifierInput).toBe('function');
+    expect(typeof VerifierInputContractViolation).toBe('function');
   });
 
-  it('throws VerifierInputContractViolation when Synthesizer output is missing [RED: Runtime not shipped]', () => {
-    // When Runtime ships:
-    //   const runId = 'vc-test-no-synth';
-    //   seedRun(db, runId);
-    //   for (const role of LENS_ROLES) seedLensOutput(db, runId, role);
-    //   seedRedTeamOutput(db, runId);
-    //   seedSteelmanOutput(db, runId);
-    //   // No Synthesizer row seeded
-    //
-    //   expect(() => buildVerifierInput(runId, makeSynthesizerState(runId) as any, db))
-    //     .toThrow(VerifierInputContractViolation);
-    //
-    //   try { buildVerifierInput(runId, makeSynthesizerState(runId) as any, db); }
-    //   catch (e) {
-    //     expect(e).toBeInstanceOf(VerifierInputContractViolation);
-    //     expect((e as VerifierInputContractViolation).missing).toContain('synthesizer.output');
-    //   }
+  it('throws VerifierInputContractViolation when Synthesizer output is missing', () => {
+    const runId = 'vc-test-no-synth';
+    seedRun(db, runId);
+    for (const role of LENS_ROLES) seedLensOutput(db, runId, role);
+    seedRedTeamOutput(db, runId);
+    seedSteelmanOutput(db, runId);
+    // No Synthesizer row seeded
 
-    expect(true).toBe(true);
+    expect(() => buildVerifierInput(runId, makeSynthesizerState(runId) as never, db))
+      .toThrow(VerifierInputContractViolation);
+
+    try { buildVerifierInput(runId, makeSynthesizerState(runId) as never, db); }
+    catch (e) {
+      expect(e).toBeInstanceOf(VerifierInputContractViolation);
+      expect((e as VerifierInputContractViolation).missing).toContain('synthesizer.output');
+    }
   });
 
-  it('throws VerifierInputContractViolation listing missing lensOutputs [RED: Runtime not shipped]', () => {
-    // When Runtime ships:
-    //   const runId = 'vc-test-partial-lenses';
-    //   seedRun(db, runId);
-    //   seedLensOutput(db, runId, 'CEO');  // only 1 of 6 lenses
-    //   seedSynthesizerOutput(db, runId);
-    //   seedRedTeamOutput(db, runId);
-    //   seedSteelmanOutput(db, runId);
-    //
-    //   try { buildVerifierInput(runId, makeSynthesizerState(runId) as any, db); }
-    //   catch (e) {
-    //     expect(e).toBeInstanceOf(VerifierInputContractViolation);
-    //     const missing = (e as VerifierInputContractViolation).missing;
-    //     // Missing 5 lenses: CFO, CRO, CMO, CPO, COS
-    //     expect(missing.some(m => m.startsWith('lens.'))).toBe(true);
-    //     expect(missing.filter(m => m.startsWith('lens.'))).toHaveLength(5);
-    //   }
+  it('throws VerifierInputContractViolation listing missing lensOutputs', () => {
+    const runId = 'vc-test-partial-lenses';
+    seedRun(db, runId);
+    seedLensOutput(db, runId, 'CEO');  // only 1 of 6 lenses
+    seedSynthesizerOutput(db, runId);
+    seedRedTeamOutput(db, runId);
+    seedSteelmanOutput(db, runId);
 
-    expect(true).toBe(true);
+    try { buildVerifierInput(runId, makeSynthesizerState(runId) as never, db); }
+    catch (e) {
+      expect(e).toBeInstanceOf(VerifierInputContractViolation);
+      const missing = (e as VerifierInputContractViolation).missing;
+      // Missing 5 lenses: CFO, CRO, CMO, CPO, COS
+      expect(missing.some(m => m.startsWith('lens.'))).toBe(true);
+      expect(missing.filter(m => m.startsWith('lens.'))).toHaveLength(5);
+    }
   });
 
-  it('throws VerifierInputContractViolation when positionMetadata is empty [RED: Runtime not shipped]', () => {
-    // When Runtime ships:
-    //   const runId = 'vc-test-no-positions';
-    //   seedRun(db, runId);
-    //   for (const role of LENS_ROLES) seedLensOutput(db, runId, role);
-    //   seedSynthesizerOutput(db, runId, /* withPositionMetadata= */ false);
-    //   seedRedTeamOutput(db, runId);
-    //   seedSteelmanOutput(db, runId);
-    //
-    //   try { buildVerifierInput(runId, makeSynthesizerState(runId) as any, db); }
-    //   catch (e) {
-    //     expect(e).toBeInstanceOf(VerifierInputContractViolation);
-    //     expect((e as VerifierInputContractViolation).missing).toContain('synthesizer.positionMetadata');
-    //   }
+  it('throws VerifierInputContractViolation when positionMetadata is empty', () => {
+    const runId = 'vc-test-no-positions';
+    seedRun(db, runId);
+    for (const role of LENS_ROLES) seedLensOutput(db, runId, role);
+    seedSynthesizerOutput(db, runId, /* withPositionMetadata= */ false);
+    seedRedTeamOutput(db, runId);
+    seedSteelmanOutput(db, runId);
 
-    expect(true).toBe(true);
+    try { buildVerifierInput(runId, makeSynthesizerState(runId) as never, db); }
+    catch (e) {
+      expect(e).toBeInstanceOf(VerifierInputContractViolation);
+      expect((e as VerifierInputContractViolation).missing).toContain('synthesizer.positionMetadata');
+    }
   });
 
-  it('throws VerifierInputContractViolation when RedTeam output is missing [RED: Runtime not shipped]', () => {
-    // When Runtime ships:
-    //   const runId = 'vc-test-no-redteam';
-    //   seedRun(db, runId);
-    //   for (const role of LENS_ROLES) seedLensOutput(db, runId, role);
-    //   seedSynthesizerOutput(db, runId);
-    //   seedSteelmanOutput(db, runId);
-    //   // No RedTeam seeded
-    //
-    //   try { buildVerifierInput(runId, makeSynthesizerState(runId) as any, db); }
-    //   catch (e) {
-    //     expect(e).toBeInstanceOf(VerifierInputContractViolation);
-    //     expect((e as VerifierInputContractViolation).missing).toContain('redTeam.output');
-    //   }
+  it('throws VerifierInputContractViolation when RedTeam output is missing', () => {
+    const runId = 'vc-test-no-redteam';
+    seedRun(db, runId);
+    for (const role of LENS_ROLES) seedLensOutput(db, runId, role);
+    seedSynthesizerOutput(db, runId);
+    seedSteelmanOutput(db, runId);
+    // No RedTeam seeded
 
-    expect(true).toBe(true);
+    try { buildVerifierInput(runId, makeSynthesizerState(runId) as never, db); }
+    catch (e) {
+      expect(e).toBeInstanceOf(VerifierInputContractViolation);
+      expect((e as VerifierInputContractViolation).missing).toContain('redTeam.output');
+    }
   });
 
-  it('throws VerifierInputContractViolation when Steelman output is missing [RED: Runtime not shipped]', () => {
-    // When Runtime ships:
-    //   const runId = 'vc-test-no-steelman';
-    //   seedRun(db, runId);
-    //   for (const role of LENS_ROLES) seedLensOutput(db, runId, role);
-    //   seedSynthesizerOutput(db, runId);
-    //   seedRedTeamOutput(db, runId);
-    //   // No Steelman seeded
-    //
-    //   try { buildVerifierInput(runId, makeSynthesizerState(runId) as any, db); }
-    //   catch (e) {
-    //     expect(e).toBeInstanceOf(VerifierInputContractViolation);
-    //     expect((e as VerifierInputContractViolation).missing).toContain('steelman.output');
-    //   }
+  it('throws VerifierInputContractViolation when Steelman output is missing', () => {
+    const runId = 'vc-test-no-steelman';
+    seedRun(db, runId);
+    for (const role of LENS_ROLES) seedLensOutput(db, runId, role);
+    seedSynthesizerOutput(db, runId);
+    seedRedTeamOutput(db, runId);
+    // No Steelman seeded
 
-    expect(true).toBe(true);
+    try { buildVerifierInput(runId, makeSynthesizerState(runId) as never, db); }
+    catch (e) {
+      expect(e).toBeInstanceOf(VerifierInputContractViolation);
+      expect((e as VerifierInputContractViolation).missing).toContain('steelman.output');
+    }
   });
 
-  it('returns a valid VerifierInput when all 6 required inputs are present [RED: Runtime not shipped]', () => {
-    // Happy path — success case.
-    // When Runtime ships:
-    //   const runId = 'vc-test-complete';
-    //   seedRun(db, runId);
-    //   for (const role of LENS_ROLES) seedLensOutput(db, runId, role);
-    //   seedSynthesizerOutput(db, runId);
-    //   seedRedTeamOutput(db, runId);
-    //   seedSteelmanOutput(db, runId);
-    //
-    //   const input = buildVerifierInput(runId, makeSynthesizerState(runId) as any, db);
-    //   expect(input.runId).toBe(runId);
-    //   expect(input.memoMarkdown.length).toBeGreaterThan(0);
-    //   expect(input.lensOutputs).toHaveLength(6);
-    //   expect(input.redTeamOutput).toBeDefined();
-    //   expect(input.steelmanOutput).toBeDefined();
-    //   expect(input.positionMetadata.length).toBeGreaterThan(0);
+  it('returns a valid VerifierInput when all 6 required inputs are present', () => {
+    const runId = 'vc-test-complete';
+    seedRun(db, runId);
+    for (const role of LENS_ROLES) seedLensOutput(db, runId, role);
+    seedSynthesizerOutput(db, runId);
+    seedRedTeamOutput(db, runId);
+    seedSteelmanOutput(db, runId);
 
-    expect(true).toBe(true);
+    const input = buildVerifierInput(runId, makeSynthesizerState(runId) as never, db);
+    expect(input.runId).toBe(runId);
+    expect(input.memoMarkdown.length).toBeGreaterThan(0);
+    expect(input.lensOutputs).toHaveLength(6);
+    expect(input.redTeamOutput).toBeDefined();
+    expect(input.steelmanOutput).toBeDefined();
+    expect(input.positionMetadata.length).toBeGreaterThan(0);
   });
 
   it('documents that all 6 required VerifierInput fields are specified (contract reference)', () => {
