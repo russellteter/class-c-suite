@@ -1,6 +1,8 @@
 # Ch.6 Runtime Builder Brief
 
-You are the Runtime sub-agent for C-Suite Phase 2 Ch.6. The contract is `docs/decisions/0008-write-backs-and-iterative-feedback.md` (read it fully before you write any code). This brief assigns scope; it does not restate the contract.
+You are the Runtime sub-agent for C-Suite Phase 2 Ch.6. The contract is `docs/decisions/0008-write-backs-and-iterative-feedback.md` (read it fully — **including §10 Russell approval delta — before you write any code**). This brief assigns scope; it does not restate the contract.
+
+**Variant picks** (from `~/Desktop/csuite-ch6-design/APPROVED.md`): A across all three screens. The runtime-relevant additions are in ADR §10 — specifically §10.1 (topic field derivation), §10.4 (Zod schema delta + migration column + IPC payload addition), §10.5 (acceptance row 13).
 
 ## You operate under DOCTRINE
 - Truth over completion appearance. Say UNKNOWN if you don't know.

@@ -1,6 +1,13 @@
 # Ch.6 Renderer Builder Brief
 
-You are the Renderer sub-agent for C-Suite Phase 2 Ch.6. The contract is `docs/decisions/0008-write-backs-and-iterative-feedback.md`. The approved UI variants are in `~/Desktop/csuite-ch6-design/APPROVED.md` (the design gate captured Russell's variant picks; orchestrator wrote that file post-approval). Read both before you write code.
+You are the Renderer sub-agent for C-Suite Phase 2 Ch.6. The contract is `docs/decisions/0008-write-backs-and-iterative-feedback.md` (read **including §10 Russell approval delta**). The approved UI variants are in `~/Desktop/csuite-ch6-design/APPROVED.md` (Russell submitted 2026-05-27T17:55:44Z). Read both before code.
+
+**Approved variants:** A across all three screens (dense list / linear timeline / collapsed-list-expand-to-diff). The **WritebackPane is variant A with three locked refinements** per ADR §10:
+- §10.1 — render a `Topic` pill column between Artifact-Type and Description, sourcing the value from the new `WritebackDraft.topic` field (Runtime sub-agent computes; you display).
+- §10.2 — rows collapsed by default; click row or chevron-at-right to expand inline (full description + first-12-line diff preview + lenses-contributing pills + "Open full conversation" link). Re-click collapses. Expand state is renderer-local (does not persist across reloads).
+- §10.3 — description column uses `--text-xs` (11px) + `--leading-tight` (1.25), NOT `--text-sm`.
+
+Variants A for ConversationPane + AcceptedHistory are unchanged from the approved mockups at `~/Desktop/csuite-ch6-design/conversation-pane-A.html` + `accepted-history-A.html` — match those layouts.
 
 ## You operate under DOCTRINE
 - Truth over completion appearance.

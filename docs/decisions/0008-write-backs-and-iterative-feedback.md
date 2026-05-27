@@ -371,3 +371,57 @@ Per `~/.claude/rules/wire-new-helpers.md` + `~/.claude/rules/verify-live-endpoin
 - `<vault>/VAULT_GUIDE.md` §3 (frontmatter schema), §4 (linking), §5 (Bases), §8 (maintenance scripts).
 - packages/shared-types/src/run-state.ts — `review.iteration` (run-level, B38).
 - packages/vault-writer/src/safeWrite.ts:226 — existing `.proposed-<ISO>.md` SafeWrite conflict sidecar (collision avoided per §2.2).
+
+---
+
+## 10. Russell approval delta — 2026-05-27 (design gate post-submission)
+
+Russell approved variant **A** for all three screens (dense list / linear timeline / collapsed list). He attached three WritebackPane refinements:
+
+### 10.1 Topic column
+
+Add `topic: string` to `WritebackDraftSchema`. Drafters compute it once with this priority:
+
+1. If the proposed artifact has `linked-workstreams: [WS-NN, …]` (kebab for decisions/pre-mortems) or `linked_workstreams: [WS-NN, …]` (snake for workstreams/predictions), read `<vault>/workstreams/WS-NN-*.md` frontmatter `title:` and use that.
+2. Else, map the originating playbook to a topic label:
+   - `cash_lever` → `"Cash"`
+   - `weekly_cash_forecast` → `"Cash"`
+   - `gtm_reallocation` → `"GTM"`
+   - `strategic_option` → `"Strategy"`
+   - `board_narrative` → `"Board"`
+   - `quick_read` → `"Quick"`
+   - `pre_mortem` → `"Adversarial"`
+   - `stakeholder_1on1_prep` → `"Stakeholder"`
+   - `open_qa` → `"Ad-hoc"`
+3. Else `"General"`.
+
+Runtime drafters write `topic` into the SQLite `writebacks` row (add column in migration 005) and into the IPC `writeback.proposed` payload. Renderer displays as a pill column between Artifact-Type icon and Description.
+
+### 10.2 Row-expand-on-click
+
+WritebackPane rows are collapsed by default (single line). Clicking the row (or a chevron at the right edge) expands inline to show: full description + diff preview (first 12 diff lines, monospace, `--color-success` / `--color-error`) + lenses-contributing pills + "Open full conversation" link. Re-clicking collapses. Multiple rows expandable simultaneously. Expand state is renderer-local (does not persist across reloads at Ch.6; Ch.7 polish may persist if needed).
+
+### 10.3 Description font + line-height
+
+Description column uses `--text-xs` (11px) + `--leading-tight` (1.25), not `--text-sm` (13px) + `--leading-normal`. More characters per row, fewer ellipsis truncations.
+
+### 10.4 Schema deltas (binding additions to §3)
+
+`packages/shared-types/src/writeback.ts`:
+```ts
+export const WritebackDraftSchema = z.object({
+  // ... all existing fields from §3.1 ...
+  topic: z.string(),  // §10.1 derivation
+});
+```
+
+`db/migrations/005_writebacks.sql` (§3.2): add column
+```sql
+topic TEXT NOT NULL DEFAULT 'General',
+```
+
+IPC `writeback.proposed` payload (additive): `topic: string`. Existing consumers ignore unknown fields per Zod `.passthrough()`; safe to add.
+
+### 10.5 Acceptance addition
+
+ADR §4 acceptance table gains row 13: "WritebackPane row carries Topic pill derived per §10.1; row expand-on-click shows full diff preview + lenses-contributing." BY-HAND reproduction: launch `pnpm dev`, run stub Cash-lever, observe a position-writeback row carries `Cash` pill (from playbook map since no linked-workstream on a brand-new position), and a workstream-advance row carries the actual workstream title.
