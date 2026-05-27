@@ -32,6 +32,8 @@ Russell has explicitly stated: **"I don't need to review anything ever."** This 
 
 ## How `/goal` runs
 
+**On "/goal" as a literal command.** Russell will drive the build with an autonomous orchestration command he calls `/goal`. That literal command may be: (a) a custom slash command he installs in `~/.claude/commands/`, (b) the `superpowers:subagent-driven-development` skill pointed at `ROADMAP.md`, (c) the `loop` skill driving a "read doc-set → pick next chapter → execute ritual → update build-log" prompt with self-pacing, or (d) any equivalent autonomous orchestrator. **The doc-set is orchestrator-agnostic.** Throughout this file, "`/goal`" refers to whatever Russell uses as the autonomous driver. The contract below is what any such orchestrator must do — what command name fires it is Russell's choice.
+
 `/goal` runs an autonomous self-correcting loop with hard gates:
 
 ```

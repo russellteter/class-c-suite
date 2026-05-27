@@ -40,18 +40,19 @@ c-suite/
 ## How to drive the build
 
 1. **Read** `PURPOSE.md` to understand what we're building and why.
-2. **Run `/goal`** — it reads the doc-set, runs Phase R, then chapters in dependency order, looping until V1-done or a hard gate.
-3. **Use `/agents`** to see what sub-agents `/goal` has dispatched and their status.
-4. **Use `/ultrareview`** when you want a multi-agent review of the work-in-progress branch (Russell's general highest-level review command).
+2. **Install hooks (fresh clones only):** `./scripts/install-hooks.sh` — enables the tracked auto-push hook at `hooks/post-commit`. Idempotent.
+3. **Run the orchestrator** — Russell drives the build with what he calls `/goal`. That literal command may be: (a) a custom slash command in `~/.claude/commands/`, (b) the `superpowers:subagent-driven-development` skill pointed at `ROADMAP.md`, (c) the `loop` skill driving a "read doc-set → pick next chapter → execute ritual → update build-log" prompt, or (d) any equivalent autonomous orchestrator. The doc-set is orchestrator-agnostic — whatever drives it must read `PURPOSE.md → DOCTRINE.md → ROADMAP.md → BLOCKERS.md → RESEARCH.md`, run Phase R first, then iterate chapters per `docs/architecture/delivery.md`.
+4. **Use `/agents`** to see active sub-agents and their status.
+5. **Use `/ultrareview`** for a multi-agent review of the work-in-progress branch (Russell's general highest-level review command).
 
 ## Operating mode
 
-Russell has stated: "I don't need to review anything ever." `/goal` operates autonomously under `DOCTRINE.md`. Hard gates remain only at:
+Russell has stated: "I don't need to review anything ever." The orchestrator operates autonomously under `DOCTRINE.md`. Hard gates remain only at:
 - On-Mac verification (cloud cannot self-verify menubar / hotkey / notifications / sleep-wake survival).
 - Genuine product-shape forks where downstream rework would otherwise propagate.
 - Destructive or external actions not pre-authorized.
 
-GitHub auto-sync is mandatory — every commit pushes to `origin/main` via a post-commit hook.
+**GitHub auto-sync is mandatory.** Every commit pushes to `origin/main` via the tracked post-commit hook at `hooks/post-commit`. The repo's `core.hooksPath` is set to `hooks` so the tracked file is canonical (survives fresh clones once `./scripts/install-hooks.sh` runs once). Failures log to `.git/auto-push.log` — diagnose, do not bypass.
 
 ## The eight V1 outcomes (from PRD §4)
 

@@ -1,0 +1,28 @@
+#!/bin/bash
+# C-Suite auto-push hook (tracked version).
+# Russell's directive: GitHub mirror always in sync, no manual push required.
+# Failures do not block the commit but are logged to .git/auto-push.log.
+#
+# This file is the SOURCE OF TRUTH for the post-commit hook. It is tracked in
+# the repo at hooks/post-commit. The repo's git config sets core.hooksPath=hooks
+# so this file fires on every commit. To enable in a fresh clone, run:
+#     ./scripts/install-hooks.sh
+#
+# Do NOT also keep a copy at .git/hooks/post-commit — git would run whichever
+# core.hooksPath points to. The tracked path is canonical.
+
+LOG="$(git rev-parse --git-dir)/auto-push.log"
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+SHA="$(git rev-parse --short HEAD)"
+
+{
+  echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] post-commit push branch=$BRANCH sha=$SHA"
+  git push origin "$BRANCH" 2>&1
+  PUSH_STATUS=$?
+  if [ $PUSH_STATUS -eq 0 ]; then
+    echo "  -> push OK"
+  else
+    echo "  -> push FAILED (exit $PUSH_STATUS) — commit is local only, run 'git push' manually or check network/auth"
+  fi
+  echo "---"
+} >> "$LOG" 2>&1
