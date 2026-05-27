@@ -46,16 +46,16 @@ describe('runMigrations — idempotency + schema correctness (§9 row 4)', () =>
   it('creates schema_version row on first run', () => {
     runMigrations(db);
     const row = db.prepare('SELECT COUNT(*) AS n FROM schema_version').get() as { n: number };
-    // Ch.2 adds migration 002_conflicts.sql — 2 migrations = 2 schema_version rows.
-    expect(row.n).toBe(2);
+    // Ch.2 adds 002_conflicts.sql, Ch.3 adds 003_state_transitions.sql — 3 migrations = 3 rows.
+    expect(row.n).toBe(3);
   });
 
   it('is idempotent — second run produces no duplicate schema_version rows', () => {
     runMigrations(db);
     runMigrations(db);
     const row = db.prepare('SELECT COUNT(*) AS n FROM schema_version').get() as { n: number };
-    // Ch.2 adds migration 002_conflicts.sql — 2 migrations = 2 schema_version rows.
-    expect(row.n).toBe(2);
+    // Ch.2 adds 002_conflicts.sql, Ch.3 adds 003_state_transitions.sql — 3 migrations = 3 rows.
+    expect(row.n).toBe(3);
   });
 
   it('second run produces no SQL errors', () => {
@@ -63,7 +63,7 @@ describe('runMigrations — idempotency + schema correctness (§9 row 4)', () =>
     expect(() => runMigrations(db)).not.toThrow();
   });
 
-  // Ch.1 full schema tables + Ch.2 conflicts table (G-2 — 002_conflicts.sql).
+  // Ch.1 full schema tables + Ch.2 conflicts + Ch.3 state_transitions.
   const EXPECTED_TABLES = [
     'runs',
     'agent_invocations',
@@ -71,7 +71,8 @@ describe('runMigrations — idempotency + schema correctness (§9 row 4)', () =>
     'process_events',
     'cost_ledger',
     'schema_version',
-    'conflicts',  // Ch.2 G-2
+    'conflicts',          // Ch.2 G-2
+    'state_transitions',  // Ch.3 ADR-0004 §1.5
   ];
 
   it.each(EXPECTED_TABLES)('table %s exists after migration', (tableName) => {
