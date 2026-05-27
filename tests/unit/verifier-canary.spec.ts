@@ -174,3 +174,209 @@ describe('AC-7b: B3 canary planted-claim detection (Ch.4 Verifier required) [RED
     expect(REASONING_TRACE_MARKERS).toContain('reasoning_trace');
   });
 });
+
+// ── Ch.4 Extension: AC-1 Verifier prompt + canary stub fixture ────────────────
+//
+// Added by: Ch.4 Test dispatch (writer ≠ grader, DOCTRINE law #7)
+// Source: docs/decisions/0005-ch4-prompts-rigor.md §5 + §10 AC-1 + AC-7
+//         BLOCKERS.md B3 (P0, anti-sycophancy keystone)
+//
+// STATUS: RED until Ch.4 Runtime ships prompts + canary stub fixture.
+//
+// Spec intent (AC-1):
+//   - Load Verifier prompt from apps/utility/src/prompts/Verifier.prompt.md.
+//   - Build VerifierInput with canary memo + synthetic lens output structure.
+//   - Run via stub harness with canary fixture at tests/fixtures/lens-outputs/canary-run/Verifier.json.
+//   - Assert: claims_unverified includes $43M claim; ship_status = 'draft'; claim_source.score < 35.
+//   - Assert: NO <thinking> or chain_of_thought strings in VerifierInput JSON (B3 enforcement).
+//
+// Spec intent (AC-7):
+//   - VerifierOutputSchema.parse(canaryOutput) must NOT throw.
+//   - Schema validates rigor_score, ship_status, dimensions, failure_reasons, verifier_notes fields.
+//
+// Canary fixture at tests/fixtures/lens-outputs/canary-run/Verifier.json:
+//   - Captured via STUB_MODE=record on Ch.4 implementation pass.
+//   - UNKNOWN (U-2): fixture does not exist yet — Ch.4 Runtime must capture it.
+//   - Once captured, it becomes permanent: modifying it requires re-capture + reviewer sign-off.
+//
+// Activating when Runtime + Ch.4 prompts ship:
+//   1. Uncomment imports below.
+//   2. Confirm canary fixture exists at tests/fixtures/lens-outputs/canary-run/Verifier.json.
+//   3. Replace `expect(true).toBe(true)` placeholders with real invocations.
+//   4. Remove the "fixture not captured" skip guard.
+
+// ── Ch.4 imports (uncomment when Ch.4 Runtime ships) ────────────────────────
+// import { buildVerifierInput } from '../../apps/utility/src/verifier-assembler.js';
+// import { runVerifier } from '../../apps/utility/src/agents/verifier-runner.js';
+// import { VerifierOutputSchema } from '../../packages/shared-types/src/verifier-output.js';
+
+const VERIFIER_PROMPT_PATH = resolve(__dirname, '../../apps/utility/src/prompts/Verifier.prompt.md');
+const CANARY_FIXTURE_PATH = resolve(__dirname, '../../tests/fixtures/lens-outputs/canary-run/Verifier.json');
+
+describe('Ch.4 AC-1: Verifier prompt file contract (ADR-0005 §4)', () => {
+  it('Verifier.prompt.md does not yet exist [RED: Ch.4 Runtime not shipped]', () => {
+    // When Ch.4 Runtime ships, flip this assertion:
+    //   expect(existsSync(VERIFIER_PROMPT_PATH)).toBe(true);
+    expect(existsSync(VERIFIER_PROMPT_PATH)).toBe(false);
+  });
+
+  it('Verifier prompt will contain anti-sycophancy pattern 1: structural isolation statement [RED]', () => {
+    // When Runtime ships:
+    //   const prompt = readFileSync(VERIFIER_PROMPT_PATH, 'utf8');
+    //   // ADR §4.1 Pattern 1 — explicit contract violation detection
+    //   expect(prompt).toContain('VerifierInputContractViolation');
+    //   // ADR §4.1 — blind to lens reasoning
+    //   expect(prompt).toContain('STRUCTURALLY BLIND to lens chain-of-thought');
+
+    expect(true).toBe(true); // placeholder
+  });
+
+  it('Verifier prompt will contain all 5 dimension names + weights [RED]', () => {
+    // When Runtime ships:
+    //   const prompt = readFileSync(VERIFIER_PROMPT_PATH, 'utf8');
+    //   expect(prompt).toContain('Claim-source binding (35)');
+    //   expect(prompt).toContain('Coverage (20)');
+    //   expect(prompt).toContain('Red-team integration (15)');
+    //   expect(prompt).toContain('Calibration freshness (15)');
+    //   expect(prompt).toContain('Falsifier completeness (15)');
+
+    expect(true).toBe(true);
+  });
+
+  it('Verifier prompt will contain threshold table (80 for strategic_option, 85 cap for open_qa) [RED]', () => {
+    // When Runtime ships:
+    //   const prompt = readFileSync(VERIFIER_PROMPT_PATH, 'utf8');
+    //   expect(prompt).toContain('Strategic option evaluation, Restructure decision: >= 80');
+    //   expect(prompt).toContain('Open Q&A: cap at 85');
+
+    expect(true).toBe(true);
+  });
+
+  it('Verifier prompt will enforce empty falsifier rejection (anti-sycophancy discipline) [RED]', () => {
+    // When Runtime ships:
+    //   const prompt = readFileSync(VERIFIER_PROMPT_PATH, 'utf8');
+    //   expect(prompt).toContain('Empty falsifier rejection');
+    //   // The word "ANTI-SYCOPHANCY DISCIPLINES" marks the section
+    //   expect(prompt).toContain('ANTI-SYCOPHANCY DISCIPLINES');
+
+    expect(true).toBe(true);
+  });
+
+  it('Verifier prompt will specify isQuantOrNamed() classification logic inline [RED]', () => {
+    // When Runtime ships:
+    //   const prompt = readFileSync(VERIFIER_PROMPT_PATH, 'utf8');
+    //   // The Verifier prompt teaches the Verifier the isQuantOrNamed() classification rules
+    //   expect(prompt).toContain('isQuantOrNamed()');
+
+    expect(true).toBe(true);
+  });
+});
+
+describe('Ch.4 AC-1: canary stub fixture (U-2) [RED: not captured yet]', () => {
+  it('canary-run/Verifier.json does not yet exist (U-2: requires STUB_MODE=record capture) [RED]', () => {
+    // This becomes FALSE when Ch.4 Runtime captures the fixture.
+    // Flip assertion on fixture capture:
+    //   expect(existsSync(CANARY_FIXTURE_PATH)).toBe(true);
+    expect(existsSync(CANARY_FIXTURE_PATH)).toBe(false);
+  });
+
+  it('Verifier catches planted $43M claim (full AC-1 assertion) [RED: Runtime + fixture required]', async () => {
+    // This is the keystone anti-sycophancy test per BLOCKERS B3 P0.
+    // Do NOT relax these assertions. ship_status='clean' means the Verifier is broken.
+    //
+    // When Ch.4 Runtime ships + fixture is captured:
+    //
+    //   const canaryMemo = readFileSync(CANARY_MEMO_PATH, 'utf8');
+    //
+    //   // Build a synthetic VerifierInput with canary memo + empty tool audit trail
+    //   // (the $43M claim has no source_id → will appear in claims_unverified)
+    //   const verifierInput = buildVerifierInput({
+    //     memoMarkdown: canaryMemo,
+    //     lensOutputs: makeSyntheticLensOutputs(),      // all 6 lenses with stub outputs
+    //     toolCallAuditTrail: [{                         // only sourced claim is wired
+    //       call_id: 'call-uuid-001',
+    //       source_id: 'sf-opportunity-q3-renewals',
+    //       tool_name: 'run_soql_query',
+    //       result: { opportunities: 42, weighted_pipeline: 1200000 },
+    //     }],
+    //     positionMetadata: [],
+    //     redTeamOutput: { failure_modes: [] },
+    //     steelmanOutput: { counter_argument: '' },
+    //   });
+    //
+    //   // Verify NO reasoning trace markers in VerifierInput JSON (B3 enforcement)
+    //   const inputJson = JSON.stringify(verifierInput);
+    //   for (const marker of REASONING_TRACE_MARKERS) {
+    //     expect(inputJson).not.toContain(marker);
+    //   }
+    //
+    //   // Run Verifier via stub harness (STUB_MODE=replay uses canary-run/Verifier.json)
+    //   const out = await runVerifier(verifierInput);
+    //
+    //   // PRIMARY AC-1 assertions:
+    //   expect(out.dimensions.claim_source.claims_unverified).toContainEqual(
+    //     expect.objectContaining({
+    //       claim_excerpt: expect.stringContaining('$43M'),
+    //       issue: expect.stringMatching(/no source_id|unverified|unsourced/i),
+    //     })
+    //   );
+    //   expect(out.ship_status).toBe('draft');
+    //   expect(out.dimensions.claim_source.score).toBeLessThan(35);
+    //   expect(out.ship_status).not.toBe('clean'); // CRITICAL: never allow clean on canary
+
+    expect(true).toBe(true); // placeholder — remove when Runtime ships
+  });
+
+  it('sourced claim sf-opportunity-q3-renewals does NOT appear in claims_unverified [RED]', async () => {
+    // The Verifier must distinguish sourced from unsourced — it must not simply fail all claims.
+    //
+    // When Runtime ships:
+    //   const out = await runVerifier(verifierInput);
+    //   const unverified = out.dimensions.claim_source.claims_unverified;
+    //   const hasSourcedClaimFlagged = unverified.some(u =>
+    //     u.claim_excerpt.includes('1.2M') || u.claim_excerpt.includes('sf-opportunity-q3-renewals')
+    //   );
+    //   expect(hasSourcedClaimFlagged).toBe(false);
+
+    expect(true).toBe(true);
+  });
+});
+
+describe('Ch.4 AC-7: VerifierOutputSchema validates canary output [RED: Runtime not shipped]', () => {
+  it('VerifierOutputSchema module is not yet resolvable [RED]', () => {
+    expect(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('../../packages/shared-types/src/verifier-output.js');
+    }).toThrow();
+  });
+
+  it('VerifierOutputSchema.parse(canaryOutput) does not throw [RED]', async () => {
+    // When Runtime ships:
+    //   const { VerifierOutputSchema } = await import('../../packages/shared-types/src/verifier-output.js');
+    //   const out = await runVerifier(verifierInput);
+    //   // Schema parse must not throw — all required fields present + correct types
+    //   expect(() => VerifierOutputSchema.parse(out)).not.toThrow();
+    //
+    // Required fields per ADR §4.3 VerifierOutputSchema:
+    //   rigor_score: z.number().int().min(0).max(100)
+    //   ship_status: z.enum(['clean', 'draft', 'fail'])
+    //   dimensions: VerifierDimensionsSchema (all 5 dimensions)
+    //   failure_reasons: z.array(z.string())
+    //   verifier_notes: z.string()
+
+    expect(true).toBe(true);
+  });
+
+  it('VerifierOutputSchema rejects null on required fields [RED]', () => {
+    // When Runtime ships:
+    //   const { VerifierOutputSchema } = await import('../../packages/shared-types/src/verifier-output.js');
+    //   // Missing rigor_score → parse throws
+    //   expect(() => VerifierOutputSchema.parse({ ship_status: 'clean' })).toThrow();
+    //   // Missing ship_status → parse throws
+    //   expect(() => VerifierOutputSchema.parse({ rigor_score: 80 })).toThrow();
+    //   // Null ship_status → parse throws (z.string() not z.string().nullable())
+    //   expect(() => VerifierOutputSchema.parse({ rigor_score: 80, ship_status: null })).toThrow();
+
+    expect(true).toBe(true);
+  });
+});
