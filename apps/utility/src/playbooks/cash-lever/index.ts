@@ -20,13 +20,19 @@ import type Database from 'better-sqlite3';
 const log = createLogger();
 
 // ── Degraded-mode flags ────────────────────────────────────────────────────────
+// Re-exported from @c-suite/shared-types/playbook for back-compat.
+// The canonical type lives in shared-types (ch.7 move); this alias preserves existing imports.
 
-export type DegradedSource = 'aws' | 'netsuite' | 'salesforce' | 'cash_model';
+import type { DegradedSource as _DegradedSource } from '@c-suite/shared-types/playbook';
+export type { DegradedSource } from '@c-suite/shared-types/playbook';
+// Local alias so the rest of this file can use DegradedSource without re-importing.
+type DegradedSource = _DegradedSource;
 
 export interface CashLeverRunResult {
   /** Lens outputs keyed by role */
   lensOutputs: Record<string, unknown>;
   /** Sources that were unavailable — each degraded memo section is flagged */
+  // Uses DegradedSource from @c-suite/shared-types/playbook (re-exported above).
   degraded_sources: DegradedSource[];
   /** Memo markdown with [^source-id] citations */
   memoMarkdown?: string;
@@ -353,3 +359,31 @@ async function runCosLens(
   log.info({ runId, message: 'COS lens complete — operational risk assessed' });
   return { output: result };
 }
+
+// ── ADR-0009 §3 adapter shim ──────────────────────────────────────────────────
+// Re-exports runCashLeverPlaybook under the unified PlaybookModule.runPlaybook signature.
+// Does NOT rewrite cash-lever internals (forbidden per ADR-0009 §3 scope).
+// Phase B will pattern-match against this adapter.
+
+import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule } from '@c-suite/shared-types/playbook';
+
+function adaptResult(r: CashLeverRunResult, degradedSources: DegradedSource[]): PlaybookResult {
+  const stamps: string[] = degradedSources.length > 0 ? ['DEGRADED'] : ['CLEAN'];
+  return {
+    memoMarkdown: r.memoMarkdown ?? '',
+    degradedSources: r.degraded_sources.map(String),
+    lensOutputs: r.lensOutputs,
+    stamps,
+    rigorScore: null,       // cash-lever pre-dates Verifier integration; null until Ch.8
+    rigorThreshold: 70,
+    proposedWritebacks: [],
+  };
+}
+
+export const runPlaybook: PlaybookModule['runPlaybook'] = async (
+  input: PlaybookInput,
+  ctx: PlaybookContext,
+): Promise<PlaybookResult> => {
+  const result = await runCashLeverPlaybook(ctx.runId, input.prompt, { db: ctx.db });
+  return adaptResult(result, result.degraded_sources);
+};
