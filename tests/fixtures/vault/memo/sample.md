@@ -1,7 +1,3 @@
-# SYNTHETIC FIXTURE — created Ch.0 Test dispatch
-# Source: ADR-0001 §2.8 MemoFrontmatter schema.
-# memos/ directory does NOT yet exist in vault (R0 §2.10 confirmed).
-# Schema: docs/decisions/0001-ch0-foundations.md §2.8
 ---
 run_id: run-2026-05-26-cash-lever-001
 playbook: cash_lever_vs_trough

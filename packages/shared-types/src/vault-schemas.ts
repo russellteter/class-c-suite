@@ -166,7 +166,7 @@ export type PreMortemFrontmatter = z.infer<typeof PreMortemFrontmatter>;
 export const PredictionFrontmatter = z.object({
   id: z.string(),
   claim: z.string(),
-  confidence: z.union([z.number().int(), z.string().regex(/^\d+$/)]),
+  confidence: z.union([z.number().int(), z.string().regex(/^\d+$/)]).optional(),   // PRED-007 uses confidence-at-time-of-prediction instead
   resolution_date: z.string().optional(),            // snake: resolution_date; kebab normalized
   spawned_by: z.string().optional(),
   position: z.string().optional(),                   // PRED-007 only
