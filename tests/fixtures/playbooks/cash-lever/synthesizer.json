@@ -1,0 +1,15 @@
+{
+  "role": "Synthesizer",
+  "structuredOutput": {
+    "memoMarkdown": "# Cash Lever: LoC Draw vs Deferred AWS Spend\n\n**Recommendation: Defer AWS spend for 45 days.**\n\nCurrent cash position of $14.2M [^ns-cash-2026-05-27] combined with committed 90-day pipeline of $4.2M [^sf-pipeline-2026-05-27] makes a LoC draw unnecessary through W30. AWS spend of $1.8M/month [^aws-spend-2026-05-27] is deferrable within COS-confirmed operational constraints.\n\nThe Red-Team challenge on pipeline reliability (22% slip rate) does not change the recommendation — even a 35% slip leaves the trough manageable without LoC exposure.\n\n## Action\n\n1. Defer AWS reserved-instance renewal by 45 days (EC2/Collab exempted per COS constraint).\n2. Re-validate AWS Cost Explorer data at day 30 per Red-Team concern.\n3. Do not draw LoC unless pipeline slip exceeds 35%.\n\n## Sources\n\n[^sf-pipeline-2026-05-27]: Salesforce committed pipeline query — 7 opportunities, $4.2M, stages: Verbal Agreement through Contracting.\n[^ns-cash-2026-05-27]: NetSuite SuiteQL cashPositionQuery — $14.2M consolidated, 2026-05-27.\n[^aws-spend-2026-05-27]: AWS Cost Explorer — 6-month average, class + collab profiles.\n[^cash-model-2026-05-27]: Cash Lever Model v5 — 3 lever rows: LoC draw ($2.1M available), AWS deferral ($1.8M/month), AR pull-forward ($0.9M).",
+    "slug": "loc-vs-deferred-aws",
+    "footnoteIds": [
+      "sf-pipeline-2026-05-27",
+      "ns-cash-2026-05-27",
+      "aws-spend-2026-05-27",
+      "cash-model-2026-05-27"
+    ]
+  },
+  "tokensIn": 22000,
+  "tokensOut": 6500
+}

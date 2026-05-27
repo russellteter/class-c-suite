@@ -1,0 +1,22 @@
+{
+  "role": "CFO",
+  "structuredOutput": {
+    "summary": "Based on current cash position ($14.2M) and 90-day committed pipeline ($4.2M), deferring AWS spend ($1.8M/month) is preferable to drawing on the LoC. AWS deferral preserves covenant headroom and avoids the 6.5% draw fee.",
+    "recommendation": "DEFER_AWS",
+    "sources": [
+      { "id": "sf-pipeline-2026-05-27", "type": "salesforce", "value": "$4.2M committed 90-day" },
+      { "id": "ns-cash-2026-05-27",     "type": "netsuite",   "value": "$14.2M current cash" },
+      { "id": "aws-spend-2026-05-27",   "type": "aws",        "value": "$1.8M/month average" },
+      { "id": "cash-model-2026-05-27",  "type": "xlsx",       "value": "3 lever rows extracted" }
+    ],
+    "confidence": 78,
+    "footnotes": [
+      "[^sf-pipeline-2026-05-27]",
+      "[^ns-cash-2026-05-27]",
+      "[^aws-spend-2026-05-27]",
+      "[^cash-model-2026-05-27]"
+    ]
+  },
+  "tokensIn": 18500,
+  "tokensOut": 4200
+}

@@ -1,0 +1,21 @@
+{
+  "role": "RedTeam",
+  "structuredOutput": {
+    "challenges": [
+      {
+        "claim": "AWS deferral is $1.8M/month",
+        "challenge": "Spend data is 6 weeks old. Actual commitment may be higher post-Collab infra expansion.",
+        "severity": "HIGH"
+      },
+      {
+        "claim": "$4.2M 90-day pipeline is committed",
+        "challenge": "3 of 12 opportunities are in 'Verbal Agreement' — historically 22% slip to next quarter at Class.",
+        "severity": "MEDIUM"
+      }
+    ],
+    "overallAssessment": "CFO analysis credible but AWS spend basis is stale. Recommend refreshing CE data before committing to deferral window.",
+    "confidence": 82
+  },
+  "tokensIn": 9800,
+  "tokensOut": 2100
+}

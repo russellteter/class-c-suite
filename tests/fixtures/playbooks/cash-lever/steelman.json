@@ -1,0 +1,10 @@
+{
+  "role": "Steelman",
+  "structuredOutput": {
+    "defense": "Even with a 22% pipeline slip rate, the W30 trough is addressable via AWS deferral alone. LoC draw fee ($117K) exceeds marginal execution risk of the 45-day window. COS constraint (45-day max) is conservative — Collab has 60-day burst capacity per SLA agreement.",
+    "strengthenedRecommendation": "Defer AWS for 45 days; revalidate CE data at day 30; do not draw LoC unless pipeline slip materializes above 35%.",
+    "confidence": 76
+  },
+  "tokensIn": 8200,
+  "tokensOut": 1900
+}

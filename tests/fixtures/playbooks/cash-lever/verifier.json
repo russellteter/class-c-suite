@@ -1,0 +1,23 @@
+{
+  "role": "Verifier",
+  "structuredOutput": {
+    "rigor_score": 83,
+    "ship_status": "clean",
+    "claim_source_score": 30,
+    "coverage_score": 18,
+    "red_team_score": 15,
+    "calibration_score": 12,
+    "falsifier_score": 8,
+    "claims_verified": [
+      { "claim": "$14.2M current cash", "source_id": "ns-cash-2026-05-27", "verdict": "PASS" },
+      { "claim": "$4.2M committed 90-day pipeline", "source_id": "sf-pipeline-2026-05-27", "verdict": "PASS" },
+      { "claim": "$1.8M/month AWS spend", "source_id": "aws-spend-2026-05-27", "verdict": "PASS" },
+      { "claim": "3 lever rows extracted", "source_id": "cash-model-2026-05-27", "verdict": "PASS" }
+    ],
+    "claims_unverified": [],
+    "failure_reasons": [],
+    "coverage_gap": null
+  },
+  "tokensIn": 11000,
+  "tokensOut": 3200
+}

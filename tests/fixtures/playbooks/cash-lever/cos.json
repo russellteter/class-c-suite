@@ -1,0 +1,15 @@
+{
+  "role": "COS",
+  "structuredOutput": {
+    "summary": "Deferring AWS spend is operationally feasible for 60 days without service degradation. Key risk: Collab environment latency degrades if EC2 reserved instances lapse. Recommend 45-day deferral window maximum to avoid customer SLA exposure.",
+    "recommendation": "DEFER_AWS_WITH_CONSTRAINTS",
+    "constraints": [
+      "Maximum 45-day deferral window",
+      "Exempt: EC2 reserved instances for Collab",
+      "Preserve: RDS Multi-AZ for compliance"
+    ],
+    "confidence": 71
+  },
+  "tokensIn": 12300,
+  "tokensOut": 2800
+}
