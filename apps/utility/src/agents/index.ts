@@ -199,6 +199,21 @@ const SynthesizerInputSchema = z.object({
   steelman: SteelmanOutputSchema,
 });
 
+// Ch.6 ADR-0008 §3 — SynthesizerProposedWriteback: Synthesizer authors these;
+// the writeback engine renders them to sidecar .draft-<runId>.md files.
+const SynthesizerProposedWritebackSchema = z.object({
+  artifactType: z.enum([
+    'position', 'decision', 'prediction',
+    'pre-mortem-update', 'stakeholder-update', 'workstream-advance',
+  ]),
+  targetArtifactId: z.string().nullable(), // null = create new; existing ID = update
+  proposedFrontmatterPatch: z.record(z.unknown()),
+  proposedBodyPatch: z.string(),
+  lensesContributing: z.array(AgentRoleSchema),
+  oneSentenceDescription: z.string(),
+});
+export type SynthesizerProposedWriteback = z.infer<typeof SynthesizerProposedWritebackSchema>;
+
 const SynthesizerOutputSchema = z.object({
   role: z.literal('Synthesizer'),
   runId: z.string(),
@@ -215,6 +230,8 @@ const SynthesizerOutputSchema = z.object({
     citations: z.array(CitationSchema),
     sourceText: z.string(),
   })),
+  // Ch.6 §3: Synthesizer proposes write-backs; engine renders; Verifier grades.
+  proposedWritebacks: z.array(SynthesizerProposedWritebackSchema).default([]),
 });
 
 type SynthesizerInput = z.infer<typeof SynthesizerInputSchema>;
