@@ -163,7 +163,28 @@
 
 ## New blockers (added during Phase R or chapters)
 
-*(empty — Phase R will populate)*
+### B17 — Missing-skill register: 7 referenced skills not installed `NEW` `P1`
+**What.** PRD and CLAUDE.md reference these skills as if they exist in Russell's Claude Code environment, but `find ~/.claude` returns nothing for them:
+- **`russell-voice`** — referenced in PRD §6 + CLAUDE.md §4 as the voice rule-set for personal-facing memo content (executive summary, reco, open-questions).
+- **`run-critique`** — referenced in CLAUDE.md §4 as the rubric the Run-Critic agent uses at end of every run.
+- **`weekly-cash-forecast`** — referenced as the skill driving the Monday cash-forecast scheduled job.
+- **`covenant-tracker`** — referenced as the skill driving covenant proximity in tripwire scan.
+- **`renewal-forecast`** — referenced as the skill driving Sunday renewal sweep. Also flagged by ultraplan B7 (`Owner.Name` bug).
+- **`call-intelligence`** — referenced as the skill driving Chorus sweep.
+- **`system-check`** — referenced as the skill driving morning brief health check.
+- **`class-aws-connector`** — referenced as the skill driving AWS queries.
+
+Only `class-brand-voice`, `class-brand-document`, `class-brand-excel`, `class-brand-presentations` (4 brand skills) are actually installed.
+**Bites at.** Phase R R0 (skill inventory), Ch.4 (Run-Critic + Synthesizer voice rules), Ch.7 (playbook skill invocations), Ch.8 (MCP skill wrappers), Ch.10 (scheduled jobs).
+**Hypothesis.** These exist as **Cowork artifacts (project-level prompts/scripts inside Russell's Cowork project)** rather than as Claude Code skills under `~/.claude/skills/`. The original PRD/CLAUDE.md was written before the Cowork-vs-Claude-Code distinction crystallized.
+**Mitigation.**
+- **`docs/brand-voice-rules.md`** ships an inferred `russell-voice` rule-set extracted from `~/.claude/CLAUDE.md` + `~/.claude/rules/stop-slop-writing.md`. Used until `russell-voice` is installed.
+- Phase R R0 reads Cowork's project directory (if accessible) for the 7 unfound skills; extracts their logic; either:
+  - (a) packages each as a Claude Code skill at `~/.claude/skills/<name>/` (Russell's preferred discoverability), OR
+  - (b) codifies the logic directly into C-Suite modules (skipping skill-subprocess invocation), OR
+  - (c) flags any that genuinely don't exist for Russell to author.
+- Per-skill resolution recorded in `docs/research/R0-skill-inventory.md`.
+**Owner.** R0 sub-agent; Russell installs / authors any missing skills.
 
 ---
 

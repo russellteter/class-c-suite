@@ -1,0 +1,98 @@
+{
+  "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
+  "project": "c-suite",
+  "remote": "https://github.com/russellteter/class-c-suite.git",
+  "current_phase": "pre-phase-r-scaffold-complete",
+  "next_action": "Run /goal (or equivalent orchestrator) to begin Phase R. Pre-flight script available at scripts/preflight.sh.",
+  "completed_tasks": [
+    {
+      "id": "scaffold-doc-set",
+      "summary": "Ingested ultraplan, audited against PRD/CLAUDE.md, authored 5 top-level doc-set + project CLAUDE.md + README + 6 architecture specs + build-log scaffold + augmented PRD/CLAUDE mirrors. Recorded as ADR-0000.",
+      "completed_on": "2026-05-26",
+      "commits": ["79bc9c6", "6e2ed6c", "ffd984e"]
+    },
+    {
+      "id": "auto-push-hook-durable",
+      "summary": "Tracked hooks/post-commit + core.hooksPath=hooks + scripts/install-hooks.sh. Auto-push survives re-clone.",
+      "completed_on": "2026-05-26",
+      "commits": ["ffd984e"]
+    },
+    {
+      "id": "tier-1-execution-enhancements",
+      "summary": "Pre-flight script, NetSuite TBA request template, brand-voice extraction, ADR template + ADR-0000, sub-agent dispatch templates (9 roles), rigor-cases + canary fixtures, project-state file, BLOCKERS B17 missing-skill register, README orchestrator quickstart.",
+      "completed_on": "2026-05-26",
+      "commits": []
+    }
+  ],
+  "pending_tasks": [
+    {
+      "id": "phase-r-run",
+      "owner": "/goal",
+      "blocks": "ch-0-onwards",
+      "summary": "Run Phase R (R0 corpus + R1 connector-reality + R2 adversarial). Send NetSuite TBA request to Brian early in R1. Exit per RESEARCH.md §phase-r-exit-gate."
+    },
+    {
+      "id": "ch-0-foundations",
+      "owner": "/goal",
+      "blockedBy": ["phase-r-run"],
+      "summary": "Repo scaffold, locked Zod/IPC contracts, CI, stub-harness skeleton. Per ROADMAP.md §Ch.0."
+    }
+  ],
+  "key_decisions": [
+    {
+      "ref": "ADR-0000",
+      "summary": "Scaffold the C-Suite build doc-set before Phase R; architecture specs are honest scaffolds with verify-markers, not fabricated final answers."
+    },
+    {
+      "ref": "DOCTRINE.md operating-mode override",
+      "summary": "Per Russell directive ('I don't need to review anything ever'): default to decide-and-log; hard gates only at on-Mac verification, genuine product-shape forks, destructive/external actions."
+    },
+    {
+      "ref": "README.md How-to-drive",
+      "summary": "Orchestrator is whatever Russell uses as /goal — custom command, subagent-driven-development, loop, etc. Doc-set is orchestrator-agnostic."
+    }
+  ],
+  "blockers": [
+    {
+      "id": "B1",
+      "severity": "P1",
+      "status": "SEEDED",
+      "summary": "NetSuite TBA admin enablement (Brian); longest external lead; request template at scripts/send-tba-request.md."
+    },
+    {
+      "id": "B3",
+      "severity": "P0",
+      "status": "SEEDED",
+      "summary": "Verifier reasoning-trace leak = rubber-stamp risk. Canary fixture at tests/fixtures/canary-memo.md is the permanent regression guard."
+    },
+    {
+      "id": "B17",
+      "severity": "P1",
+      "status": "NEW",
+      "summary": "Missing-skill register: russell-voice, run-critique, weekly-cash-forecast, covenant-tracker, renewal-forecast, call-intelligence, system-check, class-aws-connector referenced in PRD/CLAUDE.md but NOT installed as Claude Code skills. R0 reconciles (Cowork artifacts vs Claude Code skills) and either locates / installs / surfaces for Russell to author."
+    }
+  ],
+  "file_manifest": {
+    "doc_set_spine": ["PURPOSE.md", "DOCTRINE.md", "ROADMAP.md", "BLOCKERS.md", "RESEARCH.md"],
+    "orientation": ["CLAUDE.md", "README.md"],
+    "architecture": [
+      "docs/architecture/runtime.md",
+      "docs/architecture/data.md",
+      "docs/architecture/mcp.md",
+      "docs/architecture/ui.md",
+      "docs/architecture/prompts.md",
+      "docs/architecture/delivery.md"
+    ],
+    "decisions": ["docs/decisions/ADR-template.md", "docs/decisions/0000-doc-set-scaffold.md"],
+    "agents": ["docs/agents/README.md", "docs/agents/dispatch-templates.md"],
+    "brand_voice": ["docs/brand-voice-rules.md"],
+    "ledger": ["docs/build-log.md"],
+    "fixtures": ["tests/fixtures/rigor-cases.json", "tests/fixtures/canary-memo.md"],
+    "scripts": ["scripts/preflight.sh", "scripts/send-tba-request.md", "scripts/install-hooks.sh"],
+    "hooks": ["hooks/post-commit"],
+    "state": [".claude/project-state.json"],
+    "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
+  },
+  "last_updated": "2026-05-26T21:15:00-04:00",
+  "updated_by": "scaffold session — Claude Opus 4.7 (1M context)"
+}

@@ -41,9 +41,25 @@ c-suite/
 
 1. **Read** `PURPOSE.md` to understand what we're building and why.
 2. **Install hooks (fresh clones only):** `./scripts/install-hooks.sh` — enables the tracked auto-push hook at `hooks/post-commit`. Idempotent.
-3. **Run the orchestrator** — Russell drives the build with what he calls `/goal`. That literal command may be: (a) a custom slash command in `~/.claude/commands/`, (b) the `superpowers:subagent-driven-development` skill pointed at `ROADMAP.md`, (c) the `loop` skill driving a "read doc-set → pick next chapter → execute ritual → update build-log" prompt, or (d) any equivalent autonomous orchestrator. The doc-set is orchestrator-agnostic — whatever drives it must read `PURPOSE.md → DOCTRINE.md → ROADMAP.md → BLOCKERS.md → RESEARCH.md`, run Phase R first, then iterate chapters per `docs/architecture/delivery.md`.
-4. **Use `/agents`** to see active sub-agents and their status.
-5. **Use `/ultrareview`** for a multi-agent review of the work-in-progress branch (Russell's general highest-level review command).
+3. **Run pre-flight:** `./scripts/preflight.sh` — verifies vault path / git-init / iCloud-sync / tools / skills / hooks / remote. Exits non-zero on blockers. Run BEFORE the orchestrator so Phase R doesn't waste hours discovering environment problems. Add `--fix-hooks` to auto-install the post-commit hook.
+4. **Run the orchestrator.** Russell drives the build with what he calls `/goal`. That literal command may be:
+   - **(Recommended for V1)** Use the `loop` skill in self-paced mode against a canonical "execute next unit" prompt that points at this doc-set. One-liner:
+
+     ```
+     /loop Read CLAUDE.md and follow the §"How /goal runs" loop contract.
+     Pick the next incomplete unit from ROADMAP.md (Phase R first, then chapters in
+     dependency order). Run the unit's ritual per docs/architecture/delivery.md
+     §per-chapter-ritual. Use docs/agents/dispatch-templates.md to dispatch sub-agents.
+     Update docs/build-log.md + BLOCKERS.md + .claude/project-state.json at every
+     transition. Stop when V1-done or at a hard gate per DOCTRINE.md §operating-mode-override.
+     ```
+
+   - **Alternative:** `superpowers:subagent-driven-development` pointed at `ROADMAP.md`.
+   - **Alternative:** a custom slash command at `~/.claude/commands/goal.md` you write to wrap the loop above.
+
+   The doc-set is orchestrator-agnostic — whatever drives it must read `PURPOSE.md → DOCTRINE.md → ROADMAP.md → BLOCKERS.md → RESEARCH.md`, run Phase R first, then iterate chapters per `docs/architecture/delivery.md`.
+5. **Use `/agents`** to see active sub-agents and their status.
+6. **Use `/ultrareview`** for a multi-agent review of the work-in-progress branch (Russell's general highest-level review command).
 
 ## Operating mode
 

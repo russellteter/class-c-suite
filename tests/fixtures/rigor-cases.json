@@ -1,0 +1,131 @@
+{
+  "comment": "12-case locked rigor formula test table. Source: docs/architecture/prompts.md §rigorScore. Ch.4 acceptance: tests/unit/scoring/rigorScore.spec.ts loads this fixture and asserts rigorScore() + shipStatus() return exactly the expected values per row. This file is the single source of truth — modify prompts.md AND this file in the same commit, never one without the other.",
+  "schema": {
+    "weights": {
+      "claim_source": 35,
+      "coverage": 20,
+      "red_team": 15,
+      "calibration": 15,
+      "falsifier": 15
+    },
+    "thresholds": {
+      "strategic_option": 80,
+      "restructure_decision": 80,
+      "open_qa_cap": 85,
+      "default": 70
+    },
+    "notes": "quick_read bypasses Verifier entirely; case 12 asserts the bypass path. open_qa caps at 85 regardless of computed score."
+  },
+  "cases": [
+    {
+      "id": 1,
+      "dimensions": { "claim_source": 35, "coverage": 20, "red_team": 15, "calibration": 15, "falsifier": 15 },
+      "expected_total": 100,
+      "playbook": "strategic_option",
+      "expected_threshold": 80,
+      "expected_ship": "clean",
+      "rationale": "perfect score; clears Strategic 80 threshold"
+    },
+    {
+      "id": 2,
+      "dimensions": { "claim_source": 35, "coverage": 20, "red_team": 15, "calibration": 15, "falsifier": 0 },
+      "expected_total": 85,
+      "playbook": "strategic_option",
+      "expected_threshold": 80,
+      "expected_ship": "clean",
+      "rationale": "missing falsifier costs 15; still clears Strategic 80"
+    },
+    {
+      "id": 3,
+      "dimensions": { "claim_source": 35, "coverage": 20, "red_team": 15, "calibration": 15, "falsifier": 0 },
+      "expected_total": 85,
+      "playbook": "strategic_option",
+      "expected_threshold": 80,
+      "expected_ship": "clean",
+      "rationale": "duplicate of case 2; ensures stability across runs"
+    },
+    {
+      "id": 4,
+      "dimensions": { "claim_source": 25, "coverage": 18, "red_team": 12, "calibration": 10, "falsifier": 10 },
+      "expected_total": 75,
+      "playbook": "strategic_option",
+      "expected_threshold": 80,
+      "expected_ship": "draft",
+      "rationale": "75 < 80 Strategic threshold; DRAFT path"
+    },
+    {
+      "id": 5,
+      "dimensions": { "claim_source": 25, "coverage": 18, "red_team": 12, "calibration": 10, "falsifier": 10 },
+      "expected_total": 75,
+      "playbook": "gtm_reallocation",
+      "expected_threshold": 70,
+      "expected_ship": "clean",
+      "rationale": "75 >= 70 default threshold; same dimensions as case 4 — playbook threshold is the gate"
+    },
+    {
+      "id": 6,
+      "dimensions": { "claim_source": 0, "coverage": 20, "red_team": 15, "calibration": 15, "falsifier": 15 },
+      "expected_total": 65,
+      "playbook": "gtm_reallocation",
+      "expected_threshold": 70,
+      "expected_ship": "draft",
+      "rationale": "claim_source = 0 (no citations) is the most common failure mode; even with perfect other dims, DRAFT"
+    },
+    {
+      "id": 7,
+      "dimensions": { "claim_source": 35, "coverage": 0, "red_team": 15, "calibration": 15, "falsifier": 15 },
+      "expected_total": 80,
+      "playbook": "gtm_reallocation",
+      "expected_threshold": 70,
+      "expected_ship": "clean",
+      "rationale": "coverage = 0 (missing lens findings) loses 20; still clears default 70"
+    },
+    {
+      "id": 8,
+      "dimensions": { "claim_source": 35, "coverage": 20, "red_team": 0, "calibration": 15, "falsifier": 15 },
+      "expected_total": 85,
+      "playbook": "restructure_decision",
+      "expected_threshold": 80,
+      "expected_ship": "clean",
+      "rationale": "no red-team integration; still clears Restructure 80"
+    },
+    {
+      "id": 9,
+      "dimensions": { "claim_source": 35, "coverage": 20, "red_team": 15, "calibration": 0, "falsifier": 15 },
+      "expected_total": 85,
+      "playbook": "board_narrative",
+      "expected_threshold": 70,
+      "expected_ship": "clean",
+      "rationale": "calibration freshness = 0 (cited stale positions); still clears default 70"
+    },
+    {
+      "id": 10,
+      "dimensions": { "claim_source": 35, "coverage": 20, "red_team": 15, "calibration": 15, "falsifier": 0 },
+      "expected_total": 85,
+      "playbook": "open_qa",
+      "expected_threshold": 85,
+      "expected_ship": "clean",
+      "rationale": "open_qa cap = 85; total = 85 hits the cap exactly"
+    },
+    {
+      "id": 11,
+      "dimensions": { "claim_source": 35, "coverage": 20, "red_team": 15, "calibration": 15, "falsifier": 15 },
+      "expected_total": 100,
+      "expected_capped_total": 85,
+      "playbook": "open_qa",
+      "expected_threshold": 85,
+      "expected_ship": "clean",
+      "expected_status_stamp": "ad_hoc",
+      "rationale": "open_qa cap clamps 100 → 85; ship_status reports 'ad_hoc' stamp regardless of underlying perfection"
+    },
+    {
+      "id": 12,
+      "dimensions": null,
+      "expected_total": null,
+      "playbook": "quick_read",
+      "expected_ship": "quick_read",
+      "expected_threshold": null,
+      "rationale": "quick_read bypasses Verifier entirely; no rigor score; ship_status = 'quick_read'; write-back disabled; tests must assert the bypass code path is taken (rigorScore never called)"
+    }
+  ]
+}
