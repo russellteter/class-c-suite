@@ -1,9 +1,10 @@
 {
   "name": "@c-suite/soql-builder",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -11,6 +12,7 @@
     }
   },
   "scripts": {
+    "build": "tsc --project tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'lint: no linter configured in Ch.0'",
     "test:unit": "echo 'no unit tests in soql-builder at Ch.0 (skeleton only; full impl Ch.8)'",

@@ -1,16 +1,22 @@
 {
   "name": "@c-suite/stub-harness",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./stub": {
+      "import": "./dist/stub.js",
+      "types": "./dist/stub.d.ts"
     }
   },
   "scripts": {
+    "build": "tsc --project tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'lint: no linter configured in Ch.0'",
     "test:unit": "vitest run --reporter=verbose",
