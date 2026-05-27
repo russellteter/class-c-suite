@@ -1,0 +1,20 @@
+{
+  "output": {
+    "role": "Synthesizer",
+    "runId": "seed-run-001",
+    "memoMarkdown": "# Seed Memo\n\nThis is a seed memo placeholder for testing. It documents the seed run findings across all lens perspectives. The Synthesizer integrates CEO, CFO, CRO, CMO, CPO, and COS outputs into a unified strategic recommendation.\n\nKey finding: seed data confirms the hypothesis.",
+    "executiveSummary": "Seed executive summary for testing. This placeholder will be replaced by Ch.4 captured output.",
+    "keyDecisions": ["Seed decision 1.", "Seed decision 2."],
+    "citations": [{ "id": "synth-cite-1", "text": "Seed synthesis source.", "source": "stub" }],
+    "positionMetadata": [
+      {
+        "positionId": "CEO-p1",
+        "role": "CEO",
+        "claim": "Seed CEO claim.",
+        "isQuantitative": false,
+        "citations": [{ "id": "seed-cite-1", "text": "Seed source.", "source": "stub" }],
+        "sourceText": "Seed source text."
+      }
+    ]
+  }
+}

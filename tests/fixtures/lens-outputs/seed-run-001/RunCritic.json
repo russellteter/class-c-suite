@@ -1,0 +1,17 @@
+{
+  "output": {
+    "role": "RunCritic",
+    "runId": "seed-run-001",
+    "overallQuality": "good",
+    "strengthsByRole": {
+      "CEO": "Seed CEO strength.",
+      "CFO": "Seed CFO strength."
+    },
+    "weaknessesByRole": {
+      "CEO": "Seed CEO weakness.",
+      "CFO": "Seed CFO weakness."
+    },
+    "processImprovements": ["Seed process improvement 1.", "Seed process improvement 2."],
+    "critiqueMarkdown": "# Run Critique — seed-run-001\n\nOverall quality: good. The run demonstrated solid analytical rigor across all lens perspectives.\n\nStrengths: CEO and CFO lenses provided clear quantitative grounding.\n\nWeaknesses: Some positions lacked external citation depth.\n\nProcess improvements recommended: increase citation depth, add more quantitative assertions."
+  }
+}

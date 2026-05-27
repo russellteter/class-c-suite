@@ -1,0 +1,23 @@
+{
+  "output": {
+    "role": "Verifier",
+    "runId": "seed-run-001",
+    "rigorScore": 85,
+    "passed": true,
+    "failureReasons": [],
+    "citationAudit": [
+      {
+        "citationId": "seed-cite-1",
+        "verdict": "valid",
+        "notes": "Seed citation is a placeholder."
+      }
+    ],
+    "quantitativeAudit": [
+      {
+        "claim": "Seed revenue figure.",
+        "verdict": "quantified"
+      }
+    ],
+    "antiSycophancyFlags": []
+  }
+}

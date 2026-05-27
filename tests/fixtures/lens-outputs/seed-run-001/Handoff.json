@@ -1,0 +1,8 @@
+{
+  "output": {
+    "role": "Handoff",
+    "runId": "seed-run-001",
+    "handoffMarkdown": "# Session Handoff — seed-run-001\n\nThis is a seed handoff document placeholder for testing. It captures the state and key decisions for the next session to resume from.\n\nKey decisions: seed decision 1, seed decision 2.\n\nNext steps: review and act on the synthesized recommendations.",
+    "handoffPath": "/vault/handoffs/seed-run-001.md"
+  }
+}

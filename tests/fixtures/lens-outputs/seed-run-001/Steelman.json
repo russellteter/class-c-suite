@@ -1,0 +1,15 @@
+{
+  "output": {
+    "role": "Steelman",
+    "runId": "seed-run-001",
+    "steelmen": [
+      {
+        "targetRole": "CEO",
+        "bestCaseArgument": "Seed strongest version of CEO position.",
+        "evidenceSupport": ["Seed supporting evidence 1.", "Seed supporting evidence 2."],
+        "citations": [{ "id": "sm-cite-1", "text": "Seed steelman source.", "source": "stub" }]
+      }
+    ],
+    "citations": [{ "id": "sm-cite-1", "text": "Seed steelman source.", "source": "stub" }]
+  }
+}

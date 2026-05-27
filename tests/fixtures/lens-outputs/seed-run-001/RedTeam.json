@@ -1,0 +1,17 @@
+{
+  "output": {
+    "role": "RedTeam",
+    "runId": "seed-run-001",
+    "challenges": [
+      {
+        "targetRole": "CEO",
+        "claim": "Seed CEO claim.",
+        "counterargument": "Seed counterargument to CEO position.",
+        "severity": "moderate",
+        "citations": [{ "id": "rt-cite-1", "text": "Seed red team source.", "source": "stub" }]
+      }
+    ],
+    "overallRisk": "moderate",
+    "citations": [{ "id": "rt-cite-1", "text": "Seed red team source.", "source": "stub" }]
+  }
+}

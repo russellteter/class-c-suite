@@ -1,0 +1,26 @@
+{
+  "output": {
+    "role": "CFO",
+    "runId": "seed-run-001",
+    "summary": "Seed fixture for CFO lens — placeholder for Ch.4 capture.",
+    "positions": [
+      {
+        "positionId": "CFO-p1",
+        "claim": "Seed quantitative claim from CFO lens.",
+        "isQuantitative": true,
+        "citations": [{ "id": "seed-cite-cfo-1", "text": "Seed financial source.", "source": "stub" }],
+        "sourceText": "Seed financial source text."
+      }
+    ],
+    "citations": [{ "id": "seed-cite-cfo-1", "text": "Seed financial source.", "source": "stub" }],
+    "confidence": 0.75,
+    "quantitativeAssertions": [
+      {
+        "claim": "Seed revenue figure.",
+        "value": 1000000,
+        "unit": "USD",
+        "sourceText": "Seed financial data."
+      }
+    ]
+  }
+}

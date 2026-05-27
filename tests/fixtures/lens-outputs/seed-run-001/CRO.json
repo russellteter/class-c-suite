@@ -1,0 +1,18 @@
+{
+  "output": {
+    "role": "CRO",
+    "runId": "seed-run-001",
+    "summary": "Seed fixture for CRO lens — placeholder for Ch.4 capture.",
+    "positions": [
+      {
+        "positionId": "CRO-p1",
+        "claim": "Seed claim from CRO lens.",
+        "isQuantitative": false,
+        "citations": [{ "id": "seed-cite-1", "text": "Seed source.", "source": "stub" }],
+        "sourceText": "Seed source text."
+      }
+    ],
+    "citations": [{ "id": "seed-cite-1", "text": "Seed source.", "source": "stub" }],
+    "confidence": 0.7
+  }
+}

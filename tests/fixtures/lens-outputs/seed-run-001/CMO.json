@@ -1,0 +1,18 @@
+{
+  "output": {
+    "role": "CMO",
+    "runId": "seed-run-001",
+    "summary": "Seed fixture for CMO lens — placeholder for Ch.4 capture.",
+    "positions": [
+      {
+        "positionId": "CMO-p1",
+        "claim": "Seed claim from CMO lens.",
+        "isQuantitative": false,
+        "citations": [{ "id": "seed-cite-1", "text": "Seed source.", "source": "stub" }],
+        "sourceText": "Seed source text."
+      }
+    ],
+    "citations": [{ "id": "seed-cite-1", "text": "Seed source.", "source": "stub" }],
+    "confidence": 0.7
+  }
+}
