@@ -4,9 +4,13 @@
 
 import { utilityProcess, MessageChannelMain } from 'electron';
 import * as path from 'path';
+import { fileURLToPath } from 'node:url';
 import type Database from 'better-sqlite3';
 import { randomUUID } from 'crypto';
 import { createLogger } from './logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const log = createLogger('main');
 

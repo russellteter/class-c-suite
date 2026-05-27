@@ -6,6 +6,12 @@
 import Database from 'better-sqlite3';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const _require = createRequire(import.meta.url);
 
 // Resolve migrations dir for both dev (tsc output) and packaged (electron-builder).
 // In dev: __dirname = apps/main/dist/db → ../../../../db/migrations = db/migrations
@@ -14,7 +20,7 @@ function getMigrationsDir(): string {
   // Avoid direct electron import at module level in tests (electron mock scope).
   let isPackaged = false;
   try {
-    const { app } = require('electron') as typeof import('electron');
+    const { app } = _require('electron') as typeof import('electron');
     isPackaged = app.isPackaged;
   } catch {
     // Not in Electron context (unit tests) — use dev path.

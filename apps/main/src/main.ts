@@ -4,6 +4,11 @@
 
 import { app, Tray, Menu, nativeImage } from 'electron';
 import * as path from 'path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 import { openDatabase } from './db/open.js';
 import { runMigrations } from './db/migrate.js';
 import { createRendererWindow } from './window.js';
