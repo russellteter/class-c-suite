@@ -29,6 +29,7 @@
     "better-sqlite3": "^12.10.0",
     "electron-builder": "^26.8.1",
     "js-yaml": "^4.1.0",
+    "simple-git": "^3.36.0",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"
   }

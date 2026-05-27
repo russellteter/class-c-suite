@@ -13,7 +13,8 @@
   "dependencies": {
     "@c-suite/shared-types": "workspace:*",
     "electron": "^42.3.0",
-    "pino": "^10.3.1"
+    "pino": "^10.3.1",
+    "simple-git": "^3.36.0"
   },
   "devDependencies": {
     "typescript": "^5.8.0"

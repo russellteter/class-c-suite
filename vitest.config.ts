@@ -34,6 +34,12 @@ export default defineConfig({
     env: {
       STUB_MODE: 'replay',
     },
+    deps: {
+      // Inline safeWrite/vaultWatcher packages so Vite processes them and
+      // vi.spyOn(fs, ...) can intercept calls inside these modules.
+      // Required by safewrite.spec.ts AC-3/AC-4 (vi.spyOn on fs/promises).
+      inline: [/@c-suite\/vault-writer/, /@c-suite\/vault-watcher/],
+    },
   },
   resolve: {
     alias: {
@@ -44,6 +50,9 @@ export default defineConfig({
       '@c-suite/shared-types': resolve(__dirname, 'packages/shared-types/src'),
       '@c-suite/stub-harness/stub': resolve(__dirname, 'packages/stub-harness/src/stub.ts'),
       '@c-suite/stub-harness': resolve(__dirname, 'packages/stub-harness/src'),
+      // Ch.2 packages (vault-writer, vault-watcher) — source-direct for tests.
+      '@c-suite/vault-writer': resolve(__dirname, 'packages/vault-writer/src'),
+      '@c-suite/vault-watcher': resolve(__dirname, 'packages/vault-watcher/src'),
       // Normalize electron resolution so vi.mock('electron') intercepts all importers.
       'electron': resolve(__dirname, 'apps/main/node_modules/electron/index.js'),
     },
