@@ -46,6 +46,12 @@ export type RunEvent =
   | { kind: 'writeback.sent'; writebackId: string }
   | { kind: 'review.accepted' }
   | { kind: 'review.iterate' }
+  // Ch.6 ADR-0008 §3.8 — per-writeback events. Terminal transitions within review state.
+  // SQLite row status changes; RunState stays 'review' until all writebacks settled.
+  | { kind: 'writeback.iterate.requested'; writebackId: string; feedback: string }
+  | { kind: 'writeback.accept'; writebackId: string }
+  | { kind: 'writeback.reject'; writebackId: string; rationale: string }
+  | { kind: 'writeback.edit'; writebackId: string }
   | { kind: 'committed' }
   | { kind: 'run-critic.complete'; runCritique: RunCritiqueOutput }
   | { kind: 'handoff.complete'; handoffPath: string }
@@ -284,6 +290,18 @@ export function transition(
             iteration: nextIteration,
           };
         }
+      }
+      // Ch.6 ADR-0008 §3.8 — per-writeback events are terminal transitions WITHIN review.
+      // They change SQLite writeback row status; RunState stays 'review'.
+      // The run-loop polls SQLite to decide when review is complete (all settled).
+      else if (
+        event.kind === 'writeback.accept' ||
+        event.kind === 'writeback.reject' ||
+        event.kind === 'writeback.edit' ||
+        event.kind === 'writeback.iterate.requested'
+      ) {
+        // Stay in review state — only SQLite row changes (handled by engine, not state-machine).
+        nextState = { kind: 'review', runId: state.runId, writebackId: state.writebackId, iteration: state.iteration };
       }
       break;
 
