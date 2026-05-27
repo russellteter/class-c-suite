@@ -1,0 +1,18 @@
+# Fixture: StakeholderAccountFrontmatter (SD-04). ADR §2.5.
+account_id: "001XXXXXXXXXXXXXXX"
+account_name: "Southeast University - BME"
+short_name: "SEU-BME"
+segment: "Higher Ed"
+territory: "Southeast"
+location: "Birmingham, AL"
+customer_type: "existing"
+total_contacts: 12
+account_owner: "AE-Southeast"
+current_opp_owner: "AE-Southeast"
+class_share_of_arr: "18%"
+last_updated: "2026-04-15"
+sensitivity: "HIGH"
+linked_pre_mortems: ["PM-003"]
+linked_tripwires: ["TW-002"]
+linked_positions: ["POS-005"]
+linked_workstreams: ["WS-07"]

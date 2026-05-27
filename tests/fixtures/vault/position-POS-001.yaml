@@ -1,0 +1,16 @@
+# Fixture: one-of-each-artifact-type canned corpus for parser tests (ADR §1.1).
+# Source shape: R0-constraints-ledger.md §3 SD-01.
+id: "POS-001"
+slug: "accelerate-net-new-arr"
+title: "Accelerate net-new ARR growth above market rate"
+status: "active"
+confidence: 72
+created: "2025-10-01"
+last-updated: "2026-05-01"
+last-retested: "2026-04-15"
+supersedes: null
+superseded-by: null
+authored-by: "russell-teter"
+decision-this-supports: "DEC-001"
+predictions_spawned: ["PRED-001", "PRED-002"]
+source: "positions/active/POS-001-accelerate-net-new.md"

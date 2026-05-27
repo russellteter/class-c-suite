@@ -1,0 +1,11 @@
+# Fixture: DecisionFrontmatter (SD-06). ADR §2.3.
+id: "DEC-001"
+title: "Prioritize net-new enterprise segment"
+date_proposed: "2025-10-15"
+decision_maker: "Russell Teter"
+status: "in-execution"
+reversibility: "Medium — requires Q2 budget reallocation"
+confidence: 75
+source: "decisions/active/DEC-001.md"
+linked_positions: ["POS-001"]
+predictions_spawned: ["PRED-003"]

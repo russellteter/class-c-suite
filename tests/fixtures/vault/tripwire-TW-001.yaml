@@ -1,0 +1,9 @@
+# Fixture: TripwireFrontmatter. ADR §2.8.
+tripwire_id: "TW-001"
+title: "Cash runway below 6 months"
+category: "financial"
+source: "NetSuite + bank feeds"
+owner: "Russell Teter"
+scan_cadence: "weekly"
+escalation: "Immediate CEO review + board notification"
+last_updated: "2026-05-01"

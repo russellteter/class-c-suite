@@ -1,0 +1,11 @@
+# Fixture: PreMortemFrontmatter kebab variant (SD-05). ADR §2.6.
+id: "PM-001"
+slug: "renewal-cliff-cascade"
+probability: 25
+impact: "high"
+last-reviewed: "2026-04-01"
+related-positions: ["POS-003"]
+related-workstreams: ["WS-05"]
+related-pre-mortems: []
+related-tripwires: ["TW-001"]
+source: "adversarial/pre-mortems/PM-001-renewal-cliff.md"

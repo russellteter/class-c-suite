@@ -1,0 +1,8 @@
+# Fixture: PredictionFrontmatter (SD-07). ADR §2.7.
+id: "PRED-001"
+claim: "Net-new ARR will exceed $3M by Q4 2026"
+confidence: 65
+resolution_date: "2026-12-31"
+spawned_by: "DEC-001"
+status: "open"
+source: "calibration/predictions/PRED-001.md"

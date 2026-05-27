@@ -1,0 +1,6 @@
+# Fixture: CompetitorFrontmatter. ADR §2.8.
+competitor: "Instructure"
+threat_level: "HIGH"
+last_updated: "2026-04-20"
+last_signal: "2026-04-18"
+sources: ["G2", "Chorus calls", "LinkedIn activity"]

@@ -1,0 +1,27 @@
+# Fixture: WorkstreamFrontmatter full variant (SD-03). ADR §2.4.
+workstream_id: "WS-01"
+title: "Enterprise GTM ramp"
+owner: "Russell Teter"
+phase: "execution"
+status: "GREEN"
+status_criteria:
+  green: "3+ enterprise opps in stage 3+ each quarter"
+  yellow: "1-2 enterprise opps in stage 3+"
+  red: "Zero enterprise opps progressing"
+cash_impact:
+  amount_usd: "$0 direct; AE comp funded"
+  direction: "neutral"
+  timing: "Q3 2026"
+arr_impact:
+  amount_usd: "$2.4M target"
+  direction: "increase"
+  timing: "Q4 2026"
+people_involved: ["Russell Teter", "AE Team"]
+depends_on: ["WS-02"]
+depended_on_by: []
+next_milestone: "First enterprise deal closed"
+next_milestone_date: "2026-08-31"
+decisions_pending: []
+linked_positions: ["POS-001"]
+linked_decisions: ["DEC-001"]
+last_updated: "2026-05-01"

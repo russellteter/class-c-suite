@@ -1,0 +1,60 @@
+/**
+ * Parse vault artifact YAML frontmatter.
+ * Source: docs/research/R0-constraints-ledger.md §SD-01 (lines 309-323).
+ * Injects `type` from file-path zone (NOT from YAML — the on-disk `type:` key
+ * is absent from every vault artifact per R0-Vault verification).
+ */
+import { z } from 'zod';
+import {
+  PositionFrontmatter, DecisionFrontmatter, WorkstreamFrontmatterUnion,
+  StakeholderFrontmatter, PreMortemFrontmatter, PredictionFrontmatter,
+  MemoFrontmatter, HandoffFrontmatter, TripwireFrontmatter, CompetitorFrontmatter,
+  type ArtifactZone,
+} from './vault-schemas.js';
+import { normalizeKeys } from './normalizeKeys.js';
+
+const ZoneToSchema = {
+  position: PositionFrontmatter,
+  decision: DecisionFrontmatter,
+  workstream: WorkstreamFrontmatterUnion,
+  stakeholder_person: StakeholderFrontmatter,    // union handles both shapes
+  stakeholder_account: StakeholderFrontmatter,
+  'pre-mortem': PreMortemFrontmatter,
+  prediction: PredictionFrontmatter,
+  memo: MemoFrontmatter,
+  handoff: HandoffFrontmatter,
+  tripwire: TripwireFrontmatter,
+  competitor: CompetitorFrontmatter,
+} as const satisfies Record<ArtifactZone, z.ZodTypeAny>;
+
+/**
+ * Zone is derived from file path BEFORE this is called.
+ * Example mapping: positions/active/POS-001.md → 'position'
+ *                  stakeholders/customers-top-arr/seu-bme.md → 'stakeholder_account'
+ *                  stakeholders/internal-exec-board/x.md → 'stakeholder_person'
+ */
+export function parseArtifact(rawYaml: unknown, zone: ArtifactZone) {
+  const normalized = normalizeKeys(rawYaml);
+  const schema = ZoneToSchema[zone];
+  return schema.parse(normalized);
+}
+
+/**
+ * Zone classifier — file-path → ArtifactZone.
+ * Ch.1 indexer wires this into the chokidar event handler.
+ */
+export function zoneFor(absolutePath: string): ArtifactZone | null {
+  const p = absolutePath.toLowerCase();
+  if (p.includes('/positions/')) return 'position';
+  if (p.includes('/decisions/')) return 'decision';
+  if (p.includes('/workstreams/')) return 'workstream';
+  if (p.includes('/stakeholders/customers-')) return 'stakeholder_account';
+  if (p.includes('/stakeholders/')) return 'stakeholder_person';
+  if (p.includes('/pre-mortems/')) return 'pre-mortem';
+  if (p.includes('/calibration/predictions/')) return 'prediction';
+  if (p.includes('/memos/')) return 'memo';
+  if (p.includes('/handoffs/')) return 'handoff';
+  if (p.includes('/adversarial/financial-tripwires/')) return 'tripwire';
+  if (p.includes('/adversarial/competitor-watch/')) return 'competitor';
+  return null;  // read-only zones + investigations/ + deliverables/ return null
+}

@@ -1,0 +1,6 @@
+# Fixture: StakeholderPersonFrontmatter (SD-04). ADR §2.5.
+name: "chasen-michael-ceo"
+sensitivity: "HIGH"
+last_known_status: "WARM"
+last_refresh: "2026-04-10"
+source: "stakeholders/internal-exec-board/chasen-michael-ceo.md"

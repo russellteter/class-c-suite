@@ -1,0 +1,7 @@
+# Fixture: HandoffFrontmatter v2. ADR §2.8.
+id: "HO-001"
+decision_id: "DEC-001"
+memo_id: "run-20260526-001"
+created: "2026-05-26"
+cowork_brand_skills: ["class-brand-document", "russell-voice"]
+status: "drafted"

@@ -1,0 +1,12 @@
+# Fixture: MemoFrontmatter (aspirational; Ch.5 creates first memos). ADR §2.8.
+run_id: "run-20260526-001"
+playbook: "cash_lever_vs_trough"
+question: "Should we defer the AE hire to Q3?"
+created: "2026-05-26"
+rigor_score: 82
+rigor_threshold: 70
+status: "clean"
+citations:
+  - claim_id: "claim-001"
+    source_id: "sf-opp-q2-pipeline"
+    call_id: "call-abc123"
