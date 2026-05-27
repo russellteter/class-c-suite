@@ -244,3 +244,28 @@ Additional code and skill resources outside the vault:
 ---
 
 *The companion document `C_Suite_CLAUDE.md` is the build mission brief. It directs Claude Code through a discovery phase before any code is written, and defines the operating disciplines Claude Code carries throughout the build.*
+
+---
+
+## 11. Build Program (additive — added 2026-05-26 when the build was structured)
+
+This PRD remains the locked product spec. The **execution program** that delivers V1 is now codified as a separate doc-set at the root of the `class-c-suite` repository. `/goal` is the autonomous orchestrator that follows this doc-set to deliver the build.
+
+**Read order at the repo root** (in priority):
+
+1. `PURPOSE.md` — the why and the 8 V1 outcomes (derived from §4 of this PRD).
+2. `DOCTRINE.md` — operating laws every research and build agent obeys. Non-negotiable.
+3. `ROADMAP.md` — chapter sequence (Phase R + Ch.0-11 + optional Ch.12), gates, exit criteria.
+4. `BLOCKERS.md` — living blind-spot register; updated every loop.
+5. `RESEARCH.md` — Phase R deep-research protocol (R0 corpus + R1 connector-reality + R2 adversarial). `/goal` runs this first, before any chapter is coded.
+6. `docs/architecture/{runtime,data,mcp,ui,prompts,delivery}.md` — six implementation-grade specs.
+7. `docs/build-log.md` — per-loop ledger.
+8. `CLAUDE.md` at the repo root — project-level operating runbook for Claude Code.
+
+**Sequencing law.** The build proves the catastrophic-risk core early — deep research → SafeWrite → runtime spine → Verifier rigor → first end-to-end slice (Ch.5). This is engineered so the things that would kill the product if they failed late are validated first.
+
+**Operating-mode override.** Russell has stated: "I don't need to review anything ever." Under this mode, the build defaults to "decide and log" — `/goal` resolves trade-offs under doctrine, documents them in `docs/build-log.md`, and proceeds. Hard gates remain only at: (a) on-Mac verification, (b) genuine product-shape forks that would propagate downstream rework, (c) destructive or external actions Russell did not pre-authorize. **GitHub auto-sync is mandatory** via a post-commit hook at `.git/hooks/post-commit` that pushes every commit to `origin/main`.
+
+**Definition of done.** V1 ships when the eight outcomes in §4 above are demonstrably true via the eight on-Mac demos in `docs/architecture/delivery.md` §7-eight-demos. Russell runs each demo on his Mac. Not when chapters check off.
+
+**Source-of-truth note.** This file (`business-planning/C_Suite_PRD.md` in the c-suite repo) is a **mirror** of the original at `/Users/russellteter/Documents/Claude/Projects/Business Planning/C_Suite_PRD.md`. The build operates against this mirror. When the original is updated, sync the mirror; `/goal` may run a sync script as part of a future maintenance loop.

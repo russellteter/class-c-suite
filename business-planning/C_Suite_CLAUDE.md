@@ -221,3 +221,42 @@ The goal is clear, the context is here, the non-negotiables are documented. Buil
 ---
 
 *This brief is intentionally light on implementation prescription. The product spec is in the PRD. The mandate is to investigate, propose, get approval, then build. Russell does not want a prescribed implementation — he wants you to figure out the best one given current technology and his institutional state, and to defend your choices when he reviews them.*
+
+---
+
+## 10. Reference block (additive — added 2026-05-26 when the build was structured)
+
+This brief remains the original build mission brief. The **operating runbook** that drives execution is now codified as a doc-set at the root of the `class-c-suite` repository.
+
+**Required read order for `/goal` and every sub-agent before any action:**
+
+1. `PURPOSE.md` — the why and the 8 V1 outcomes.
+2. `DOCTRINE.md` — operating laws. **Non-negotiable.** Injected into every sub-agent invocation.
+3. `ROADMAP.md` — chapter sequence (Phase R + Ch.0-11 + optional Ch.12), gates, exit criteria.
+4. `BLOCKERS.md` — living blocker register; check current status before each chapter.
+5. `RESEARCH.md` — Phase R deep-research protocol. `/goal` runs this first, before any chapter is coded.
+6. `docs/architecture/{runtime,data,mcp,ui,prompts,delivery}.md` — six implementation-grade specs.
+7. `docs/build-log.md` — per-loop ledger; every loop reads + writes here.
+8. `CLAUDE.md` at repo root — project-level operating runbook.
+9. `business-planning/C_Suite_PRD.md` — the locked product spec (the §11 "Build Program" section in the PRD anchors the doc-set).
+10. `business-planning/C_Suite_CLAUDE.md` — this file (the build mission brief).
+
+**Operating-mode override.** Russell has stated: "I don't need to review anything ever." This modifies the gate model in §5 of this brief. Under the override:
+- Default to "decide and log," not "ask Russell."
+- Hard gates remain only at: (a) on-Mac verification, (b) genuine product-shape forks that would propagate downstream rework, (c) destructive or external actions Russell did not pre-authorize.
+- **GitHub auto-sync is mandatory** via a post-commit hook at `.git/hooks/post-commit` that pushes every commit to `origin/main`.
+- Sub-agents are dispatched with `DOCTRINE.md` preamble injected.
+
+**`/goal` execution loop.** Autonomous, self-correcting, with hard gates:
+
+```
+read ROADMAP + build-log
+   → pick next incomplete unit (Phase R first; then chapters in dependency order)
+      → run the unit's ritual (spec → build → test → independent audit)
+         → update build-log + BLOCKERS + (if reality diverged) the plan itself
+            → loop
+```
+
+The loop terminates on V1-done (all eight on-Mac demos pass — `docs/architecture/delivery.md` §7-eight-demos) or when blocked awaiting a hard gate.
+
+**Source-of-truth note.** This file (`business-planning/C_Suite_CLAUDE.md` in the c-suite repo) is a **mirror** of the original at `/Users/russellteter/Documents/Claude/Projects/Business Planning/C_Suite_CLAUDE.md`. The build operates against this mirror.
