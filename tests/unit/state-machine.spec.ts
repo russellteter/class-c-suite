@@ -70,13 +70,13 @@ function seedBootstrapRun(db: Database.Database, runId: string): void {
   const bootstrapState = JSON.stringify({
     kind: 'bootstrap',
     runId,
-    playbook: 'quick_multi_lens_read',
+    playbook: 'quick_read',
     question: 'Should we expand to Europe?',
   });
 
   db.prepare(`
     INSERT INTO runs (run_id, playbook, question, started_at, current_state, status)
-    VALUES (?, 'quick_multi_lens_read', 'Should we expand to Europe?', ?, ?, 'in_progress')
+    VALUES (?, 'quick_read', 'Should we expand to Europe?', ?, ?, 'in_progress')
   `).run(runId, Date.now(), bootstrapState);
 }
 
@@ -123,7 +123,7 @@ describe('AC-8: transition() persists RunState to SQLite atomically (ADR-0004 §
     const bootstrapState: RunState = {
       kind: 'bootstrap',
       runId,
-      playbook: 'quick_multi_lens_read',
+      playbook: 'quick_read',
       question: 'Should we expand to Europe?',
     };
 
@@ -152,7 +152,7 @@ describe('AC-8: transition() persists RunState to SQLite atomically (ADR-0004 §
     const bootstrapState: RunState = {
       kind: 'bootstrap',
       runId,
-      playbook: 'quick_multi_lens_read',
+      playbook: 'quick_read',
       question: 'Should we expand to Europe?',
     };
 
@@ -183,7 +183,7 @@ describe('AC-8: transition() persists RunState to SQLite atomically (ADR-0004 §
     const bootstrapState: RunState = {
       kind: 'bootstrap',
       runId,
-      playbook: 'quick_multi_lens_read',
+      playbook: 'quick_read',
       question: 'Atomic test?',
     };
 

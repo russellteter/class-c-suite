@@ -132,7 +132,7 @@ const validPrediction = {
 
 const validMemo = {
   run_id: 'run-2026-05-26-cash-lever-001',
-  playbook: 'cash_lever_vs_trough',
+  playbook: 'cash_lever',
   question: 'What is our W30 cash lever stack?',
   created: '2026-05-26',
   rigor_score: 82,

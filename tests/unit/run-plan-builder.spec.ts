@@ -50,23 +50,23 @@ describe('AC-3 — buildRunPlan cash_lever', () => {
   });
 });
 
-describe('B37 — stakeholder_1on1_prep wires COS only (single-agent fast lane)', () => {
-  it('stakeholder_1on1_prep returns exactly ["COS"]', () => {
+describe('B37 — stakeholder_1_1 wires COS only (single-agent fast lane)', () => {
+  it('stakeholder_1_1 returns exactly ["COS"]', () => {
     const plan = buildRunPlan(
-      'stakeholder_1on1_prep',
+      'stakeholder_1_1',
       "Help me prep my 1:1 with Sarah."
     );
     expect(plan.lenses).toEqual(['COS']);
   });
 
-  it('stakeholder_1on1_prep does NOT include CEO lens', () => {
-    const plan = buildRunPlan('stakeholder_1on1_prep', 'Prep my 1:1.');
+  it('stakeholder_1_1 does NOT include CEO lens', () => {
+    const plan = buildRunPlan('stakeholder_1_1', 'Prep my 1:1.');
     expect(plan.lenses).not.toContain('CEO');
   });
 
-  it('stakeholder_1on1_prep stays at one lens regardless of question wording', () => {
+  it('stakeholder_1_1 stays at one lens regardless of question wording', () => {
     const plan = buildRunPlan(
-      'stakeholder_1on1_prep',
+      'stakeholder_1_1',
       'I need to prep for a strategic check-in with the head of revenue.'
     );
     expect(plan.lenses).toHaveLength(1);

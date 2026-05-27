@@ -119,7 +119,7 @@ describe('AC-6: IPC event order for single-lens dispatch (ADR-0004 §3)', () => 
 
     db.prepare(`
       INSERT INTO runs (run_id, playbook, question, started_at, current_state)
-      VALUES (?, 'quick_multi_lens_read', 'IPC event order test', ?, 'fan-out')
+      VALUES (?, 'quick_read', 'IPC event order test', ?, 'fan-out')
     `).run(RUN_ID, Date.now());
   });
 
@@ -184,7 +184,7 @@ describe('AC-6: IPC event order for single-lens dispatch (ADR-0004 §3)', () => 
     //     runId: RUN_ID,
     //     role: 'CEO' as const,
     //     question: 'IPC order test',
-    //     playbook: 'quick_multi_lens_read',
+    //     playbook: 'quick_read',
     //     contextDocuments: [],
     //   };
     //

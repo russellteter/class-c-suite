@@ -107,7 +107,7 @@ function createTestDb(): Database.Database {
 
 describe('AC-1: Full E2E run-loop on stub harness (ADR-0004 §8 AC-1)', () => {
   const RUN_ID = 'e2e-test-run-001';
-  const PLAYBOOK = 'quick_multi_lens_read';
+  const PLAYBOOK = 'quick_read';
   const QUESTION = 'Should we expand the EDU vertical into Q3?';
 
   let db: Database.Database;

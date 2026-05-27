@@ -31,9 +31,9 @@ const CASES: Case[] = [
   { question: 'Walk through our strategic options — recap vs sale vs turnaround.', expected: 'strategic_option' },
   { question: 'Should we pursue a recapitalization or wind down the company?', expected: 'strategic_option' },
 
-  // 4. stakeholder_1on1_prep
-  { question: "Help me prep my 1:1 with Sarah — she's been disengaged since the reorg", expected: 'stakeholder_1on1_prep' },
-  { question: 'I need a quick prep for my one-on-one with the new VP Eng tomorrow.', expected: 'stakeholder_1on1_prep' },
+  // 4. stakeholder_1_1
+  { question: "Help me prep my 1:1 with Sarah — she's been disengaged since the reorg", expected: 'stakeholder_1_1' },
+  { question: 'I need a quick prep for my one-on-one with the new VP Eng tomorrow.', expected: 'stakeholder_1_1' },
 
   // 5. board_narrative
   { question: 'Draft the board narrative for next month — the story we tell the board.', expected: 'board_narrative' },

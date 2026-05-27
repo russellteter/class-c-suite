@@ -87,7 +87,7 @@ function seedRunInFanOut(db: Database.Database, runId: string, completedLenses: 
 
   db.prepare(`
     INSERT INTO runs (run_id, playbook, question, started_at, current_state, status)
-    VALUES (?, 'quick_multi_lens_read', 'Q3 expansion decision', ?, ?, 'in_progress')
+    VALUES (?, 'quick_read', 'Q3 expansion decision', ?, ?, 'in_progress')
   `).run(runId, Date.now(), fanOutState);
 
   for (const role of completedLenses) {
@@ -245,7 +245,7 @@ describe('AC-9: Idempotency guard — completed lens never re-dispatched (ADR-00
   it('SQLite unique index on (run_id, role) WHERE completed rejects duplicate completed rows', () => {
     // This test exercises the idempotency constraint at the DB level — no Runtime needed.
     const runId = 'cr-test-unique-idx';
-    db.prepare(`INSERT INTO runs (run_id, playbook, question, started_at, current_state) VALUES (?, 'quick_multi_lens_read', 'Q', ?, 'fan-out')`).run(runId, Date.now());
+    db.prepare(`INSERT INTO runs (run_id, playbook, question, started_at, current_state) VALUES (?, 'quick_read', 'Q', ?, 'fan-out')`).run(runId, Date.now());
 
     db.prepare(`
       INSERT INTO agent_invocations (run_id, role, started_at, completed_at, output_json, status)

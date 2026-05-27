@@ -5,7 +5,7 @@
 
 export type PlaybookId =
   | 'cash_lever'
-  | 'stakeholder_1on1_prep'
+  | 'stakeholder_1_1'
   | 'quick_multi_lens'
   | 'pre_mortem'
   | 'gtm_reallocation'
@@ -50,9 +50,9 @@ const PLAYBOOK_KEYWORDS: PlaybookKeywordMap[] = [
       'reorg ', 'reorg the', 'demote',
     ],
   },
-  // 4. stakeholder_1on1_prep — single-agent COS fast lane
+  // 4. stakeholder_1_1 — single-agent COS fast lane
   {
-    playbook: 'stakeholder_1on1_prep',
+    playbook: 'stakeholder_1_1',
     keywords: [
       '1:1', '1-on-1', 'one-on-one', 'one on one',
       'prep my', 'prep for my', 'prep with', 'prep meeting',

@@ -11,9 +11,9 @@ import { z } from 'zod';
 // --- Payload sub-schemas ---
 
 const PlaybookId = z.enum([
-  'cash_lever_vs_trough', 'stakeholder_1on1_prep', 'quick_multi_lens_read',
-  'pre_mortem_on_proposed_action', 'gtm_resource_reallocation',
-  'strategic_option_evaluation', 'board_narrative_prep', 'restructure_decision',
+  'cash_lever', 'stakeholder_1_1', 'quick_read',
+  'pre_mortem', 'gtm_realloc',
+  'strategic_option', 'board_narrative', 'restructure_decision',
   'open_qa',
 ]);
 

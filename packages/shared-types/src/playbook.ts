@@ -3,7 +3,7 @@
 // Playbook framework types for all 9 playbooks (8 V1 + open_qa).
 //
 // DECISION (2026-05-27 ch.7 build): PlaybookId uses the SHORT names from ADR-0009 §3.2.
-// The existing ipc.ts has a LOCAL PlaybookId enum with LONG names ('cash_lever_vs_trough', etc.)
+// The existing ipc.ts has a LOCAL PlaybookId enum with LONG names ('cash_lever', etc.)
 // for existing run.start payload — left untouched per "do not change existing IPC payload shapes"
 // constraint. The two coexist; Phase B should reconcile them. Logged here per DOCTRINE law #9.
 

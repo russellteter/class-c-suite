@@ -51,7 +51,7 @@ function posOpts(overrides?: Partial<SafeWriteOpts>): SafeWriteOpts {
   return {
     agent: 'Synthesizer',
     runId: 'run-test-001',
-    playbook: 'cash_lever_vs_trough',
+    playbook: 'cash_lever',
     commitVault: true,
     zone: 'position',
     ...overrides,
@@ -128,7 +128,7 @@ describe('SafeWrite AC-2 — atomic rename (APFS)', () => {
     const result = await safeWrite(memoPath, '---\nrun_id: run-001\n---\nMemo.\n', {
       agent: 'Synthesizer',
       runId: 'run-test-001',
-      playbook: 'cash_lever_vs_trough',
+      playbook: 'cash_lever',
       commitVault: false,
       zone: 'memo',
     });
@@ -177,7 +177,7 @@ describe('SafeWrite AC-3 — hash-check skipped for agent-exclusive zones', () =
     await safeWrite(memoPath, '---\nrun_id: run-001\n---\nNew memo.\n', {
       agent: 'Synthesizer',
       runId: 'run-test-001',
-      playbook: 'cash_lever_vs_trough',
+      playbook: 'cash_lever',
       commitVault: false,
       zone: 'memo',
     });
@@ -203,7 +203,7 @@ describe('SafeWrite AC-3 — hash-check skipped for agent-exclusive zones', () =
       await safeWrite(p, '---\nid: test\n---\n', {
         agent: 'Synthesizer',
         runId: 'run-001',
-        playbook: 'cash_lever_vs_trough',
+        playbook: 'cash_lever',
         commitVault: false,
         zone,
       });
@@ -351,7 +351,7 @@ describe('SafeWrite AC-6 — git commit message format', () => {
       {
         agent: 'Synthesizer',
         runId: 'run-abc123',
-        playbook: 'cash_lever_vs_trough',
+        playbook: 'cash_lever',
         commitVault: true,
         zone: 'position',
       },
@@ -362,10 +362,10 @@ describe('SafeWrite AC-6 — git commit message format', () => {
     const latest = log.latest;
     expect(latest).not.toBeNull();
 
-    // Expected: c-suite: Synthesizer wrote positions/active/POS-AC6.md during cash_lever_vs_trough run run-abc123
+    // Expected: c-suite: Synthesizer wrote positions/active/POS-AC6.md during cash_lever run run-abc123
     const relPath = 'positions/active/POS-AC6.md';
     expect(latest!.message).toBe(
-      `c-suite: Synthesizer wrote ${relPath} during cash_lever_vs_trough run run-abc123`,
+      `c-suite: Synthesizer wrote ${relPath} during cash_lever run run-abc123`,
     );
   });
 
@@ -376,7 +376,7 @@ describe('SafeWrite AC-6 — git commit message format', () => {
     await safeWrite(filePath, '---\nid: POS-POSIX\nstatus: active\n---\nV2.\n', {
       agent: 'CFO',
       runId: 'run-xyz',
-      playbook: 'gtm_resource_reallocation',
+      playbook: 'gtm_realloc',
       commitVault: true,
       zone: 'position',
     });
@@ -385,7 +385,7 @@ describe('SafeWrite AC-6 — git commit message format', () => {
     const log = await git.log({ maxCount: 1, '--no-walk': null });
     // No backslashes in commit message
     expect(log.latest!.message).not.toContain('\\');
-    expect(log.latest!.message).toMatch(/^c-suite: CFO wrote .+ during gtm_resource_reallocation run run-xyz$/);
+    expect(log.latest!.message).toMatch(/^c-suite: CFO wrote .+ during gtm_realloc run run-xyz$/);
   });
 });
 
@@ -407,7 +407,7 @@ describe('SafeWrite AC-7 — VaultNotInitializedError on empty vault', () => {
       await safeWrite(filePath, '---\nid: POS-EMPTY\nstatus: active\n---\n', {
         agent: 'Synthesizer',
         runId: 'run-empty',
-        playbook: 'cash_lever_vs_trough',
+        playbook: 'cash_lever',
         commitVault: true,
         zone: 'position',
       });
@@ -435,7 +435,7 @@ describe('SafeWrite AC-7 — VaultNotInitializedError on empty vault', () => {
       await safeWrite(filePath, '---\nid: POS-ERR\nstatus: active\n---\n', {
         agent: 'Synthesizer',
         runId: 'run-001',
-        playbook: 'cash_lever_vs_trough',
+        playbook: 'cash_lever',
         commitVault: true,
         zone: 'position',
       });

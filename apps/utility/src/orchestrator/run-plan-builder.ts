@@ -1,7 +1,7 @@
 // apps/utility/src/orchestrator/run-plan-builder.ts
 // Source: docs/decisions/0006-ch5-cash-lever-slice.md §3 + §7 Step 3
 // PRD §6 lens rosters for all 8 V1 playbooks.
-// B37 fix (2026-05-27): stakeholder_1on1_prep is COS-only (single-agent fast lane).
+// B37 fix (2026-05-27): stakeholder_1_1 is COS-only (single-agent fast lane).
 
 import { join } from 'path';
 import { homedir } from 'os';
@@ -88,11 +88,11 @@ export function buildRunPlan(playbook: string, question: string): Ch5RunPlan {
       };
     }
 
-    case 'stakeholder_1on1_prep': {
+    case 'stakeholder_1_1': {
       // PRD §6 playbook 4: Chief of Staff ONLY — single-agent fast lane.
       // B37 fix: was ['CEO','COS']; now ['COS'].
       return {
-        playbook: 'stakeholder_1on1_prep',
+        playbook: 'stakeholder_1_1',
         question,
         lenses: ['COS'],
         mcps: ['salesforce'],

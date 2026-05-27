@@ -46,7 +46,7 @@ describe('IPC round-trip — Node MessageChannel polyfill (§9 row 1 baseline)',
         kind: 'run.start',
         payload: {
           runId: 'run-ipc-001',
-          playbook: 'cash_lever_vs_trough',
+          playbook: 'cash_lever',
           question: 'What is the W30 lever stack?',
         },
       });
@@ -81,7 +81,7 @@ describe('IPC round-trip — Node MessageChannel polyfill (§9 row 1 baseline)',
         kind: 'run.start',
         payload: {
           runId: 'run-ipc-002',
-          playbook: 'cash_lever_vs_trough',
+          playbook: 'cash_lever',
           question: 'Round-trip test',
         },
       });
@@ -100,7 +100,7 @@ describe('IPC round-trip — Node MessageChannel polyfill (§9 row 1 baseline)',
       kind: 'run.start' as const,
       payload: {
         runId: 'run-ipc-003',
-        playbook: 'cash_lever_vs_trough' as const,
+        playbook: 'cash_lever' as const,
         question: 'Validate me',
       },
     };

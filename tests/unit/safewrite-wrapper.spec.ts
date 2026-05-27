@@ -92,7 +92,7 @@ describe('SafeWrite wrapper AC-5 — safewrite.conflict IPC emitted on conflict'
       absPath: filePath,
       content: '---\nid: POS-WRAPPER\nstatus: active\n---\nC-Suite update.\n',
       agent: 'Synthesizer',
-      playbook: 'cash_lever_vs_trough',
+      playbook: 'cash_lever',
       runId: 'run-wrapper-001',
     });
 
@@ -128,7 +128,7 @@ describe('SafeWrite wrapper AC-5 — safewrite.conflict IPC emitted on conflict'
       absPath: filePath,
       content: '---\nid: POS-WRAPPER\nstatus: active\n---\nSuccessful update.\n',
       agent: 'Synthesizer',
-      playbook: 'cash_lever_vs_trough',
+      playbook: 'cash_lever',
       runId: 'run-wrapper-002',
     });
 

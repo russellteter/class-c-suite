@@ -61,7 +61,7 @@ function createTestDb(): Database.Database {
 function seedScenario(db: Database.Database, runId: string): void {
   db.prepare(`
     INSERT INTO runs (run_id, playbook, question, started_at, current_state, status)
-    VALUES (?, 'cash_lever_vs_trough', 'What is the lever stack?', ?, 'fan-out', 'in_progress')
+    VALUES (?, 'cash_lever', 'What is the lever stack?', ?, 'fan-out', 'in_progress')
   `).run(runId, Date.now());
 
   // 2 completed invocations.

@@ -10,22 +10,17 @@ import * as path from 'path';
 import * as yaml from 'js-yaml';
 
 const PLAYBOOK_TOPIC_MAP: Record<string, string> = {
-  cash_lever_vs_trough:       'Cash',
-  cash_lever:                 'Cash',
-  weekly_cash_forecast:       'Cash',
-  gtm_resource_reallocation:  'GTM',
-  gtm_reallocation:           'GTM',
-  strategic_option_evaluation:'Strategy',
-  strategic_option:           'Strategy',
-  board_narrative_prep:       'Board',
-  board_narrative:            'Board',
-  quick_multi_lens_read:      'Quick',
-  quick_read:                 'Quick',
-  pre_mortem_on_proposed_action: 'Adversarial',
-  pre_mortem:                 'Adversarial',
-  stakeholder_1on1_prep:      'Stakeholder',
-  restructure_decision:       'Strategy',
-  open_qa:                    'Ad-hoc',
+  cash_lever: 'Cash',
+  weekly_cash_forecast: 'Cash',
+  gtm_realloc: 'GTM',
+  gtm_reallocation: 'GTM',
+  strategic_option: 'Strategy',
+  board_narrative: 'Board',
+  quick_read: 'Quick',
+  pre_mortem: 'Adversarial',
+  stakeholder_1_1: 'Stakeholder',
+  restructure_decision: 'Strategy',
+  open_qa: 'Ad-hoc',
 };
 
 /**

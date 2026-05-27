@@ -71,7 +71,7 @@ const LENS_ROLES = ['CEO', 'CFO', 'CRO', 'CMO', 'CPO', 'COS'] as const;
 function seedRun(db: Database.Database, runId: string): void {
   db.prepare(`
     INSERT INTO runs (run_id, playbook, question, started_at, current_state)
-    VALUES (?, 'quick_multi_lens_read', 'Test question', ?, 'synthesizer')
+    VALUES (?, 'quick_read', 'Test question', ?, 'synthesizer')
   `).run(runId, Date.now());
 }
 

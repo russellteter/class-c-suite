@@ -44,7 +44,7 @@ describe('AC-2: Lens isolation enforcement — cross-lens leak detection (ADR-00
       runId: 'test-run-lens-iso-001',
       role: 'CFO' as const,
       question: 'Should we expand to Europe?',
-      playbook: 'strategic_option_evaluation',
+      playbook: 'strategic_option',
       contextDocuments: [],
       // ILLEGAL: CRO output leaked into CFO bundle
       illegalLeak: croOutput,
@@ -68,7 +68,7 @@ describe('AC-2: Lens isolation enforcement — cross-lens leak detection (ADR-00
       runId: 'test-run-lens-iso-002',
       role: 'CFO' as const,
       question: 'Budget allocation?',
-      playbook: 'quick_multi_lens_read',
+      playbook: 'quick_read',
       contextDocuments: [],
       croLeakField: croOutput,
     };
@@ -91,7 +91,7 @@ describe('AC-2: Lens isolation enforcement — cross-lens leak detection (ADR-00
       runId: 'test-run-lens-iso-003',
       role: 'CFO' as const,
       question: 'Should we expand to Europe?',
-      playbook: 'strategic_option_evaluation',
+      playbook: 'strategic_option',
       contextDocuments: [],
       financialMetrics: { arr: 4300000, burnRate: 120000 },
     };
@@ -105,7 +105,7 @@ describe('AC-2: Lens isolation enforcement — cross-lens leak detection (ADR-00
       runId: 'test-run-lens-iso-004',
       role: 'CFO' as const,
       question: 'Q?',
-      playbook: 'quick_multi_lens_read',
+      playbook: 'quick_read',
       contextDocuments: [],
       illegalField: { role: 'CRO', output: {} },
     });

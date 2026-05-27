@@ -18,7 +18,7 @@ import { validateIpc } from '@c-suite/shared-types/ipc';
 // ── Helper payloads ──────────────────────────────────────────────────────────
 
 // ADR §3 PlaybookId valid values
-const PLAYBOOK = 'cash_lever_vs_trough';
+const PLAYBOOK = 'cash_lever';
 
 // ADR §3 AgentRole valid values
 const ROLE = 'CFO';

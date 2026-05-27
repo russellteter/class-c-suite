@@ -301,7 +301,7 @@ describe('pre-mortem update drafter — ADR §3.5', () => {
 // ── Stakeholder update drafter ────────────────────────────────────────────────
 
 describe('stakeholder update drafter — ADR §3.5', () => {
-  const ctx: DraftContext = { runId: 'run-005', vaultRoot: '', playbook: 'stakeholder_1on1_prep' };
+  const ctx: DraftContext = { runId: 'run-005', vaultRoot: '', playbook: 'stakeholder_1_1' };
   const proposal: SynthesizerProposedWriteback = {
     artifactType: 'stakeholder-update',
     targetArtifactId: null,

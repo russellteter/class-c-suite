@@ -32,7 +32,7 @@ const testDef = {
 
 const testCtx = {
   question: 'What is our W30 cash lever stack?',
-  playbookId: 'cash_lever_vs_trough',
+  playbookId: 'cash_lever',
   runId: 'run-test-001',
 };
 
