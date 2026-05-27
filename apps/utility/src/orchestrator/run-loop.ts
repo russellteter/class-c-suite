@@ -13,6 +13,7 @@ import { buildVerifierInput, VerifierInputContractViolation } from '../verifier-
 import { runVerifier, StubVerifierInvoker } from '../agents/verifier-runner.js';
 import { rigorScore, rigorThreshold, shipStatus as computeShipStatus } from '../scoring/rigorScore.js';
 import { StubClaudeClient } from '@c-suite/stub-harness/stub';
+import { draftWritebacks } from '@c-suite/writeback-engine';
 
 export interface FinalRunState {
   finalState: RunState;
@@ -156,6 +157,36 @@ export async function startRun(
   if ('code' in afterVerifier) return makeFailedReturn(runId, visitedStates, agentRolesInvoked, afterVerifier);
   state = afterVerifier;
   visitedStates.push(state.kind);
+
+  // shipped-clean → write-back-proposed (ADR-0008 Ch.6)
+  // On shipped-clean, call draftWritebacks() with any Synthesizer proposedWritebacks.
+  // In the stub harness there are no real proposals; the batch is a no-op and returns [].
+  if (state.kind === 'shipped-clean') {
+    const vaultRoot = process.env.VAULT_PATH ?? `${process.env.HOME}/Documents/Claude/Projects/Business Planning`;
+    let writebackDrafts: Awaited<ReturnType<typeof draftWritebacks>> = [];
+    try {
+      writebackDrafts = await draftWritebacks({
+        runId,
+        memo: { markdown: '', citations: [], rigorScore: computedRigorScore },
+        synthesizerProposals: [],  // stub: populated by real Synthesizer in production
+        vaultRoot,
+        db,
+        emitIpc: emit,
+        playbook: playbookId,
+      });
+    } catch (err) {
+      // Non-fatal: log and continue. Stub harness will produce no writebacks.
+      console.warn('[run-loop] draftWritebacks non-fatal error:', err);
+    }
+
+    if (writebackDrafts.length > 0) {
+      const writebackEvent: RunEvent = { kind: 'writeback.proposed', drafts: writebackDrafts };
+      const afterWritebacks = transition(state, writebackEvent, db, emit);
+      if ('code' in afterWritebacks) return makeFailedReturn(runId, visitedStates, agentRolesInvoked, afterWritebacks);
+      state = afterWritebacks;
+      visitedStates.push(state.kind);
+    }
+  }
 
   // shipped-clean → run-critic
   const runCriticEvent: RunEvent = {
