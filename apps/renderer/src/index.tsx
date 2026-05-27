@@ -5,6 +5,8 @@
 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import './styles/glassmorphic.css';
+import './styles/typography.css';
 import { App } from './App.js';
 
 const container = document.getElementById('root');

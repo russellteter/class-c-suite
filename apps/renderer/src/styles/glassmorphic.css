@@ -1,0 +1,392 @@
+/* ============================================
+   Class Glassmorphic Design System
+   ============================================ */
+
+:root {
+  /* Colors */
+  --navy: #0A1849;
+  --navy-mid: #1a2a5e;
+  --purple: #4739E7;
+  --purple-dark: #3730a3;
+  --gold: #FFBA00;
+  --success: #059669;
+  --error: #DC2626;
+  --warning: #D97706;
+  --muted: #6B7280;
+
+  /* Neutral text scale */
+  --text-strong: #111827;
+  --text-mid: #4b5563;
+  --text-soft: #9ca3af;
+
+  /* Neutral surface/border */
+  --border: #e5e7eb;
+  --surface-white: #ffffff;
+  --surface-subtle: #fafafa;
+  --surface-gray: #f3f4f6;
+
+  /* Semantic tinted backgrounds */
+  --bg-success: var(--bg-success);
+  --bg-error: var(--bg-error);
+  --bg-warning: var(--bg-warning);
+  --bg-purple: #EDECFD;
+
+  /* Backgrounds */
+  --bg-light: #EDECFD;
+  --bg-surface: #F8F7FF;
+  --bg-surface-alt: #F0EFFE;
+
+  /* Glass */
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(71, 57, 231, 0.08);
+  --glass-blur: 12px;
+
+  /* Shadows */
+  --glass-shadow:
+    0 4px 6px -1px rgba(71, 57, 231, 0.06),
+    0 2px 4px -1px rgba(71, 57, 231, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --glass-shadow-hover:
+    0 12px 24px -4px rgba(71, 57, 231, 0.12),
+    0 4px 8px -2px rgba(71, 57, 231, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 20px;
+
+  /* Transitions */
+  --transition-standard: 200ms ease;
+  --transition-fast: 120ms ease;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  /* ui.md token aliases (docs/architecture/ui.md §design tokens) */
+  --color-navy-900: #0a1849;
+  --color-gold-500: #c9a14b;
+  --color-purple-500: #4739e7;
+  --color-navy-700: #182a6b;
+  --color-navy-500: #2a3f8a;
+  --color-purple-400: #6a5cf0;
+  --color-rigor-clean: var(--color-gold-500);
+  --color-rigor-draft: #d6883a;
+}
+
+/* ============================================
+   Glass Surfaces
+   ============================================ */
+
+.glass-surface {
+  background: var(--bg-surface);
+  border-right: 1px solid var(--glass-border);
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  padding: 20px;
+  transition: box-shadow var(--transition-standard), transform var(--transition-standard);
+}
+
+.glass-card:hover {
+  box-shadow: var(--glass-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.glass-card--selected {
+  border-color: var(--purple);
+  box-shadow:
+    0 0 0 1px var(--purple),
+    0 12px 24px -4px rgba(71, 57, 231, 0.12),
+    0 4px 8px -2px rgba(71, 57, 231, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* ============================================
+   Badges
+   ============================================ */
+
+.glass-badge {
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.glass-badge--purple  { background: #EDECFD; color: var(--purple); }
+.glass-badge--success { background: var(--bg-success); color: var(--success); }
+.glass-badge--error   { background: var(--bg-error); color: var(--error); }
+.glass-badge--warning { background: var(--bg-warning); color: var(--warning); }
+.glass-badge--navy    { background: var(--bg-surface-alt); color: var(--navy); }
+.glass-badge--gold    { background: #FFF8E7; color: var(--color-gold-500); }
+
+/* ============================================
+   Buttons
+   ============================================ */
+
+.glass-btn-primary {
+  background: linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%);
+  color: white;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  border: none;
+  box-shadow: 0 2px 4px rgba(71, 57, 231, 0.3);
+  transition: all var(--transition-standard);
+  cursor: pointer;
+}
+
+.glass-btn-primary:hover {
+  box-shadow: 0 4px 12px rgba(71, 57, 231, 0.4);
+  transform: translateY(-1px);
+}
+
+.glass-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.glass-btn-secondary {
+  background: var(--glass-bg);
+  color: var(--purple);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(71, 57, 231, 0.15);
+  transition: all var(--transition-standard);
+  cursor: pointer;
+}
+
+.glass-btn-secondary:hover {
+  background: rgba(71, 57, 231, 0.06);
+  border-color: rgba(71, 57, 231, 0.3);
+}
+
+.glass-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   Table
+   ============================================ */
+
+.glass-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.glass-table th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.glass-table td {
+  padding: 10px 12px;
+  color: var(--navy);
+  border-bottom: 1px solid rgba(71, 57, 231, 0.04);
+}
+
+.glass-table tr:nth-child(even) td {
+  background: linear-gradient(135deg,
+    rgba(71, 57, 231, 0.02) 0%,
+    rgba(71, 57, 231, 0.04) 100%);
+}
+
+.glass-table tr:hover td {
+  background: linear-gradient(135deg,
+    rgba(71, 57, 231, 0.03) 0%,
+    rgba(71, 57, 231, 0.05) 100%);
+}
+
+/* ============================================
+   Skeleton / Loading
+   ============================================ */
+
+.skeleton {
+  background: linear-gradient(90deg,
+    rgba(71, 57, 231, 0.04) 0%,
+    rgba(71, 57, 231, 0.08) 50%,
+    rgba(71, 57, 231, 0.04) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ============================================
+   Progress Bars
+   ============================================ */
+
+.progress-bar {
+  height: 6px;
+  background: rgba(71, 57, 231, 0.08);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  width: 100%;
+  border-radius: var(--radius-pill);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 300ms ease;
+}
+
+.progress-bar__fill--success { background: linear-gradient(90deg, #059669, #34d399); }
+.progress-bar__fill--warning { background: linear-gradient(90deg, #D97706, #fbbf24); }
+.progress-bar__fill--error   { background: linear-gradient(90deg, #DC2626, #f87171); }
+.progress-bar__fill--primary { background: linear-gradient(90deg, #4739E7, #6366f1); }
+
+/* ============================================
+   Inputs
+   ============================================ */
+
+.glass-input {
+  background: var(--glass-bg);
+  border: 1px solid rgba(71, 57, 231, 0.12);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--navy);
+  transition: all var(--transition-standard);
+}
+
+.glass-input:focus {
+  outline: none;
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(71, 57, 231, 0.1);
+}
+
+.glass-input::placeholder {
+  color: var(--muted);
+}
+
+/* ============================================
+   Phase Tracker
+   ============================================ */
+
+.phase-tracker {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.phase-node__circle {
+  transition: all var(--transition-standard);
+}
+
+.phase-node__circle--pulsing {
+  animation: phase-pulse 2s ease-in-out infinite;
+}
+
+@keyframes phase-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(71, 57, 231, 0.3); }
+  50%      { box-shadow: 0 0 0 6px rgba(71, 57, 231, 0); }
+}
+
+.phase-connector {
+  transition: background var(--transition-standard);
+}
+
+/* ============================================
+   CLI Command Card
+   ============================================ */
+
+.cli-command-card {
+  transition: box-shadow var(--transition-standard);
+}
+
+.cli-command-card:hover {
+  box-shadow:
+    0 8px 16px -4px rgba(10, 24, 73, 0.3),
+    0 4px 6px -2px rgba(10, 24, 73, 0.15);
+}
+
+/* ============================================
+   Account Gap Table
+   ============================================ */
+
+.account-gap-table tr[style*="border-left"] td:first-child {
+  padding-left: 9px;
+}
+
+/* ============================================
+   File Preview — Syntax Coloring
+   ============================================ */
+
+.file-preview {
+  font-family: var(--font-sans);
+}
+
+.file-preview pre {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(71, 57, 231, 0.15) transparent;
+}
+
+.file-preview pre::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.file-preview pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.file-preview pre::-webkit-scrollbar-thumb {
+  background: rgba(71, 57, 231, 0.15);
+  border-radius: var(--radius-pill);
+}
+
+/* ============================================
+   DRAFT banner (AC-8)
+   ============================================ */
+
+.draft-banner {
+  background: linear-gradient(135deg, #FFF8E7 0%, #FFFBF0 100%);
+  border: 1px solid var(--color-rigor-draft, #d6883a);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  color: #92400e;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
