@@ -4,7 +4,7 @@
 
 ## Operating-mode override (this session, Russell explicit)
 
-Russell has stated: **"I don't need to review anything ever."** This modifies the ultraplan's hard-gate model:
+Russell has stated: **"I rarely need to review anything ever."** This modifies the ultraplan's hard-gate model:
 
 - **Default to "decide and log,"** not "ask Russell." When an internal trade-off is roughly even or a product-shape choice is bounded by the locked principles in PRD §5/§7, decide under the doctrine, document in `docs/build-log.md`, and proceed.
 - **Hard gates remain** only at three boundaries: (a) **on-Mac verification steps the cloud cannot perform** — must surface so Russell can run them locally; (b) **genuine product-shape forks** that would otherwise propagate downstream rework — use the `html-driven-codev` or `interactive-html-decisions` skill; (c) **destructive or external actions** Russell did not pre-authorize (push --force, deleting unmerged branches, sending external comms).
