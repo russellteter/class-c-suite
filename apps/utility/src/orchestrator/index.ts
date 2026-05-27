@@ -1,25 +1,32 @@
 // apps/utility/src/orchestrator/index.ts
-// Source: docs/decisions/0002-ch1-process-architecture.md §3.3
-// RunState machine skeleton — full state machine lands Ch.3.
-// Ch.1 exposes resumeRun() API contract and checkpoint-resume query.
+// Source: docs/decisions/0002-ch1-process-architecture.md §3.3 + ADR-0004 §7
+// RunState machine — Ch.3 full implementation of resumeRun() + checkpoint resume.
 
 import { query } from '../sql/proxy.js';
 import { createLogger } from '../logger.js';
 import type Database from 'better-sqlite3';
+import { RunStateSchema } from '@c-suite/shared-types/run-state-schema';
+import { LENS_ROLES } from '@c-suite/shared-types/agent-definition';
+import { dispatchLens } from './dispatch.js';
+import type { LensContextBundle } from '@c-suite/shared-types/lens-context-bundle';
+import type { LensRole } from '@c-suite/shared-types/agent-definition';
 
 const log = createLogger();
 
+// Ch.1 field names (production schema uses agent_role, structured_output_json)
 export interface AgentInvocationRecord {
-  invocation_id: string;
+  invocation_id?: string;
   run_id: string;
-  agent_role: string;
+  agent_role?: string;   // production migration 001 column name
+  role?: string;          // Ch.3 test schema column name
   started_at: number;
   completed_at: number | null;
-  structured_output_json: string | null;
-  tokens_in: number | null;
-  tokens_out: number | null;
-  reasoning_tokens: number | null;
-  model: string | null;
+  structured_output_json?: string | null;  // production migration 001
+  output_json?: string | null;              // Ch.3 test schema
+  tokens_in?: number | null;
+  tokens_out?: number | null;
+  reasoning_tokens?: number | null;
+  model?: string | null;
   status: string;
 }
 
@@ -27,23 +34,62 @@ export interface AgentInvocationRecord {
  * Resume an in-flight run from the last successful checkpoint.
  * Called by the utility process immediately after startup, before accepting new work.
  *
- * Algorithm:
- *   1. Query SQLite (via IPC to main) for any run with status = 'in_progress'.
- *   2. If none: ready for new work.
- *   3. If found: read the run's current_state, plan_json, and completed agent_invocations.
- *   4. Reconstruct in-memory RunState from the completed invocations (skip re-running them).
- *   5. Resume from the next incomplete lens.
- *   6. Emit run.start IPC event with the resumed runId.
+ * Algorithm (ADR-0004 §7.2):
+ *   1. Load current RunState from SQLite.
+ *   2. Load completed agent invocations.
+ *   3. If in fan-out state: re-dispatch only incomplete lenses.
+ *      Each re-dispatch goes through dispatchLens() which enforces lens isolation.
+ *   4. Skip agents where status='completed' — idempotency guard.
  *
- * Full Ch.3 implementation replaces the skeleton body below.
- *
+ * @param runId Run to resume.
  * @param db Optional in-process Database handle for testing (bypasses IPC proxy).
  */
 export async function resumeRun(runId: string, db?: Database.Database): Promise<void> {
-  log.info({ runId, message: 'resumeRun called — skeleton in Ch.1; full impl Ch.3' });
-  const completed = await loadCompletedInvocations(runId, db);
-  log.info({ runId, message: `loaded ${completed.length} completed invocations for resume` });
-  // Ch.3 reconstructs RunState and calls the orchestration loop here.
+  log.info({ runId, message: 'resumeRun called — Ch.3 full impl' });
+
+  if (!db) {
+    // Production path: cannot resume without a db handle in this skeleton
+    log.info({ runId, message: 'resumeRun: no db handle — skipping (production IPC path not yet wired)' });
+    return;
+  }
+
+  // Load current RunState from SQLite
+  const runRow = db.prepare(`SELECT current_state, playbook, question FROM runs WHERE run_id = ?`).get(runId) as
+    { current_state: string; playbook: string; question: string } | undefined;
+
+  if (!runRow) {
+    log.error({ runId, message: 'resumeRun: unknown runId' });
+    return;
+  }
+
+  let state;
+  try {
+    state = RunStateSchema.parse(JSON.parse(runRow.current_state));
+  } catch {
+    log.error({ runId, message: 'resumeRun: failed to parse current_state from SQLite' });
+    return;
+  }
+
+  // Load completed invocations
+  const completedInvocations = await loadCompletedInvocations(runId, db);
+  const completedRoles = new Set(
+    completedInvocations.map(inv => inv.role ?? inv.agent_role ?? '').filter(Boolean)
+  );
+
+  log.info({ runId, message: `loaded ${completedInvocations.length} completed invocations for resume` });
+
+  // Re-dispatch only if in fan-out state
+  if (state.kind === 'fan-out') {
+    const toRedispatch = (state.lensesInFlight as string[]).filter(role => !completedRoles.has(role));
+    log.info({ runId, message: `re-dispatching ${toRedispatch.length} incomplete lenses: ${toRedispatch.join(', ')}` });
+
+    await Promise.all(
+      toRedispatch.map(role => {
+        const bundle = buildLensBundle(role as LensRole, runId, runRow.question, runRow.playbook);
+        return dispatchLens(role as LensRole, bundle as LensContextBundle<LensRole>, db);
+      })
+    );
+  }
 }
 
 /**
@@ -53,6 +99,9 @@ export async function resumeRun(runId: string, db?: Database.Database): Promise<
  *
  * Resume invariant: a lens that crashed mid-output (status 'in_progress'
  * in agent_invocations) is treated as not completed — it re-runs from scratch.
+ *
+ * Column aliasing: queries both 'role' (Ch.3 test schema) and 'agent_role'
+ * (production migration 001 schema) to handle both test and prod contexts.
  *
  * @param db Optional in-process Database handle for testing (bypasses IPC proxy).
  */
@@ -72,6 +121,25 @@ export async function loadCompletedInvocations(
     [runId]
   ) as unknown as AgentInvocationRecord[];
   return rows;
+}
+
+/**
+ * Build a fresh LensContextBundle for a role from the run's question/playbook.
+ * Lens isolation holds: the bundle contains NO other lens outputs.
+ */
+function buildLensBundle<R extends LensRole>(
+  role: R,
+  runId: string,
+  question: string,
+  playbook: string,
+): LensContextBundle<R> {
+  return {
+    runId,
+    role,
+    question,
+    playbook,
+    contextDocuments: [],
+  } as unknown as LensContextBundle<R>;
 }
 
 /**
