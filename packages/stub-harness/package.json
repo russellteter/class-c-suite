@@ -1,0 +1,23 @@
+{
+  "name": "@c-suite/stub-harness",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint: no linter configured in Ch.0'",
+    "test:unit": "vitest run --reporter=verbose",
+    "test:integration": "echo 'no integration tests in stub-harness at Ch.0'"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

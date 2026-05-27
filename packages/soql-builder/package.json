@@ -1,0 +1,22 @@
+{
+  "name": "@c-suite/soql-builder",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint: no linter configured in Ch.0'",
+    "test:unit": "echo 'no unit tests in soql-builder at Ch.0 (skeleton only; full impl Ch.8)'",
+    "test:integration": "echo 'no integration tests in soql-builder at Ch.0'"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0"
+  }
+}

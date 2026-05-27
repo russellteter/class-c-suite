@@ -1,0 +1,20 @@
+{
+  "name": "@c-suite/renderer",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint: no linter configured in Ch.0'",
+    "test:unit": "echo 'no unit tests in apps/renderer at Ch.0'",
+    "test:integration": "echo 'no integration tests in apps/renderer at Ch.0'"
+  },
+  "dependencies": {
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0"
+  }
+}
