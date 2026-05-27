@@ -8,7 +8,7 @@
     "lint": "echo 'lint: no linter configured in Ch.0'",
     "test:unit": "echo 'no unit tests in apps/renderer at Ch.0'",
     "test:integration": "echo 'no integration tests in apps/renderer at Ch.0'",
-    "dev": "echo 'renderer dev server: open Electron main to see the rendered UI'"
+    "dev": "node -e \"console.log('[@c-suite/renderer] dev stub — Vite wiring lands in Ch.7; open Electron main directly for the rendered UI'); setInterval(() => {}, 1 << 30)\""
   },
   "dependencies": {
     "@c-suite/shared-types": "workspace:*",
