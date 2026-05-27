@@ -4,7 +4,7 @@
 // Pure function. No side effects. Same input → same output, run after run.
 // Implements the 5-dimension weighted formula from PRD §5 locked.
 
-import type { VerifierOutput } from '../../../../packages/shared-types/src/verifier-output.js';
+import type { VerifierOutput } from '@c-suite/shared-types/verifier-output';
 
 export type PlaybookId =
   | 'strategic_option'
