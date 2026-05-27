@@ -8,9 +8,8 @@ CREATE TABLE IF NOT EXISTS schema_version (
   applied_at  INTEGER NOT NULL             -- ms epoch
 );
 
--- Insert version marker ONLY if not already present (idempotent).
-INSERT OR IGNORE INTO schema_version (version, applied_at)
-  VALUES (1, strftime('%s', 'now') * 1000);
+-- NOTE: Version marker inserted by migration runner (apps/main/src/db/migrate.ts §4.3).
+-- Do NOT add INSERT INTO schema_version here — runner handles it as the last step.
 
 CREATE TABLE IF NOT EXISTS runs (
   run_id          TEXT PRIMARY KEY,

@@ -25,13 +25,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import Database from 'better-sqlite3';
 
-// Production module — does not exist yet; import will fail until Runtime ships.
-// When Runtime lands, replace this stub with the real import:
-// import { runMigrations } from '../../../apps/main/src/db/migrate.js';
-
-function runMigrations(_db: Database.Database): void {
-  throw new Error('runMigrations not implemented — Runtime dispatch pending');
-}
+import { runMigrations } from '../../apps/main/src/db/migrate.js';
 
 // ── §9 row 4 — Migration idempotency ────────────────────────────────────────
 
