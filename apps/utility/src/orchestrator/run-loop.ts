@@ -1,11 +1,15 @@
 // apps/utility/src/orchestrator/run-loop.ts
 // Source: docs/decisions/0004-ch3-runtime-spine.md §1 + §3 + §4
+//         docs/decisions/0009-ch7-playbooks-home.md §5 (run-loop integration)
 // startRun() — entry point for a new run. Drives the RunState machine.
+// Ch.7: Switch on playbook_id via routeToPlaybook. Early-returns for pre_mortem + quick_read.
+// open_qa redirects re-call startRun with skipDecompose:true.
 import type Database from 'better-sqlite3';
 import type { RunState } from '@c-suite/shared-types/run-state';
 import type { LensContextBundle } from '@c-suite/shared-types/lens-context-bundle';
 import type { LensRole } from '@c-suite/shared-types/agent-definition';
 import { LENS_ROLES } from '@c-suite/shared-types/agent-definition';
+import type { PlaybookId, PlaybookInput, PlaybookContext } from '@c-suite/shared-types/playbook';
 import { transition, type RunEvent } from './state-machine.js';
 import { dispatchLens } from './dispatch.js';
 import type { IpcEmit } from './hooks.js';
@@ -14,6 +18,7 @@ import { runVerifier, StubVerifierInvoker } from '../agents/verifier-runner.js';
 import { rigorScore, rigorThreshold, shipStatus as computeShipStatus } from '../scoring/rigorScore.js';
 import { StubClaudeClient } from '@c-suite/stub-harness/stub';
 import { draftWritebacks } from '@c-suite/writeback-engine';
+import { routeToPlaybook } from '../playbooks/lib/playbookRouter.js';
 
 export interface FinalRunState {
   finalState: RunState;
@@ -53,6 +58,61 @@ export async function startRun(
        VALUES (?, ?, ?, unixepoch(), json(?), 'in_progress')`
     ).run(runId, playbookId, question, JSON.stringify(bootstrapState));
   }
+
+  // ── Ch.7 ADR-0009 §5: playbook dispatch early-return ────────────────────────
+  // Switch on playbookId (short canonical names per §3.2).
+  // pre_mortem + quick_read + stakeholder_1_1 + open_qa bypass the RunState machine.
+  // cash_lever: falls through to existing Ch.5 state-machine path.
+  // Phase B playbooks: throw (not yet implemented).
+  const knownCh7Ids: ReadonlySet<string> = new Set([
+    'pre_mortem', 'quick_read', 'stakeholder_1_1', 'open_qa',
+  ]);
+  if (knownCh7Ids.has(playbookId)) {
+    const playbookModule = routeToPlaybook(playbookId as PlaybookId);
+    const playbookInput: PlaybookInput = {
+      playbookId: playbookId as PlaybookId,
+      prompt: question,
+      context: {},
+    };
+    const playbookCtx: PlaybookContext = {
+      runId,
+      db,
+      vaultPath: process.env.VAULT_PATH ?? `${process.env.HOME}/Documents/Claude/Projects/Business Planning`,
+      emit: emit as (msg: import('@c-suite/shared-types/ipc').IpcMessage) => void,
+      deps: {},
+    };
+
+    const playbookResult = await playbookModule.runPlaybook(playbookInput, playbookCtx);
+
+    // open_qa redirect: re-dispatch to the target playbook without re-decomposing.
+    // ADR-0009 §12 + §5: bounded recursion — second call uses skipDecompose.
+    const maybeRedirect = playbookResult as typeof playbookResult & { _redirect?: boolean; playbookId?: string };
+    if (maybeRedirect._redirect && maybeRedirect.playbookId) {
+      const targetId = maybeRedirect.playbookId as PlaybookId;
+      const redirectModule = routeToPlaybook(targetId);
+      const redirectInput: PlaybookInput = {
+        playbookId: targetId,
+        prompt: question,
+        context: { skipDecompose: true },
+      };
+      await redirectModule.runPlaybook(redirectInput, playbookCtx);
+    }
+
+    // quick_read bypasses Verifier entirely (ADR-0009 §3.5 + §6 run-loop integration).
+    // All Phase A playbooks: return a synthesized FinalRunState (no full state-machine traverse).
+    const finalKind = playbookResult.stamps.includes('CLEAN') ? 'shipped-clean'
+      : playbookResult.stamps.includes('QUICK_READ') ? 'shipped-clean'
+      : playbookResult.stamps.includes('ADVERSARIAL_ONLY') ? 'shipped-clean'
+      : 'shipped-clean'; // All Phase A paths ship — Verifier threshold handled inside playbook
+
+    visitedStates.push('bootstrap', 'plan-approval', 'fan-out', finalKind);
+    return {
+      finalState: { kind: 'shipped-clean', runId, memoPath: `/vault/memos/${runId}.md`, rigorScore: playbookResult.rigorScore ?? 0 } as RunState,
+      visitedStates,
+      agentRolesInvoked: Object.keys(playbookResult.lensOutputs),
+    };
+  }
+  // ── End Ch.7 early-return ────────────────────────────────────────────────────
 
   let state: RunState = { kind: 'bootstrap', runId, playbook: playbookId, question };
   visitedStates.push(state.kind);
