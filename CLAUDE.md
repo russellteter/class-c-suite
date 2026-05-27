@@ -4,7 +4,7 @@
 
 ## What this project is
 
-The C-Suite: a single-user macOS menubar application that operationalizes Russell Teter's Strategic AI Operating Model. The complete product spec is `business-planning/C_Suite_PRD.md`. The original build mission brief is `business-planning/C_Suite_CLAUDE.md`. Both are the source of truth; this file is the operating runbook.
+The C-Suite: a single-user macOS menubar application that operationalizes Russell Teter's Strategic AI Operating Model. The complete product spec is `/Users/russellteter/Documents/Claude/Projects/Business Planning/C_Suite_PRD.md`. The original build mission brief is `/Users/russellteter/Documents/Claude/Projects/Business Planning/C_Suite_CLAUDE.md`. Both are the source of truth; this file is the operating runbook.
 
 ## Read order at session start
 
@@ -17,8 +17,8 @@ If you are `/goal` or any sub-agent of `/goal`, read these in order before any a
 5. **`RESEARCH.md`** — the Phase R protocol; run this before any chapter is coded.
 6. **`docs/architecture/*.md`** — implementation contracts (six files).
 7. **`docs/build-log.md`** — the living ledger; every loop reads + writes here.
-8. **`business-planning/C_Suite_PRD.md`** — the locked product spec.
-9. **`business-planning/C_Suite_CLAUDE.md`** — the original build mission brief.
+8. **`/Users/russellteter/Documents/Claude/Projects/Business Planning/C_Suite_PRD.md`** — the locked product spec.
+9. **`/Users/russellteter/Documents/Claude/Projects/Business Planning/C_Suite_CLAUDE.md`** — the original build mission brief.
 
 If you are a Russell-initiated task that is not `/goal`, read this file plus whatever is relevant to the task.
 
@@ -95,8 +95,9 @@ Definition of done: each chapter is done when Audit/QA marks every acceptance cr
 |---|---|
 | Repo root (this working dir) | `/Users/russellteter/Claude Code Projects/c-suite/` |
 | Vault (read/write target for the product) | `/Users/russellteter/Documents/Claude/Projects/Business Planning/` |
-| Source-of-truth PRD | `business-planning/C_Suite_PRD.md` (mirror in this repo) |
-| Build mission brief | `business-planning/C_Suite_CLAUDE.md` (mirror) |
+| Source-of-truth PRD | `<vault>/C_Suite_PRD.md` (canonical; B28 polish 2026-05-27 deleted the repo mirror) |
+| Build mission brief | `<vault>/C_Suite_CLAUDE.md` (canonical; B28 polish deleted the repo mirror) |
+| Install fixtures | `fixtures/skills/` + `fixtures/_extracted_skills_for_c_suite.md` (formerly under `business-planning/`) |
 | Doc-set spine (read in order) | `PURPOSE.md`, `DOCTRINE.md`, `ROADMAP.md`, `BLOCKERS.md`, `RESEARCH.md` |
 | Architecture specs | `docs/architecture/*.md` |
 | Build ledger | `docs/build-log.md` |

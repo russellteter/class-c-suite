@@ -63,7 +63,7 @@ The agent that writes code never writes the tests that grade it or signs off "do
 **Enforcement.** Per-chapter ritual splits roles: Architect spec, Front-end/Runtime/Prompt-eng build, Test author (separate from builder), Audit/QA reviewer (separate from all). When dispatching sub-agents, brief them as separate roles with no shared context beyond the spec and the artifact under review.
 
 ### 8. Self-improvement — codify after 3 repeat issues
-After each chapter, critique the build on the run-critique dimensions (see `business-planning/SKILL.md` or `Strategic_AI_Operating_Model.md` for run-critique). After **3 repeat issues of one kind**, codify a fix: a lint rule, a checklist item, a new skill, an amendment to this doctrine.
+After each chapter, critique the build on the run-critique dimensions (see `~/.claude/skills/run-critique/SKILL.md` or `<vault>/Strategic_AI_Operating_Model.md` for run-critique). After **3 repeat issues of one kind**, codify a fix: a lint rule, a checklist item, a new skill, an amendment to this doctrine.
 
 **Enforcement.** `docs/build-log.md` includes a per-chapter "repeat-issue tally" section. When a count hits 3, the chapter cannot close until the codification is committed.
 

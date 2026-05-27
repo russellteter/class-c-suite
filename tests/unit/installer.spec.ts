@@ -6,7 +6,7 @@
  * Strategy per brief §69-89:
  *   - For each of the 8 op-logic skills, read line counts from:
  *     (a) installed: ~/.claude/skills/<name>/SKILL.md
- *     (b) full-body: business-planning/skills/<name>/SKILL.md (in this repo)
+ *     (b) full-body: fixtures/skills/<name>/SKILL.md (in this repo; was business-planning/skills/ pre-B28 polish)
  *   - If full-body does not exist in this repo (russell-voice, class-aws-connector),
  *     skip with message (brief line 89).
  *   - Assert installed lines >= 0.95 * full-body lines.
@@ -32,7 +32,8 @@ import * as os from 'os';
 
 // Paths
 const SKILLS_DIR = process.env.SKILLS_DIR_OVERRIDE ?? path.join(os.homedir(), '.claude', 'skills');
-const VAULT_SKILLS_DIR = path.join(__dirname, '../../business-planning/skills');
+// B28 polish 2026-05-27: skill fixtures moved from business-planning/skills/ to fixtures/skills/.
+const VAULT_SKILLS_DIR = path.join(__dirname, '../../fixtures/skills');
 
 // The 8 op-logic skills from ADR §6.2 + brief §78
 const OP_LOGIC_SKILLS = [
@@ -65,7 +66,7 @@ describe('Installer B29 regression — installed skill line counts vs full-body'
       // Step 1: check if vault/full-body file exists in this repo
       if (!skillHasVaultBody(skill)) {
         // Skip with message per brief line 89
-        console.log(`SKIP: no full body to compare for ${skill} (not in business-planning/skills/)`);
+        console.log(`SKIP: no full body to compare for ${skill} (not in fixtures/skills/)`);
         return;
       }
 

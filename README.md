@@ -17,14 +17,9 @@ c-suite/
 ├── RESEARCH.md         ← Phase R deep-research protocol
 ├── CLAUDE.md           ← project-level instructions for Claude Code
 ├── README.md           ← (this file)
-├── business-planning/  ← mirror of the source-of-truth PRD/CLAUDE/operating model
-│   ├── C_Suite_PRD.md
-│   ├── C_Suite_CLAUDE.md
-│   ├── Strategic_AI_Operating_Model.md
-│   ├── (... full institutional context corpus ...)
-│   ├── positions/  decisions/  workstreams/  stakeholders/
-│   ├── pre-mortems/  calibration/  adversarial/  investigations/
-│   └── deliverables/
+├── fixtures/           ← install fixtures (skill bodies + extracted-skills snapshot)
+│   ├── _extracted_skills_for_c_suite.md
+│   └── skills/         ← 6 operating-logic skill bodies (full-text, for installer)
 └── docs/
     ├── architecture/   ← six implementation-grade specs
     │   ├── runtime.md

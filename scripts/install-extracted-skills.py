@@ -25,14 +25,20 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-SRC = Path.home() / "Documents/Claude/Projects/Business Planning/_extracted_skills_for_c_suite.md"
+# Vault location is the authoritative source for the extracted-skills markdown.
+# Repo-local fallback at fixtures/_extracted_skills_for_c_suite.md (B28 polish 2026-05-27 —
+# moved from business-planning/ when the mirror was deleted).
+_VAULT_EXTRACTED = Path.home() / "Documents/Claude/Projects/Business Planning/_extracted_skills_for_c_suite.md"
+_REPO_EXTRACTED = Path(__file__).parent.parent / "fixtures" / "_extracted_skills_for_c_suite.md"
+SRC = _VAULT_EXTRACTED if _VAULT_EXTRACTED.exists() else _REPO_EXTRACTED
 SKILLS_DIR = Path.home() / ".claude" / "skills"
 
-# Repo-local skill bodies (business-planning/skills/<name>/SKILL.md).
+# Repo-local skill bodies (fixtures/skills/<name>/SKILL.md).
 # When present, these are the canonical full-body source and are preferred
 # over the extracted-skills markdown (which wraps content in fences that
 # confuse the state-machine parser for skills with bare ``` inner blocks).
-REPO_SKILLS_DIR = Path(__file__).parent.parent / "business-planning" / "skills"
+# B28 polish: previously business-planning/skills/, now fixtures/skills/.
+REPO_SKILLS_DIR = Path(__file__).parent.parent / "fixtures" / "skills"
 
 FORCE = "--force" in sys.argv
 

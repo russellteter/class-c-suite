@@ -283,23 +283,18 @@
 **Mitigation.** `z.union([StakeholderPersonFrontmatter, StakeholderAccountFrontmatter])` per R0-Vault §SD-04. Discriminate by presence of `account_id` key.
 **Owner.** Ch.0 architect.
 
-### B28 — Mirror `business-planning/` diverges from canonical vault `NEW` `P2`
-**What.** Mirror at `c-suite/business-planning/` is stale. R0-Vault confirmed WS-01 has meaningfully drifted (Vault: `phase=maintenance status=YELLOW`; Mirror: `phase=execution status=RED`). 3 entire directories are absent from mirror (`scheduled-reports/`, `scheduled-task-ledger/`, `transformation-backbone/`).
+### B28 — Mirror `business-planning/` diverges from canonical vault `CLOSED` `P2`
+**What.** Mirror at `c-suite/business-planning/` was stale. WS-01 drifted (Vault: `phase=maintenance status=YELLOW`; Mirror: `phase=execution status=RED`). 3 vault dirs absent from mirror (`scheduled-reports/`, `scheduled-task-ledger/`, `transformation-backbone/`).
 **Bites at.** Build-process integrity; risk of orchestrator reading stale mirror data.
-**Status.** **Surfaced to Russell.** This is a genuine product-shape fork — mirror was intentionally created during scaffold session for reproducibility; removing it changes bootstrap. Auto-mode does NOT delete.
-**Mitigation candidates (Russell picks):**
-- (a) Keep mirror, add `scripts/sync-mirror.sh` that rsyncs from vault on demand (read-only direction).
-- (b) Delete mirror; reference vault directly per `docs/architecture/data.md`. Update preflight to verify vault path.
-- (c) Convert mirror to `.gitignore`'d symlink — small repo footprint, lives only on developer machines.
-**Recommendation (under DOCTRINE creativity-within-guardrails):** (b) — vault is canonical SoT per data.md; mirror creates drift risk. But preserve `business-planning/skills/` + `business-planning/_extracted_skills_for_c_suite.md` (these are install fixtures, not mirrored vault content).
-**Owner.** Russell (next session) approves option.
+**Status.** **CLOSED 2026-05-27 (polish UNIT-6).** Mirror deleted via `git rm -rf business-planning/`. Install fixtures preserved at `fixtures/skills/` and `fixtures/_extracted_skills_for_c_suite.md`. Code references updated (`scripts/install-extracted-skills.py` + `tests/unit/installer.spec.ts`). Doc references in CLAUDE.md / PURPOSE.md / DOCTRINE.md / README.md point to vault path. Vault is now the unambiguous SoT.
+**Resolution.** Option (b) — delete + reference vault directly.
 
 ### B29 — `scripts/install-extracted-skills.py` writes truncated SKILL.md stubs `MITIGATED` `P2`
-**What.** 6 of 8 operating-logic skills installed at `~/.claude/skills/<name>/SKILL.md` are 15-29 line truncations (header + first section only). Full bodies (168-232 lines) exist at `business-planning/skills/<name>/SKILL.md`. The install script extracted from `_extracted_skills_for_c_suite.md` but appears to have cut at section boundaries.
+**What.** 6 of 8 operating-logic skills installed at `~/.claude/skills/<name>/SKILL.md` are 15-29 line truncations (header + first section only). Full bodies (168-232 lines) exist at `fixtures/skills/<name>/SKILL.md` (was `business-planning/skills/` pre-B28 polish). The install script extracted from `_extracted_skills_for_c_suite.md` but appears to have cut at section boundaries.
 **Bites at.** Ch.7 (playbook prereqs invoke skills), Ch.10 (scheduler invokes skills as subprocesses).
-**Status.** **MITIGATED 2026-05-27 — Ch.0 Audit/QA verified.** State-machine parser in `install-extracted-skills.py` lines 88-142 handles nested fences with depth counting. Repo-local fallback at lines 164-179 prefers `business-planning/skills/<name>/SKILL.md` (full bodies) over extracted content. 16 installer tests pass. `preflight.sh` truncation detector added (lines 183-202, 50-line floor). CONCERN: fallback not documented in ADR §7. Evidence: `docs/reviews/ch0-audit-qa-report.md` §7a.
+**Status.** **MITIGATED 2026-05-27 — Ch.0 Audit/QA verified.** State-machine parser in `install-extracted-skills.py` lines 88-142 handles nested fences with depth counting. Repo-local fallback at lines 164-179 prefers `fixtures/skills/<name>/SKILL.md` (full bodies) over extracted content. 16 installer tests pass. `preflight.sh` truncation detector added (lines 183-202, 50-line floor). CONCERN: fallback not documented in ADR §7. Evidence: `docs/reviews/ch0-audit-qa-report.md` §7a.
 **Mitigation.**
-- Until installer is fixed: Ch.10 scheduler references `c-suite/business-planning/skills/<name>/SKILL.md` paths directly (full bodies are there + git-tracked).
+- Until installer is fixed: Ch.10 scheduler references `c-suite/fixtures/skills/<name>/SKILL.md` paths directly (full bodies are there + git-tracked).
 - Fix the installer (`scripts/install-extracted-skills.py`) to write full bodies, then re-run.
 - Add preflight check: SKILL.md line count >= 50 per installed skill.
 **Owner.** Ch.0 architect (preflight + installer fix); Russell at next session if codify-vs-invoke decision shifts.

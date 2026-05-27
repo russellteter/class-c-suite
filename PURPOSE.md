@@ -66,9 +66,9 @@ Russell wakes up, opens the C-Suite instead of Cowork, trusts the rigor score, w
 
 ---
 
-**Source documents:**
-- `business-planning/C_Suite_PRD.md` — the product spec.
-- `business-planning/C_Suite_CLAUDE.md` — the build mission brief.
+**Source documents** (canonical at the vault; B28 polish 2026-05-27 deleted the repo mirror):
+- `<vault>/C_Suite_PRD.md` — the product spec.
+- `<vault>/C_Suite_CLAUDE.md` — the build mission brief.
 
 **Companion docs in this doc-set:**
 - `RESEARCH.md` — Phase R protocol. `/goal` runs this first.
