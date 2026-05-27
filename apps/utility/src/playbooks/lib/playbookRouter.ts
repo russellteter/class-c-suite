@@ -20,6 +20,12 @@ import * as preMortem from '../pre-mortem/index.js';
 import * as quickRead from '../quick-read/index.js';
 import * as openQa from '../open-qa/index.js';
 
+// Phase B imports
+import * as gtmRealloc from '../gtm-realloc/index.js';
+import * as strategicOption from '../strategic-option/index.js';
+import * as boardNarrative from '../board-narrative/index.js';
+import * as restructureDecision from '../restructure-decision/index.js';
+
 /**
  * Static router: maps PlaybookId → PlaybookModule (the object with runPlaybook).
  * Phase B playbooks throw an informative error until the Phase B runtime ships.
@@ -41,15 +47,17 @@ export function routeToPlaybook(playbookId: PlaybookId): PlaybookModule {
     case 'open_qa':
       return openQa;
 
-    // Phase B — not yet implemented; stubs throw so the router surface is honest.
     case 'gtm_realloc':
+      return gtmRealloc;
+
     case 'strategic_option':
+      return strategicOption;
+
     case 'board_narrative':
+      return boardNarrative;
+
     case 'restructure_decision':
-      throw new Error(
-        `routeToPlaybook: Phase B playbook '${playbookId}' is not yet implemented. ` +
-        `Phase B dispatches after the Phase A intermediate audit per ADR-0009 §14.`,
-      );
+      return restructureDecision;
 
     default: {
       const _exhaustive: never = playbookId;
