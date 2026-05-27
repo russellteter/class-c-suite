@@ -2,6 +2,7 @@
   "name": "@c-suite/utility",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -10,6 +11,7 @@
     "test:integration": "echo 'no integration tests in apps/utility at Ch.0'"
   },
   "dependencies": {
+    "@c-suite/shared-types": "workspace:*",
     "electron": "^42.3.0",
     "pino": "^10.3.1"
   },

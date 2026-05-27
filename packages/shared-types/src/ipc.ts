@@ -219,6 +219,14 @@ export const IpcMessage = z.discriminatedUnion('kind', [
       totalCostUsdReference: z.number().optional(),   // B5: API-equivalent reference figure
     }),
   }),
+  // ADR §5.6 — added Ch.1 (was UNKNOWN in Ch.0 IPC union; now 22 variants total)
+  z.object({
+    kind: z.literal('scheduler.window.reset'),
+    payload: z.object({
+      resetAt: z.number(),       // ms epoch
+      newWindowCap: z.number(),  // tokens
+    }),
+  }),
 ]);
 
 export type IpcMessage = z.infer<typeof IpcMessage>;
