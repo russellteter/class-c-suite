@@ -2,9 +2,9 @@
 // Source: docs/decisions/0010-ch8-mcp-integration.md §4
 //
 // BLOCKER mitigations encoded in every query:
-//   B7:  Account_Manager__r + IsActive = TRUE (NEVER Owner.Name)
-//   B19: R1-verified stage labels from committed-pipeline.ts (NEVER S4/S5/Commit/BestCase)
-//   B20: Renewal_Anniversary_Date__c (NEVER Renewal_Date__c)
+//   B7:  Account_Manager__r + IsActive = TRUE (never the legacy ownership field)
+//   B19: R1-verified stage labels from committed-pipeline.ts (never S4/S5/Commit/BestCase)
+//   B20: Renewal_Anniversary_Date__c (never the legacy renewal-date field)
 //
 // Stage constants come from apps/utility/src/playbooks/lib/committed-pipeline.ts
 // (R1 live-verified on 2026-05-27 against classedu.my.salesforce.com).
@@ -98,7 +98,7 @@ export function committedPipelineQuery(args: CommittedPipelineArgs): string {
 }
 
 // ── 2. accountAMHealthQuery ───────────────────────────────────────────────────
-// B7: NEVER Owner.Name — always Account_Manager__r + IsActive = TRUE.
+// B7: always Account_Manager__r + IsActive = TRUE (never the legacy ownership field per B7).
 
 export interface AccountAMHealthArgs {
   accountId: string;
@@ -120,7 +120,7 @@ export function accountAMHealthQuery(args: AccountAMHealthArgs): string {
 }
 
 // ── 3. renewalForecastQuery ───────────────────────────────────────────────────
-// B20: NEVER Renewal_Date__c — always Renewal_Anniversary_Date__c.
+// B20: always Renewal_Anniversary_Date__c (never the legacy renewal-date field per B20).
 
 export interface RenewalForecastArgs {
   months: number;
