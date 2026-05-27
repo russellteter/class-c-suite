@@ -2,8 +2,8 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "pre-phase-r-scaffold-complete",
-  "next_action": "Run /goal (or equivalent orchestrator) to begin Phase R. Pre-flight script available at scripts/preflight.sh.",
+  "current_phase": "scaffold-complete-ready-for-goal",
+  "next_action": "Open a fresh Claude Code session at this repo with auto-mode ON. Paste the /goal prompt from scripts/goal-prompt-v1.md verbatim. Scope: Phase R through Ch.5 first-end-to-end-slice. After Ch.5 closes, run /goal again for Ch.6-10. Final Ch.11 requires Russell to run the 8 on-Mac demos in person.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",
@@ -38,6 +38,12 @@
     {
       "id": "skill-extraction-install",
       "summary": "Russell ran the Cowork extraction prompt; Cowork produced _extracted_skills_for_c_suite.md (2369 lines, all 8 skills full content). Installer script scripts/install-extracted-skills.py installed: russell-voice (+3 refs), run-critique, weekly-cash-forecast, covenant-tracker, renewal-forecast, call-intelligence, system-check, class-aws-connector (+3 refs). All 8 verified in skill registry. preflight green (0 fails). B17 MITIGATED P1->P3.",
+      "completed_on": "2026-05-26",
+      "commits": ["670d29d"]
+    },
+    {
+      "id": "goal-prompt-and-session-handoff",
+      "summary": "Fetched /goal docs from code.claude.com. Wrote scripts/goal-prompt-v1.md (Phase R + Ch.0-5 scope, 300-turn cap, 8 explicit (a)-(h) completion sub-conditions, decide-and-log default per DOCTRINE override). Wrote tasks/handoff.md capturing all 10 session work items + open issues + commit log. Session prepared for shutdown; next session runs the /goal prompt verbatim.",
       "completed_on": "2026-05-26",
       "commits": []
     }
@@ -129,6 +135,6 @@
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-26T22:15:00-04:00",
-  "updated_by": "scaffold session — Claude Opus 4.7 (1M context)"
+  "last_updated": "2026-05-26T22:30:00-04:00",
+  "updated_by": "scaffold session — Claude Opus 4.7 (1M context) — session closing for /goal handoff"
 }
