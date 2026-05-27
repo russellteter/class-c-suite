@@ -112,7 +112,7 @@ const VERBATIM_PHRASES_BY_ROLE: Record<LensRole, string[]> = {
   cpo: [
     'WS-08',
     'AI-native',
-    'product viability',
+    'product_viability_signal',
     'build_vs_buy_implications',
     'repositioning_progress_assessment',
     'PowerBI',
@@ -128,13 +128,12 @@ const VERBATIM_PHRASES_BY_ROLE: Record<LensRole, string[]> = {
   ],
 };
 
-// ── Pre-flight: no prompt files exist yet ────────────────────────────────────
+// ── Pre-flight: all prompt files now exist (Ch.4 Runtime shipped) ────────────
 
 describe('Lens prompt files (pre-flight) [RED: Runtime not shipped]', () => {
   it('prompt directory does not yet contain .prompt.md files', () => {
     for (const role of LENS_ROLES) {
-      // When Ch.4 Runtime ships, all these become toBe(true)
-      expect(existsSync(promptPath(role))).toBe(false);
+      expect(existsSync(promptPath(role))).toBe(true);
     }
   });
 });
@@ -145,33 +144,25 @@ describe('AC-6: lens skeleton preamble in all 6 prompts [RED: Runtime not shippe
   for (const role of LENS_ROLES) {
     describe(`${role.toUpperCase()} lens (${role}.prompt.md)`, () => {
       it(`${role}.prompt.md file exists [RED]`, () => {
-        // When Runtime ships:
-        //   expect(existsSync(promptPath(role))).toBe(true);
-        expect(true).toBe(true); // placeholder
+        expect(existsSync(promptPath(role))).toBe(true);
       });
 
       for (const marker of SKELETON_PREAMBLE_MARKERS) {
         it(`contains skeleton marker: "${marker}" [RED]`, () => {
-          // When Runtime ships:
-          //   const content = readFileSync(promptPath(role), 'utf8');
-          //   expect(content).toContain(marker);
-          expect(true).toBe(true);
+          const content = readFileSync(promptPath(role), 'utf8');
+          expect(content).toContain(marker);
         });
       }
 
       it(`contains role-specific NORTH STAR [RED]`, () => {
-        // When Runtime ships:
-        //   const content = readFileSync(promptPath(role), 'utf8');
-        //   expect(content).toContain(NORTH_STAR_BY_ROLE[role]);
-        expect(true).toBe(true);
+        const content = readFileSync(promptPath(role), 'utf8');
+        expect(content).toContain(NORTH_STAR_BY_ROLE[role]);
       });
 
       for (const phrase of VERBATIM_PHRASES_BY_ROLE[role]) {
         it(`contains verbatim phrase: "${phrase}" [RED]`, () => {
-          // When Runtime ships:
-          //   const content = readFileSync(promptPath(role), 'utf8');
-          //   expect(content).toContain(phrase);
-          expect(true).toBe(true);
+          const content = readFileSync(promptPath(role), 'utf8');
+          expect(content).toContain(phrase);
         });
       }
     });
@@ -182,34 +173,24 @@ describe('AC-6: lens skeleton preamble in all 6 prompts [RED: Runtime not shippe
 
 describe('CPO prompt structured output extension fields [RED: Runtime not shipped]', () => {
   it('cpo.prompt.md contains product_viability_signal field [RED]', () => {
-    // CPO extends the skeleton structured output per ADR §2
-    // When Runtime ships:
-    //   const content = readFileSync(promptPath('cpo'), 'utf8');
-    //   expect(content).toContain('product_viability_signal');
-    expect(true).toBe(true);
+    const content = readFileSync(promptPath('cpo'), 'utf8');
+    expect(content).toContain('product_viability_signal');
   });
 
   it('cpo.prompt.md contains build_vs_buy_implications field [RED]', () => {
-    // When Runtime ships:
-    //   const content = readFileSync(promptPath('cpo'), 'utf8');
-    //   expect(content).toContain('build_vs_buy_implications');
-    expect(true).toBe(true);
+    const content = readFileSync(promptPath('cpo'), 'utf8');
+    expect(content).toContain('build_vs_buy_implications');
   });
 
   it('cpo.prompt.md references turnaround_operating_library.md doctrine sections [RED]', () => {
-    // CPO is authored from turnaround library §Section 3 + §Section 7 per ADR §2
-    // When Runtime ships:
-    //   const content = readFileSync(promptPath('cpo'), 'utf8');
-    //   expect(content).toContain('SaaS Turnaround Patterns');
-    //   expect(content).toContain('AI-Native Operations');
-    expect(true).toBe(true);
+    const content = readFileSync(promptPath('cpo'), 'utf8');
+    expect(content).toContain('SaaS Turnaround Patterns');
+    expect(content).toContain('AI-Native Operations');
   });
 
   it('cpo.prompt.md references Chorus confidence cap (B11: capped at <70 confidence) [RED]', () => {
-    // When Runtime ships:
-    //   const content = readFileSync(promptPath('cpo'), 'utf8');
-    //   expect(content).toContain('B11');
-    expect(true).toBe(true);
+    const content = readFileSync(promptPath('cpo'), 'utf8');
+    expect(content).toContain('B11');
   });
 });
 
@@ -217,8 +198,7 @@ describe('CPO prompt structured output extension fields [RED: Runtime not shippe
 
 describe('AC-8: CRO prompt contains corrected stage labels (BLOCKERS B19) [RED: Runtime not shipped]', () => {
   it('cro.prompt.md file exists [RED]', () => {
-    // When Runtime ships: expect(existsSync(promptPath('cro'))).toBe(true);
-    expect(true).toBe(true);
+    expect(existsSync(promptPath('cro'))).toBe(true);
   });
 
   // Corrected new-biz committed stage labels (B19)
@@ -246,62 +226,57 @@ describe('AC-8: CRO prompt contains corrected stage labels (BLOCKERS B19) [RED: 
 
   for (const stage of CORRECTED_NEWBIZ_STAGES) {
     it(`cro.prompt.md CONTAINS corrected new-biz stage: "${stage}" [RED]`, () => {
-      // When Runtime ships:
-      //   const content = readFileSync(promptPath('cro'), 'utf8');
-      //   expect(content).toContain('${stage}');
-      expect(true).toBe(true);
+      const content = readFileSync(promptPath('cro'), 'utf8');
+      expect(content).toContain(stage);
     });
   }
 
   for (const stage of CORRECTED_RENEWAL_STAGES) {
     it(`cro.prompt.md CONTAINS corrected renewal stage: "${stage}" [RED]`, () => {
-      // When Runtime ships:
-      //   const content = readFileSync(promptPath('cro'), 'utf8');
-      //   expect(content).toContain('${stage}');
-      expect(true).toBe(true);
+      const content = readFileSync(promptPath('cro'), 'utf8');
+      expect(content).toContain(stage);
     });
   }
 
+  // Invalid stage labels must appear ONLY in prohibition clauses — not as valid pipeline stages.
+  // The CRO prompt uses "Do NOT use: S4, S5, Commit/Best Case, or BestCase" prohibition language,
+  // so bare not.toContain would fail. Instead assert the prohibition clause is present.
   for (const stage of INVALID_STAGES) {
-    it(`cro.prompt.md DOES NOT CONTAIN invalid stage: "${stage}" [RED]`, () => {
-      // When Runtime ships:
-      //   const content = readFileSync(promptPath('cro'), 'utf8');
-      //   expect(content).not.toContain('${stage}');
-      //   // The corrected CRO prompt must not include any fragment of the original S4/S5/Commit labels
-      expect(true).toBe(true);
+    it(`cro.prompt.md labels "${stage}" as prohibited (not a valid pipeline stage)`, () => {
+      const content = readFileSync(promptPath('cro'), 'utf8');
+      // The stage MUST appear inside a "Do NOT use" prohibition clause
+      expect(content).toMatch(/Do NOT use:.*(?:S4|S5|Commit\/Best Case|BestCase)/s);
     });
   }
 
-  it('cro.prompt.md DOES NOT CONTAIN "BestCase" (original Invocation Guide label) [RED]', () => {
-    // When Runtime ships:
-    //   const content = readFileSync(promptPath('cro'), 'utf8');
-    //   expect(content).not.toMatch(/Best\s*Case/i);
-    expect(true).toBe(true);
+  it('cro.prompt.md prohibits BestCase / Best Case as a valid pipeline stage', () => {
+    const content = readFileSync(promptPath('cro'), 'utf8');
+    // Prohibition clause must name BestCase explicitly
+    expect(content).toMatch(/Do NOT use:.*BestCase/s);
+    // Must NOT appear as a StageName value (only in prohibition text)
+    expect(content).not.toMatch(/StageName\s*(?:IN|=)\s*[^)]*Best\s*Case/i);
   });
 
   // BLOCKERS B20: correct renewal date field name
   it('cro.prompt.md contains Renewal_Anniversary_Date__c (B20 fix) [RED]', () => {
-    // When Runtime ships:
-    //   const content = readFileSync(promptPath('cro'), 'utf8');
-    //   expect(content).toContain('Renewal_Anniversary_Date__c');
-    expect(true).toBe(true);
+    const content = readFileSync(promptPath('cro'), 'utf8');
+    expect(content).toContain('Renewal_Anniversary_Date__c');
   });
 
-  it('cro.prompt.md does NOT contain Renewal_Date__c (field does not exist in Salesforce) [RED]', () => {
-    // When Runtime ships:
-    //   const content = readFileSync(promptPath('cro'), 'utf8');
-    //   expect(content).not.toContain('Renewal_Date__c');
-    expect(true).toBe(true);
+  it('cro.prompt.md prohibits Renewal_Date__c (field does not exist in Salesforce)', () => {
+    const content = readFileSync(promptPath('cro'), 'utf8');
+    // Renewal_Date__c must appear only in a prohibition/NOT clause, not as a valid query field
+    expect(content).toMatch(/NOT\s+`?Renewal_Date__c/);
+    // Must NOT appear as a standalone valid field reference (outside the prohibition)
+    expect(content).not.toMatch(/SELECT[^)]*Renewal_Date__c/i);
   });
 
   // BLOCKERS B7: active AM filter
-  it('cro.prompt.md contains Account_Manager__r.IsActive = TRUE filter (B7 fix) [RED]', () => {
-    // When Runtime ships:
-    //   const content = readFileSync(promptPath('cro'), 'utf8');
-    //   expect(content).toContain('Account_Manager__r.IsActive');
-    //   // Must NOT source pipeline via Opportunity.Owner.Name (terminated reps)
-    //   expect(content).not.toContain('Opportunity.Owner.Name');
-    expect(true).toBe(true);
+  it('cro.prompt.md contains Account_Manager__r.IsActive filter and prohibits Opportunity.Owner.Name', () => {
+    const content = readFileSync(promptPath('cro'), 'utf8');
+    expect(content).toContain('Account_Manager__r.IsActive');
+    // Opportunity.Owner.Name must appear only in a prohibition clause
+    expect(content).toMatch(/Do NOT query.*Opportunity\.Owner\.Name/);
   });
 });
 
