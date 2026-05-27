@@ -36,7 +36,10 @@ const ZoneToSchema = {
 export function parseArtifact(rawYaml: unknown, zone: ArtifactZone) {
   const normalized = normalizeKeys(rawYaml);
   const schema = ZoneToSchema[zone];
-  return schema.parse(normalized);
+  const parsed = schema.parse(normalized);
+  // Inject discriminator post-parse (B21: vault YAML has no `type:` key — type
+  // is derived from file-path zone, not embedded in the frontmatter).
+  return { ...parsed, type: zone } as typeof parsed & { type: ArtifactZone };
 }
 
 /**

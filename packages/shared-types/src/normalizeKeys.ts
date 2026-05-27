@@ -5,6 +5,11 @@
  */
 export function normalizeKeys<T>(obj: T): T {
   if (obj === null || obj === undefined) return obj;
+  // YAML 1.1 parsers (js-yaml default) auto-convert ISO date strings to Date objects.
+  // The vault stores dates as strings; coerce back so z.string() schemas accept them.
+  if (obj instanceof Date) {
+    return obj.toISOString().slice(0, 10) as unknown as T;
+  }
   if (Array.isArray(obj)) {
     return obj.map(normalizeKeys) as unknown as T;
   }

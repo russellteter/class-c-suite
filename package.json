@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@10.33.4",
   "engines": {
-    "node": ">=22.0.0 <23.0.0",
+    "node": ">=22.0.0",
     "pnpm": ">=10.0.0"
   },
   "workspaces": [
@@ -12,9 +12,16 @@
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "pnpm -r exec tsc --noEmit",
-    "lint": "pnpm -r lint",
-    "test:unit": "pnpm -r test:unit",
-    "test:integration": "pnpm -r test:integration"
+    "typecheck": "pnpm -r --parallel run typecheck",
+    "lint": "pnpm -r --parallel run lint",
+    "test:unit": "vitest run",
+    "test:integration": "echo 'no integration tests at Ch.0'"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.0",
+    "typescript": "^5.8.0",
+    "@types/node": "^22.0.0",
+    "js-yaml": "^4.1.0",
+    "@types/js-yaml": "^4.0.9"
   }
 }
