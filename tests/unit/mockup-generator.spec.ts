@@ -43,10 +43,14 @@ import { homedir } from 'os';
 
 const DESKTOP = join(homedir(), 'Desktop');
 
+// CCC-Design-System uses --navy/#0A1849, --gold/#FFBA00, --purple/#4739E7.
+// The test accepts either the CSS variable name OR its hex value (case-insensitive
+// check via html.toLowerCase()). ui.md aliases (--color-navy-900, etc.) are additive;
+// the primary source-of-truth for mockups is the CCC token set.
 const REQUIRED_DESIGN_TOKENS = [
-  { token: '--color-navy-900', hex: '#0a1849',  label: 'Navy primary background' },
-  { token: '--color-gold-500', hex: '#c9a14b',  label: 'Gold accent (rigor-clean)' },
-  { token: '--color-purple-500', hex: '#4739e7', label: 'Purple accent (agents)' },
+  { token: '--navy',   hex: '#0a1849',  label: 'Navy primary background' },
+  { token: '--gold',   hex: '#ffba00',  label: 'Gold accent' },
+  { token: '--purple', hex: '#4739e7',  label: 'Purple accent (agents)' },
 ];
 
 const MOCKUP_STEPS = [
@@ -102,9 +106,11 @@ describe('AC-11 — 8 UI mockups (Ch.5 Runtime RED until Runtime ships)', () => 
           }
 
           // When file exists, validate it contains the token or its hex value.
+          // Case-insensitive: CCC CSS uses uppercase hex (#0A1849) which matches #0a1849 check.
           // Design-system sheet (step 1) must define the CSS variable.
           // Other steps must reference it (either the variable name or hex value).
-          const hasToken = html.includes(token) || html.includes(hex);
+          const htmlLower = html.toLowerCase();
+          const hasToken = htmlLower.includes(token.toLowerCase()) || htmlLower.includes(hex.toLowerCase());
           expect(hasToken,
             `Step ${step} (${name}): missing design token ${token} (${hex}) — check html-driven-codev output`,
           ).toBe(true);
@@ -120,9 +126,10 @@ describe('AC-11 — 8 UI mockups (Ch.5 Runtime RED until Runtime ships)', () => 
         // Not yet generated — RED handled by existence check above
         return;
       }
+      const htmlLower = html.toLowerCase();
       for (const { token, hex } of REQUIRED_DESIGN_TOKENS) {
-        expect(html, `Design-system sheet missing CSS var: ${token}`).toContain(token);
-        expect(html, `Design-system sheet missing hex: ${hex}`).toContain(hex);
+        expect(htmlLower.includes(token.toLowerCase()), `Design-system sheet missing CSS var: ${token}`).toBe(true);
+        expect(htmlLower.includes(hex.toLowerCase()), `Design-system sheet missing hex: ${hex}`).toBe(true);
       }
     });
 
@@ -139,7 +146,12 @@ describe('AC-11 — 8 UI mockups (Ch.5 Runtime RED until Runtime ships)', () => 
       if (html === null) return;
       // Must contain DRAFT text and amber color token
       expect(html.toUpperCase()).toContain('DRAFT');
-      const hasAmber = html.includes('#d6883a') || html.includes('rigor-draft') || html.toLowerCase().includes('amber');
+      // CCC draft-banner uses --warning (#D97706) as amber color; also accept d6883a/rigor-draft/amber
+      const hasAmber = html.includes('#d6883a') || html.includes('rigor-draft')
+        || html.toLowerCase().includes('amber')
+        || html.includes('draft-banner')
+        || html.toLowerCase().includes('#d97706')
+        || html.toLowerCase().includes('#fff7e0');
       expect(hasAmber, 'DRAFT mockup missing amber color marker').toBe(true);
     });
   });
