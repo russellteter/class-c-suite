@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Required for Electron / hardened runtime -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <!-- Required for Node.js native modules under hardened runtime -->
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <!-- Required if app uses V8's JIT compiler (Electron always does) -->
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <!-- Network client access (MCP servers, API calls) -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <!-- Network server (MCP stdio bridge listens on localhost) -->
+  <key>com.apple.security.network.server</key>
+  <true/>
+</dict>
+</plist>
