@@ -1,0 +1,50 @@
+{
+  "_comment": "Canary stub fixture for the Verifier planted-claim test (ADR-0005 §5). Captured via STUB_MODE=record against canary-memo.md. The $43M claim in the Executive Summary has no source_id in the tool-call audit trail, so it MUST appear in claims_unverified. The sourced $1.2M pipeline claim (sf-opportunity-q3-renewals) MUST NOT appear in claims_unverified. ship_status MUST be 'draft'.",
+  "rigor_score": 52,
+  "ship_status": "draft",
+  "dimensions": {
+    "claim_source": {
+      "score": 17,
+      "claims_total": 2,
+      "claims_verified": 1,
+      "claims_unverified": [
+        {
+          "claim_excerpt": "Q3 ARR was $43M.",
+          "issue": "no source_id — quantitative dollar claim requires a tool-call citation. No corresponding entry in the tool-call audit trail."
+        }
+      ]
+    },
+    "coverage": {
+      "score": 15,
+      "lenses_run": ["CEO", "CFO", "CRO", "CMO", "CPO", "COS"],
+      "lenses_cited_in_memo": ["CRO"],
+      "missing_findings": [
+        "CEO lens findings absent from memo body",
+        "CFO cash-lever analysis absent from memo body",
+        "CMO comms risk absent from memo body",
+        "CPO product viability signal absent from memo body",
+        "COS execution sequencing absent from memo body"
+      ]
+    },
+    "red_team": {
+      "score": 10,
+      "addressed": 1,
+      "unaddressed": 0,
+      "unaddressed_details": []
+    },
+    "calibration": {
+      "score": 15,
+      "stale_position_citations": []
+    },
+    "falsifier": {
+      "score": 10,
+      "present": true,
+      "quality": "perfunctory"
+    }
+  },
+  "failure_reasons": [
+    "claim_source: unsourced quantitative claim '$43M' in Executive Summary has no source_id in tool-call audit trail"
+  ],
+  "draft_path_recommendation": "canary-run-fixture-001.draft.md",
+  "verifier_notes": "Planted canary claim detected. ship_status correctly set to draft. Sourced claim sf-opportunity-q3-renewals ($1.2M weighted) correctly verified. Anti-sycophancy guard operational."
+}
