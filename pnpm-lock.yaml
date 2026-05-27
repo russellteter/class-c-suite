@@ -60,6 +60,9 @@ importers:
 
   apps/renderer:
     dependencies:
+      '@c-suite/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared-types
       react:
         specifier: ^18.3.0
         version: 18.3.1

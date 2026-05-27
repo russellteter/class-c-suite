@@ -1,2 +1,19 @@
 // apps/renderer/src/index.tsx
-// Electron renderer entry point. Wired in Ch.5 (first end-to-end slice).
+// Source: docs/decisions/0002-ch1-process-architecture.md §1
+// React 18 entry point for the renderer process.
+// Subscribes to IPC events via the typed csIpc surface exposed by preload.ts.
+
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { App } from './App.js';
+
+const container = document.getElementById('root');
+if (!container) {
+  throw new Error('Renderer: missing #root element in index.html');
+}
+
+createRoot(container).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
