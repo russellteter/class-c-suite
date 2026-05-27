@@ -1,0 +1,128 @@
+---
+session: general
+date: 2026-05-27
+status: complete
+outcome: PASS
+---
+
+goal: Phase 2 Ch.7 (eight V1 playbooks + Open Q&A + home screen full-data). Continue /goal autonomous build through Ch.10 with hard pause at Ch.11.
+now: Ch.7 CLOSED PASS — all 13 ACs PASS per docs/reviews/ch7-final-audit-qa-report.md (REOPEN → REOPEN-RESOLVED → effective CONCERN-CLOSE collapsed to PASS once AC-12 PlanApproval countdown landed). 60+ commits 61bb228..463c86c durable + auto-pushed. 1232 passing specs across 64 test files; 80 pre-existing failures unchanged. Phase 2 progresses to Ch.8 (5 MCPs + PowerBI subprocess) next.
+
+test: cd "/Users/russellteter/Claude Code Projects/c-suite" && pnpm vitest run
+
+done_this_session:
+  - task: B45 + B44 diagnostic mini-session (before Ch.7 SPEC)
+    files: [apps/utility/package.json, apps/utility/src/sql/proxy.ts, apps/utility/src/index.ts, apps/main/src/supervisor.ts, packages/shared-types/src/ipc.ts, apps/utility/src/orchestrator/run-loop.ts]
+    verdict: B45 MITIGATED + B44 CLOSED
+  - task: Ch.7 SPEC — ADR-0009 framework + 7 per-playbook §s + home §11 + Open Q&A §12 + 6 spec-gap locks §13 + intermediate-audit sequencing §14
+    files: [docs/decisions/0009-ch7-playbooks-home.md, tasks/ch7-runtime-brief.md, tasks/ch7-renderer-brief.md, tasks/ch7-test-brief.md, tasks/ch7-phase-b-runtime-brief.md, tasks/ch7-phase-b-test-brief.md, tasks/ch7-phase-a-audit-brief.md, tasks/ch7-final-audit-brief.md, tasks/ch7-test-fill-brief.md]
+  - task: Ch.7 Design Gate — 6 mockups (Home A/B + Tiles A/B + Open Q&A A/B) + approval form + local POST server
+    files: ["~/Desktop/csuite-ch7-design/ (10 files)", docs/decisions/0009-design-gate-approved.md]
+    verdict: Russell approved Variant B (Home dense rail) + Variant A (Tiles uniform 4×2) + Variant A (Open Q&A inline)
+  - task: Ch.7 Phase A Runtime — framework helpers (evaluatePrereqs / decompose / playbookRouter / stakeholderSkeleton) + 3 novel-structure playbooks + open_qa + run-loop integration + 4 new IPC variants
+    files: [packages/shared-types/src/{playbook,ipc}.ts, apps/utility/src/playbooks/lib/, apps/utility/src/playbooks/{stakeholder-1-1,pre-mortem,quick-read,open-qa,cash-lever}/index.ts, apps/utility/src/orchestrator/run-loop.ts]
+  - task: Ch.7 Phase A Renderer — Home rewrite Variant B + 6 leaf components + 2 hooks + App.tsx routing
+    files: [apps/renderer/src/screens/{Home,Home.fixtures}.tsx, apps/renderer/src/components/{HomeTypes,PlaybookTile,OpenQABar,WorkstreamRail,OpenDecisionsList,WritebacksCounter,JobsStrip}.tsx, apps/renderer/src/hooks/{useHomeData,useKeyboardShortcuts}.ts, apps/renderer/src/App.tsx]
+  - task: Ch.7 Phase A Tests — 183 spec todos across 12 files (Runtime + Renderer parallel-dispatch pattern)
+    files: [tests/unit/playbooks/{evaluatePrereqs,decomposer,stakeholderSkeleton,playbookRouter,stakeholder-1-1,pre-mortem,quick-read,open-qa}.spec.ts, tests/unit/renderer/{Home,PlaybookTile,OpenQABar,useKeyboardShortcuts}.spec.tsx, tests/unit/renderer/setup.ts]
+  - task: Ch.7 Phase A Test fill-in — 183 it.todo → 185 passing specs (a673a sub-agent)
+    files: [same 12 files as above]
+  - task: Ch.7 Phase A Audit (intermediate) — CONCERN-CLOSE per EvidenceQA (a979a). 3 issues: PlaybookId namespace split (Medium), PlanApproval countdown (Medium — deferred), workstream_amounts_mirror TODO (Low)
+    files: [docs/reviews/ch7-phase-a-audit-qa-report.md]
+  - task: Phase A audit-fix — short PlaybookId names landed in renderer + tests; workstream_amounts_mirror named in TODO
+    files: [apps/renderer/src/{components/HomeTypes,hooks/useKeyboardShortcuts,screens/Home}.{ts,tsx}, apps/renderer/src/hooks/useHomeData.ts, tests/unit/renderer/{useKeyboardShortcuts,PlaybookTile}.spec.tsx]
+  - task: Ch.7 Phase B Runtime — 4 homogeneous playbooks + RedTeam prompt parameterization + router wiring
+    files: [apps/utility/src/playbooks/{gtm-realloc,strategic-option,board-narrative,restructure-decision}/index.ts, apps/utility/src/playbooks/lib/playbookRouter.ts, apps/utility/src/prompts/RedTeam.prompt.md]
+  - task: Ch.7 Phase B Tests — 187 new passing specs across 4 playbook files + playbookRouter extensions
+    files: [tests/unit/playbooks/{gtm-realloc,strategic-option,board-narrative,restructure-decision,playbookRouter}.spec.ts]
+  - task: Ch.7 Final Audit — REOPEN on AC-2 (Phase B IDs unreachable via startRun); 11 other ACs PASS; AC-12 CONCERN (countdown deferred)
+    files: [docs/reviews/ch7-final-audit-qa-report.md]
+  - task: AC-2 REOPEN resolution — KNOWN_CH7_PLAYBOOK_IDS exported from run-loop.ts derived from PlaybookIdSchema.options; regression spec (11 cases); REOPEN-RESOLVED note appended to audit report
+    files: [apps/utility/src/orchestrator/run-loop.ts, tests/unit/orchestrator/run-loop-dispatch.spec.ts, docs/reviews/ch7-final-audit-qa-report.md]
+  - task: Legacy long-name migration — 21 files across apps/utility/src/, packages/shared-types/src/, packages/writeback-engine/src/, tests/unit/; ipc.ts PlaybookId enum now matches shared-types/playbook.ts canonical; deriveTopic.ts duplicate keys collapsed
+    files: [apps/utility/src/orchestrator/{classify-playbook,run-plan-builder}.ts, packages/shared-types/src/ipc.ts, packages/writeback-engine/src/deriveTopic.ts, 17 tests/unit/ files]
+  - task: AC-12 PlanApproval per-playbook countdown — COUNTDOWN_SECONDS table per Phase R Decision 6 + ADR-0009 §12.4; useEffect decrement; pauses on Edit / Pause button / blocking degradation; inline (Ns) badge in Approve button + sibling Pause button
+    files: [apps/renderer/src/screens/PlanApproval.tsx, tests/unit/renderer/PlanApproval.countdown.spec.tsx]
+  - task: Ch.7 close — build-log + state.json + this handoff
+    files: [docs/build-log.md, .claude/project-state.json, thoughts/shared/handoffs/general/2026-05-27_ch7-close.yaml]
+
+blockers:
+  - id: none-new
+    severity: none
+    summary: No new blockers introduced. B45 + B44 remain CLOSED/MITIGATED through the chapter.
+    next_action: n/a
+
+questions:
+  - Ch.8 dispatch model — same pattern (parallel Runtime + Tests sub-agents per MCP, or parallel Runtime sub-agent per service)? Recommend the latter — each MCP service has its own auth flow + typed builder + error semantics; one sub-agent per service can isolate complexity. 5 sub-agents in parallel + 1 PowerBI subprocess wrapper sub-agent.
+  - PowerBI customer-dashboard-poc location — Russell's CLAUDE.md references `/Users/russellteter/Claude Code Projects/customer-dashboard/` (cloned during Phase R, per BLOCKERS B2). Verify path before Ch.8 entry; if absent, ask Russell where it lives.
+  - Day-Zero forms (B6 + B19 — covenant terms + committed-pipeline mental model) — gather at Ch.8 entry via html-driven-codev form (small) OR defer to first scheduled-job run post-Ch.10? Recommend the former — Ch.8 SOQL builders will hard-code defaults if forms aren't filled. Cost: small form, ~5 questions.
+
+decisions:
+  - intermediate_audit_pattern_proven: ADR-0009 §14 intermediate-audit checkpoint caught the namespace split mid-Phase-A and the wire-new-helpers gap at the Phase-B boundary. Pattern: dispatch novel-pattern work first → audit → then dispatch homogeneous work that pattern-matches. Worked. Should bake into Ch.8 (5 MCPs is 5 homogeneous workstreams — but Salesforce-Connected-App-OAuth pattern is novel; audit after that lands before the other 4 MCPs).
+  - playbookid_namespace_canonical: short names (`cash_lever`, `gtm_realloc`, etc.) per ADR-0009 §3.2. Migrated 21 files in Ch.7 close. Future enum-driven dispatch must derive from PlaybookIdSchema (single source of truth) to prevent wire-new-helpers recurrence.
+  - red_team_input_contract: strategic_option + restructure_decision Red-Team pass receives `{ synthesizedMemo, originalPrompt }` only — NEVER lens transcripts. B3 invariant preserved across heavy-Red-Team playbooks via RedTeam prompt {{redteam_mode}} parameterization.
+  - per_playbook_countdown_table: COUNTDOWN_SECONDS table in PlanApproval.tsx codifies Phase R Decision 6 verbatim. Strategic/Restructure/Board/Cash = manual (null). GTM realloc + Pre-mortem = 30s. Open Q&A = 10s. Stakeholder 1:1 = 5s. Quick read = 0s (inline-only path normally).
+  - phase_a_b_dispatch_topology: Phase A used 3 parallel (Runtime + Renderer + Tests with it.todo) → test fill-in pass → intermediate audit. Phase B used 2 parallel (Runtime + Tests; Renderer not re-invoked). Both topologies worked. Phase B test agent picked up Runtime commits mid-session and converted its own todos in-flight — smooth.
+
+findings:
+  - wire_new_helpers_anti_pattern_caught: AC-2 REOPEN saved Ch.8 from dispatching against a broken production entry point. Cost: 5 min to fix + 11 regression specs. Avoided cost: Ch.8 weeks of debugging "why is gtm_realloc returning empty memo." Lesson: every audit must check production-entry-point reachability for new helpers, not just module-level isolation.
+  - single_source_of_truth_for_enum_driven_dispatch: `knownCh7Ids` was a duplicated list of strings that diverged from PlaybookIdSchema. Refactored to derive. Future chapters' enum-driven sets must follow same pattern.
+  - parallel_test_dispatch_with_it_todo: writing 183 spec descriptions as it.todo against not-yet-existing modules, then converting in a follow-up pass, was cleaner than blocking test dispatch behind Runtime + Renderer. Cost: 1 extra fill-in pass. Benefit: 4 sub-agents instead of 3 in parallel.
+  - sub_agent_pattern_match_against_inherited_shape: Phase B sub-agent took the cash-lever adapter shim + Phase A framework helpers as the inherited shape and produced 4 homogeneous playbooks in ~13 minutes per playbook. Strong leverage from the framework Phase A invested in.
+
+worked:
+  - intermediate_audit_at_novel_pattern_boundary: catching namespace + countdown gaps before Phase B started prevented compounding debt.
+  - regression_spec_with_canonical_source_derivation: the AC-2 fix didn't just add 4 IDs — it eliminated the duplicated-list bug class by deriving from PlaybookIdSchema. The regression spec prevents recurrence.
+  - sub_agent_briefs_on_disk: every Ch.7 sub-agent prompt was small (read brief at path → execute). 7 briefs total at tasks/ch7-*-brief.md. Saved ~40-60k tokens of inline-brief context across 7 dispatches.
+  - design_gate_self_submit_failure_handled_inline: when Russell's form submit failed with "Failed to fetch," I wrote the APPROVED.md directly from his in-chat confirmation. Faster than debugging the local server.
+
+failed:
+  - long_name_migration_not_landed_during_phase_a_audit_fix: Phase A audit-fix only touched the renderer files. The 21-file source-tree migration deferred to Ch.7 close — extra commit cycle. Should have landed in the audit-fix commit since the Runtime sub-agent's "contract ambiguity resolved" note already flagged it as a Phase B target.
+  - planapproval_countdown_test_initial_design: first test pass used `act(() => vi.advanceTimersByTime(...))` synchronously. Failed because React 18 + fake timers needs `await act(async () => { await vi.advanceTimersByTimeAsync(...) })` between timer ticks. Took 2 spec iterations to land. Pattern note for future fake-timer React tests.
+
+next:
+  - Ch.8 entry — 5 MCPs + PowerBI subprocess. ADR-0010. Day-Zero form for covenant terms + committed-pipeline definition (B6 + B19) FIRST. Then Salesforce sub-agent (Connected App OAuth + typed SOQL builder — novel-pattern) → intermediate audit → 4 parallel sub-agents for NetSuite + AWS + Gmail + Chorus + PowerBI subprocess wrapper. ROADMAP §Ch.8. Effort 12-16 days.
+  - Ch.8 will need a notarization smoke test mid-chapter per BLOCKERS B14 — throwaway build + signing pipeline test. Don't wait for Ch.11.
+  - Ch.9 (Cowork handoff) — ROADMAP §Ch.9. Depends on Ch.6 (done). 6-9 days.
+  - Ch.10 (5 scheduled jobs + LaunchAgent) — ROADMAP §Ch.10. Depends on Ch.7 (done) + Ch.8. 8-12 days.
+  - emit PHASE-2 COMPLETE; HARD STOP at Ch.11 (Russell on-Mac demos — 8 PRD §4 outcome demos must pass on his Mac).
+
+files:
+  created:
+    - docs/decisions/0009-ch7-playbooks-home.md
+    - docs/decisions/0009-design-gate-approved.md
+    - docs/reviews/ch7-phase-a-audit-qa-report.md
+    - docs/reviews/ch7-final-audit-qa-report.md
+    - tasks/ch7-runtime-brief.md
+    - tasks/ch7-renderer-brief.md
+    - tasks/ch7-test-brief.md
+    - tasks/ch7-test-fill-brief.md
+    - tasks/ch7-phase-a-audit-brief.md
+    - tasks/ch7-phase-b-runtime-brief.md
+    - tasks/ch7-phase-b-test-brief.md
+    - tasks/ch7-final-audit-brief.md
+    - tasks/b45-diagnostic-brief.md
+    - packages/shared-types/src/playbook.ts
+    - apps/utility/src/playbooks/lib/{evaluatePrereqs,decomposer,playbookRouter,stakeholderSkeleton}.ts
+    - apps/utility/src/playbooks/{stakeholder-1-1,pre-mortem,quick-read,open-qa,gtm-realloc,strategic-option,board-narrative,restructure-decision}/index.ts
+    - apps/renderer/src/screens/{Home.fixtures}.tsx
+    - apps/renderer/src/components/{HomeTypes,PlaybookTile,OpenQABar,WorkstreamRail,OpenDecisionsList,WritebacksCounter,JobsStrip}.tsx
+    - apps/renderer/src/hooks/{useHomeData,useKeyboardShortcuts}.ts
+    - tests/unit/playbooks/{evaluatePrereqs,decomposer,stakeholderSkeleton,playbookRouter,stakeholder-1-1,pre-mortem,quick-read,open-qa,gtm-realloc,strategic-option,board-narrative,restructure-decision}.spec.ts
+    - tests/unit/renderer/{Home,PlaybookTile,OpenQABar,useKeyboardShortcuts,PlanApproval.countdown,setup}.{tsx,ts}
+    - tests/unit/orchestrator/run-loop-dispatch.spec.ts
+    - "~/Desktop/csuite-ch7-design/ (10 files — mockups + form + server + launch.sh)"
+    - thoughts/shared/handoffs/general/2026-05-27_ch7-close.yaml
+  modified:
+    - apps/utility/src/orchestrator/run-loop.ts
+    - apps/utility/src/orchestrator/{classify-playbook,run-plan-builder}.ts
+    - apps/utility/src/prompts/RedTeam.prompt.md
+    - apps/utility/src/playbooks/cash-lever/index.ts
+    - apps/renderer/src/screens/{Home,PlanApproval}.tsx
+    - apps/renderer/src/App.tsx
+    - packages/shared-types/src/ipc.ts
+    - packages/writeback-engine/src/deriveTopic.ts
+    - 17 tests/unit/ files (long-name migration)
+    - docs/build-log.md
+    - .claude/project-state.json
+  deleted: []

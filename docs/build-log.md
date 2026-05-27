@@ -1200,3 +1200,63 @@ The gap between "architecture proven" and "first usable product" is the 3 NW ite
 **Verification.** Electron 33.4.11: `process_events` shows one `start` row, zero `crash` rows after 40s; clean `utility process exited cleanly` on SIGTERM. UTILITY_DIAG confirms `nodeVersion: v20.18.3, modulesAbi: 130, electronVersion: 33.4.11`. 68/68 writeback-engine tests green.
 
 **B44 status.** CLOSED. **B45 status.** MITIGATED. Ch.7 entry unblocked.
+
+---
+
+## Ch.7 — Eight Playbooks + Open Q&A + Home Screen (2026-05-27)
+
+**Verdict.** Effective CONCERN-CLOSE collapses to PASS once AC-12 countdown fix landed. All 13 ACs PASS.
+
+**Sequence (all in one autonomous session post-B45 close).**
+1. ADR-0009 written (`61bb228`) — framework §1-3 + per-playbook §4-10 + home §11 + Open Q&A §12 + 6 locked spec gaps §13 + intermediate audit checkpoint §14.
+2. Design gate built via html-driven-codev sub-agent — Russell approved Variant B (home dense rail) + Variant A (uniform 4×2 tiles + ⌘1-⌘8) + Variant A (inline Open Q&A). APPROVED.md committed.
+3. Phase A dispatched in parallel — Runtime (a18f6) + Renderer (a3c55) + Tests (ae940). 24 commits. 3 novel-structure playbooks (`stakeholder_1_1`, `pre_mortem`, `quick_read`) + `open_qa` + home + 6 leaf components + 2 hooks. 183 it.todo specs.
+4. Test fill-in sub-agent (a673a) — converted all 183 todos to passing assertions. 12 commits.
+5. **Intermediate Phase A audit** (a979a) — CONCERN-CLOSE: 11 PASS / 2 CONCERN. Surgical audit-fix landed: short PlaybookId names across renderer (HomeTypes / useKeyboardShortcuts / Home.tsx tile-catalogue) + renderer test specs; workstream_amounts_mirror named in useHomeData TODO. Phase A audit issue #2 (PlanApproval countdown) deferred.
+6. Phase B dispatched in parallel — Runtime (ab11d) + Tests (a078b). 15 commits. 4 homogeneous playbooks (`gtm_realloc`, `strategic_option`, `board_narrative`, `restructure_decision`) + RedTeam prompt parameterization + router wiring. 187 new passing specs.
+7. **Final Ch.7 audit** (a361) — verdict REOPEN on AC-2: Phase B IDs unreachable via startRun because run-loop's `knownCh7Ids` guard only contained Phase A. Classic wire-new-helpers anti-pattern.
+8. **AC-2 REOPEN resolution** — `knownCh7Ids` refactored into exported `KNOWN_CH7_PLAYBOOK_IDS` derived from `PlaybookIdSchema.options` (single source of truth — future PlaybookId additions auto-route). New regression spec (11 cases) at `tests/unit/orchestrator/run-loop-dispatch.spec.ts` guards against recurrence. Audit report updated with REOPEN-RESOLVED note.
+9. **Legacy long-name migration** — 21 files across `apps/utility/src/`, `packages/shared-types/src/`, `packages/writeback-engine/src/`, `tests/unit/`. ipc.ts PlaybookId enum now matches shared-types/playbook.ts canonical. deriveTopic.ts duplicate-keys collapsed. Unblocks Ch.8 IPC wiring.
+10. **AC-12 countdown** — PlanApproval per-playbook auto-approve countdown per Phase R Decision 6 + ADR-0009 §12.4. COUNTDOWN_SECONDS table (manual / 5s / 10s / 30s / null) drives useEffect-based decrement; pauses on Edit, Pause button, or blocking degradation. Inline (Ns) badge in Approve button + Pause sibling. 10 new specs all green.
+
+**Total commits this chapter.** 60+ from `61bb228` (ADR) through `463c86c` (countdown), all auto-pushed to origin/main.
+
+**Test suite delta.** Started Ch.7 at ~1041 passing / 80 failed (pre-existing better-sqlite3 ABI + RED stubs). Ended Ch.7 at 1232 passing / 80 failed (unchanged). +191 net new specs across 14 new spec files. Zero regressions.
+
+**Sub-agent topology that worked.**
+- Phase A: 3 parallel (Runtime + Renderer + Tests) with file-scope discipline; tests used `it.todo` for not-yet-existing modules.
+- Phase A test fill-in: serial after Runtime + Renderer shipped.
+- Intermediate audit: solo EvidenceQA.
+- Phase B: 2 parallel (Runtime + Tests) — Renderer wasn't re-invoked (no UI gaps surfaced; home tiles already render Phase B with `blocked` state).
+- Test agent picked up Runtime's commits mid-session and converted its own todos to real specs in flight. Smooth.
+
+**Spec-gap decisions locked in ADR-0009 §13 (all verified in implementation).**
+- §13.1 Cmd+1..Cmd+8 + Cmd+/ — useKeyboardShortcuts.ts.
+- §13.2 Home substrate per-section degradation (placeholders for Ch.8 MCPs + Ch.10 scheduler) — wired with TODOs.
+- §13.3 Workstream mini-view source = workstream_amounts_mirror SQLite — TODO documents the source.
+- §13.4 Stakeholder-skeleton fallback verbatim from Phase R Decision 4 — stakeholderSkeleton.ts + stakeholder-1-1/index.ts.
+- §13.5 Quick-read no rigor score (token meter only) — quick-read/index.ts.
+- §13.6 Open Q&A both displayed (capped) + raw scores — open-qa/index.ts + PlaybookResult.
+
+### Blocker deltas
+| ID | Action | Old status | New status | Note |
+|---|---|---|---|---|
+| B45 | re-verified | MITIGATED | MITIGATED | utility stable through Ch.7 build + audit cycles |
+| B44 | re-verified | CLOSED | CLOSED | tsc clean across all 9 workspace projects |
+
+### Hard gates surfaced
+- None. Phase 2 continues; next: Ch.8.
+
+### Learnings for the next loop
+- **Single source of truth for IDs.** The `knownCh7Ids` bug was a duplicated-list problem. Refactored to derive from `PlaybookIdSchema.options`. Future enum-driven dispatch sets must derive from a single source.
+- **Intermediate audit checkpoint worked.** Catching the namespace split mid-Phase-A (before Phase B Runtime started) prevented Phase B from compounding the long-name debt. Cost: ~10 min of audit-fix. Avoided cost: full Phase B re-migration.
+- **`it.todo` in parallel test dispatch holds.** Test sub-agent dispatched alongside Runtime + Renderer wrote 183 todos against not-yet-existing modules; converted to real assertions in a follow-up pass. Cleaner than blocking dispatch sequencing.
+- **EvidenceQA's "wire-new-helpers" pattern detection is the highest-leverage audit signal.** AC-2 REOPEN saved Ch.8 from dispatching against a broken production entry point.
+
+### Files touched / commits this chapter
+- 60+ commits from `61bb228` (ADR) through `463c86c` (countdown) — all auto-pushed.
+- Key commits: `61bb228` (ADR), `7af1ceb-878b623` (renderer Phase A), `f3ca983-c8778e3` (runtime Phase A), `2d5ca42-9c9e871` (tests Phase A), `bc51a8f` (audit-fix #1), `e51438d-b5985fa` (runtime Phase B), `8ed24d4-eb73a23` (tests Phase B), `7f80e0d` (AC-2 fix + REOPEN-RESOLVED), `a3c3d2d` (long-name migration), `463c86c` (countdown).
+
+---
+
+[CH-7 COMPLETE 2026-05-27] All 8 V1 playbooks shipped + Open Q&A + home full-data. Effective verdict PASS (CONCERN-CLOSE collapsed after countdown landed). 1232 passing specs across the suite. Next: Ch.8 (5 MCPs + PowerBI subprocess).
