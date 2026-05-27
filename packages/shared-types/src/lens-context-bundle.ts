@@ -65,6 +65,11 @@ export function findCrossLensLeaks(
 /**
  * Returns a Zod schema for a lens context bundle that enforces lens isolation
  * at runtime by rejecting any bundle containing another lens's tagged output.
+ *
+ * Fix (B3 keystone): Zod v4 strips unknown keys before superRefine runs on
+ * z.object(). .passthrough() preserves unknown keys so findCrossLensLeaks
+ * sees them inside superRefine. Defense-in-depth: also use buildLensContextBundle()
+ * which pre-checks raw input before Zod parse.
  */
 export function buildLensContextBundleSchema<R extends LensRole>(
   role: R,
@@ -75,7 +80,7 @@ export function buildLensContextBundleSchema<R extends LensRole>(
     question: z.string(),
     playbook: z.string(),
     contextDocuments: z.array(ContextDocumentSchema),
-  }).superRefine((data, ctx) => {
+  }).passthrough().superRefine((data, ctx) => {
     const violations = findCrossLensLeaks(data, role, '$');
     for (const v of violations) {
       ctx.addIssue({
@@ -84,6 +89,27 @@ export function buildLensContextBundleSchema<R extends LensRole>(
       });
     }
   }) as unknown as z.ZodType<LensContextBundle<R>>;
+}
+
+/**
+ * Defense-in-depth entry point for building a validated LensContextBundle.
+ * Pre-checks raw input for cross-lens leaks BEFORE Zod strips unknown keys,
+ * then runs schema validation. Throws LensIsolationViolation on the first leak.
+ *
+ * Callers should use this instead of buildLensContextBundleSchema(role).parse().
+ */
+export function buildLensContextBundle<R extends LensRole>(
+  role: R,
+  raw: unknown,
+): LensContextBundle<R> {
+  // Layer 1: pre-check raw input before Zod strips unknown keys
+  const violations = findCrossLensLeaks(raw, role, '$');
+  if (violations.length > 0) {
+    const first = violations[0];
+    throw new LensIsolationViolation(role, first.leakedRole, first.path);
+  }
+  // Layer 2: schema validation (also enforces isolation via .passthrough() + superRefine)
+  return buildLensContextBundleSchema(role).parse(raw);
 }
 
 // Re-export for convenience
