@@ -14,16 +14,16 @@
 
 set -uo pipefail
 
-VAULT_PATH="/Users/russellteter/Documents/Claude/Projects/Business Planning"
+VAULT_PATH="${VAULT_PATH:-/Users/russellteter/Documents/Claude/Projects/Business Planning}"
 # Both names possible — PRD originally said "-poc"; actual GH repo dropped the suffix.
 POC_PATHS=(
   "/Users/russellteter/Claude Code Projects/customer-dashboard"
   "/Users/russellteter/Claude Code Projects/customer-dashboard-poc"
 )
-SKILLS_DIR="$HOME/.claude/skills"
+SKILLS_DIR="${SKILLS_DIR:-$HOME/.claude/skills}"
 EXTRACTED_SKILLS_FILE="/Users/russellteter/Documents/Claude/Projects/Business Planning/_extracted_skills_for_c_suite.md"
 
-QUIET=0; FIX_HOOKS=0
+QUIET=0; FIX_HOOKS=0; TEST_MODE="${PREFLIGHT_TEST_MODE:-0}"
 for arg in "$@"; do
   case "$arg" in
     --quiet) QUIET=1 ;;
@@ -92,12 +92,15 @@ else
   green "Vault not Google-Drive-synced"
 fi
 
-if [ -f "$VAULT_PATH/C_Suite_PRD.md" ]; then
-  green "Vault contains C_Suite_PRD.md (source of truth)"
-else
-  fail "Vault does NOT contain C_Suite_PRD.md — source corpus not where expected"
+if [ "$TEST_MODE" = "0" ]; then
+  if [ -f "$VAULT_PATH/C_Suite_PRD.md" ]; then
+    green "Vault contains C_Suite_PRD.md (source of truth)"
+  else
+    fail "Vault does NOT contain C_Suite_PRD.md — source corpus not where expected"
+  fi
 fi
 
+if [ "$TEST_MODE" = "0" ]; then
 # -------- customer-dashboard (PowerBI; PRD §6 + mcp.md + decision #9) --------
 section "customer-dashboard (PowerBI)"
 POC_FOUND=""
@@ -150,6 +153,7 @@ if [ -n "${NODE_MAJOR:-}" ] && [ "$NODE_MAJOR" -ge 20 ]; then
 else
   warn "node major version $NODE_MAJOR — Electron 28+ requires Node 20+"
 fi
+fi   # end TEST_MODE=0 block
 
 # -------- Skills referenced in PRD/CLAUDE.md/DOCTRINE.md --------
 section "Skills"
@@ -164,13 +168,16 @@ for s in "${EXPECTED_OPLOGIC[@]}"; do
   if [ -d "$SKILLS_DIR/$s" ]; then green "skill: $s"; else fail "skill: $s NOT installed (op-logic; BLOCKERS B17)"; fi
 done
 # infra skills may live outside ~/.claude/skills (e.g. as MCP plugins); soft-check
-for s in "${EXPECTED_INFRA[@]}"; do
-  if grep -ril "name: $s" ~/.claude/ 2>/dev/null | head -1 >/dev/null; then
-    green "skill/plugin: $s reachable"
-  else
-    warn "skill/plugin: $s not found — confirm via /agents or plugin manager"
-  fi
-done
+# Skipped in PREFLIGHT_TEST_MODE (recursive ~/.claude/ search is slow in CI)
+if [ "$TEST_MODE" = "0" ]; then
+  for s in "${EXPECTED_INFRA[@]}"; do
+    if grep -ril "name: $s" ~/.claude/ 2>/dev/null | head -1 >/dev/null; then
+      green "skill/plugin: $s reachable"
+    else
+      warn "skill/plugin: $s not found — confirm via /agents or plugin manager"
+    fi
+  done
+fi
 
 # -------- Skill body line-count check (BLOCKERS B29) --------
 section "Skill body line-counts (B29 truncation detector)"
@@ -194,6 +201,7 @@ for skill in "${EXPECTED_OP_SKILLS[@]}"; do
   fi
 done
 
+if [ "$TEST_MODE" = "0" ]; then
 # -------- Git hooks (auto-push durability) --------
 section "Git hooks"
 if [ -x "hooks/post-commit" ]; then green "hooks/post-commit present + executable"; else fail "hooks/post-commit missing or not executable"; fi
@@ -215,6 +223,7 @@ if git ls-remote origin HEAD >/dev/null 2>&1; then
 else
   fail "origin not reachable — auto-push will fail; check network + 'gh auth status'"
 fi
+fi   # end TEST_MODE=0 block
 
 # -------- Summary --------
 section "Summary"

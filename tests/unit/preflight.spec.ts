@@ -35,7 +35,10 @@ function makeTempDir(prefix: string): string {
 
 function runPreflight(env: Record<string, string>): { exitCode: number; stdout: string; stderr: string } {
   const result = spawnSync('bash', [PREFLIGHT_SCRIPT], {
-    env: { ...process.env, ...env },
+    // PREFLIGHT_TEST_MODE=1 skips network calls (git ls-remote) and
+    // production-path checks (PRD file, customer-dashboard, git hooks)
+    // that are irrelevant in the isolated temp-dir test environment.
+    env: { ...process.env, PREFLIGHT_TEST_MODE: '1', ...env },
     encoding: 'utf8',
     timeout: 15000,
   });
