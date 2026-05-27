@@ -26,6 +26,10 @@ function remapJsToTs(): Plugin {
 
 export default defineConfig({
   plugins: [remapJsToTs()],
+  esbuild: {
+    jsx: 'automatic',
+    jsxImportSource: 'react',
+  },
   test: {
     include: ['tests/unit/**/*.spec.ts', 'tests/unit/**/*.spec.tsx'],
     exclude: ['**/node_modules/**', '**/dist/**'],
@@ -74,6 +78,11 @@ export default defineConfig({
       '@c-suite/writeback-engine': resolve(__dirname, 'packages/writeback-engine/src/index.ts'),
       // Normalize electron resolution so vi.mock('electron') intercepts all importers.
       'electron': resolve(__dirname, 'apps/main/node_modules/electron/index.js'),
+      // React lives in apps/renderer/node_modules — expose to vitest running from root.
+      'react': resolve(__dirname, 'apps/renderer/node_modules/react'),
+      'react-dom': resolve(__dirname, 'apps/renderer/node_modules/react-dom'),
+      'react-dom/client': resolve(__dirname, 'apps/renderer/node_modules/react-dom/client'),
+      'react/jsx-runtime': resolve(__dirname, 'apps/renderer/node_modules/react/jsx-runtime'),
     },
   },
 });
