@@ -24,28 +24,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { IpcMessage } from '@c-suite/shared-types/ipc';
 import { validateIpc } from '@c-suite/shared-types/ipc';
 
-// Production module — does not exist yet; import will fail until Runtime ships.
-// import { Scheduler } from '../../../apps/utility/src/scheduler.js';
-
-// Minimal stub so TypeScript compiles the test file now.
-// Runtime replaces this with the real module; delete the stub at that point.
-class Scheduler {
-  constructor(_windowCap: number, _emitIpc: (msg: IpcMessage) => void) {
-    throw new Error('Scheduler not implemented — Runtime dispatch pending');
-  }
-  canDispatch(_estimatedTokens: number, _priority: 'interactive' | 'scheduled'): boolean {
-    throw new Error('not implemented');
-  }
-  dispatch(_invocation: unknown): Promise<unknown> {
-    throw new Error('not implemented');
-  }
-  reset(): void {
-    throw new Error('not implemented');
-  }
-  recordUsage(_invocationId: string, _tokensIn: number, _tokensOut: number, _costUsdRef?: number): void {
-    throw new Error('not implemented');
-  }
-}
+import { Scheduler } from '../../apps/utility/src/scheduler/scheduler.js';
 
 // ── §9 row 3 — Scheduler cap + degradation ──────────────────────────────────
 
