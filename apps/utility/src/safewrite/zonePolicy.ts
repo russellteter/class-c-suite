@@ -19,26 +19,31 @@ export interface ZonePolicy {
 
 /** Zone policy table keyed by ArtifactZone.
  *
- * 'decision', 'workstream', 'position' → high-concurrency shared zones (hashCheck=true).
- * Others → lower concurrency (hashCheck=false).
+ * Source: ADR §2.1 — verbatim alignment required.
  *
- * Source: ADR §2.1 + actual ArtifactZone enum from vault-schemas.ts.
+ * SHARED ZONES — concurrent Obsidian + Cowork writes are plausible.
+ * Hash-check required (B8). Git commit always.
+ *
+ * AGENT-EXCLUSIVE ZONES — only C-Suite writes these; external concurrent
+ * edit not expected. Skip hash-check; honor opts.commitVault.
+ * Source: ROADMAP.md line 77 ("agent-exclusive zones: predictions, investigations,
+ * deliverables, memos").
  */
 const ZONE_POLICY: Record<ArtifactZone, ZonePolicy> = {
-  // High-concurrency shared zones — multiple agents may write concurrently
-  decision:           { hashCheck: true,  commitVault: true },
-  workstream:         { hashCheck: true,  commitVault: true },
-  position:           { hashCheck: true,  commitVault: true },
-  prediction:         { hashCheck: true,  commitVault: true },
+  // SHARED ZONES
+  position:            { hashCheck: true,  commitVault: true  },
+  decision:            { hashCheck: true,  commitVault: true  },
+  workstream:          { hashCheck: true,  commitVault: true  },
+  stakeholder_person:  { hashCheck: true,  commitVault: true  },
+  stakeholder_account: { hashCheck: true,  commitVault: true  },
+  'pre-mortem':        { hashCheck: true,  commitVault: true  },
+  tripwire:            { hashCheck: true,  commitVault: true  },
+  competitor:          { hashCheck: true,  commitVault: true  },
 
-  // Lower-concurrency zones — single writer by construction in normal flows
-  stakeholder_person:  { hashCheck: false, commitVault: true },
-  stakeholder_account: { hashCheck: false, commitVault: true },
-  'pre-mortem':        { hashCheck: false, commitVault: true },
-  memo:                { hashCheck: false, commitVault: true },
-  handoff:             { hashCheck: false, commitVault: true },
-  tripwire:            { hashCheck: false, commitVault: true },
-  competitor:          { hashCheck: false, commitVault: true },
+  // AGENT-EXCLUSIVE ZONES
+  prediction:          { hashCheck: false, commitVault: false },
+  memo:                { hashCheck: false, commitVault: false },
+  handoff:             { hashCheck: false, commitVault: false },
 };
 
 /** Lookup zone policy. Returns undefined for zones not in the table. */

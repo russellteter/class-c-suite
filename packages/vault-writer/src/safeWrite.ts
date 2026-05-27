@@ -30,13 +30,18 @@ export class VaultNotInitializedError extends Error {
 // Source: ADR §2 + test AC-3 (position=hashCheck, memo/prediction/handoff=no hashCheck)
 // ---------------------------------------------------------------------------
 
-/** Zones where concurrent writes are possible — always hash-check. */
+/** Zones where concurrent writes are possible — always hash-check.
+ *  Source: ADR §2.1 shared-zone table (8 shared / 3 agent-exclusive).
+ */
 const HASH_CHECK_ZONES = new Set<ArtifactZone>([
   'position',
   'decision',
   'workstream',
   'stakeholder_person',
   'stakeholder_account',
+  'pre-mortem',
+  'tripwire',
+  'competitor',
 ]);
 
 function shouldHashCheck(zone: ArtifactZone): boolean {
