@@ -39,10 +39,12 @@ app.whenReady().then(() => {
   // Create renderer window.
   const win = createRendererWindow();
 
-  // Load renderer entry point (dev: index.html in apps/renderer; packaged: dist).
+  // Load renderer entry point.
+  // dev: __dirname = apps/main/dist → 2 levels up = apps/ → apps/renderer/index.html
+  // packaged: renderer assets ship under main's resources dir
   const rendererEntry = app.isPackaged
-    ? path.join(__dirname, '..', '..', 'renderer', 'index.html')
-    : path.join(__dirname, '..', '..', '..', 'renderer', 'index.html');
+    ? path.join(__dirname, '..', 'renderer', 'index.html')
+    : path.join(__dirname, '..', '..', 'renderer', 'index.html');
   win.loadFile(rendererEntry).catch((err) => {
     log.error({ message: 'failed to load renderer', err: String(err) });
   });
