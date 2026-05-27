@@ -30,8 +30,8 @@ pnpm-debug.log*
 # Node
 node_modules/
 dist/
-build/
 out/
+# build/ intentionally NOT excluded — build/entitlements.mac.plist must be tracked
 .next/
 coverage/
 .turbo/

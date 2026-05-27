@@ -1,0 +1,21 @@
+appId: com.classedu.csuite
+productName: C-Suite
+artifactName: "${productName}-${version}-${arch}.${ext}"
+directories:
+  output: dist
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # notarize: true  # ADR §1.4: uses @electron/notarize via afterSign — Ch.11 wires
+
+dmg:
+  sign: false
+
+# afterSign: scripts/notarize.cjs  # ADR §1.4: Ch.11 implements via @electron/notarize

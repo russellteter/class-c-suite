@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- REQUIRED: V8 JIT — ADR §1.4 + R2 §Area 7 [verified 2026-05-26] -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+
+  <!-- com.apple.security.cs.disable-library-validation:
+       OMIT by default — add only if pre-built better-sqlite3 signing fails (Ch.11).
+       ADR §1.4: "defer to Ch.11 hardening; default OMIT." -->
+
+  <!-- com.apple.security.cs.allow-unsigned-executable-memory:
+       OMIT by default — add only if utility process uses allowLoadingUnsignedLibraries.
+       ADR §1.4: "default FALSE → omit." -->
+</dict>
+</plist>
