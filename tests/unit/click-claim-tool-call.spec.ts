@@ -39,10 +39,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
 
-// ── Runtime import (uncomment when Ch.5 Runtime ships) ──────────────────────
-// import {
-//   queryToolCallBySourceId,
-// } from '../../apps/utility/src/db/tool-calls.js';
+// ── Runtime import — Ch.5 Runtime shipped ───────────────────────────────────
+import {
+  queryToolCallBySourceId,
+} from '../../apps/utility/src/db/tool-calls.js';
 
 // ── Test SQLite setup ─────────────────────────────────────────────────────────
 
@@ -159,12 +159,11 @@ describe('AC-7 — click-claim → tool-call result (Ch.5 Runtime RED)', () => {
 
   // ── RED — runtime function tests ─────────────────────────────────────────
 
-  it('RED: queryToolCallBySourceId() returns correct row via runtime helper', () => {
-    // const result = await queryToolCallBySourceId(db, 'sf-pipeline-2026-05-27');
-    // expect(result).not.toBeNull();
-    // expect(result!.tool_name).toBe('salesforce.committedPipelineQuery');
-    // expect(result!.result_json).toBeTruthy();
-    expect(true).toBe(false); // intentional RED
+  it('queryToolCallBySourceId() returns correct row via runtime helper', () => {
+    const result = queryToolCallBySourceId(db, 'sf-pipeline-2026-05-27');
+    expect(result).not.toBeNull();
+    expect(result!.tool_name).toBe('salesforce.committedPipelineQuery');
+    expect(result!.result_json).toBeTruthy();
   });
 
   it('RED: memo markdown [^sf-pipeline-2026-05-27] footnote renders as clickable citation badge', () => {

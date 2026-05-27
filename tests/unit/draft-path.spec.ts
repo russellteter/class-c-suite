@@ -34,13 +34,11 @@
 
 import { describe, it, expect } from 'vitest';
 
-// ── Runtime imports (uncomment when Ch.5 Runtime ships) ─────────────────────
-// import { SafeWrite }            from '../../packages/vault-writer/src/index.js';
-// import { postVerifierTransition } from '../../apps/utility/src/orchestrator/transitions.js';
-// import type { VerifierOutput }  from '../../packages/shared-types/src/verifier-output.js';
-// import type { RunState }        from '../../packages/shared-types/src/run-state.js';
+// ── Runtime imports — Ch.5 Runtime shipped ──────────────────────────────────
+import { postVerifierTransition } from '../../apps/utility/src/orchestrator/transitions.js';
+import type { RunState }          from '../../packages/shared-types/src/run-state.js';
 
-// ── UI imports (uncomment when Ch.5 UI ships) ────────────────────────────────
+// ── UI imports (Ch.5 UI RED — uncomment when MemoViewer component ships) ────
 // import { render, screen }       from '@testing-library/react';
 // import { MemoViewer }           from '../../apps/renderer/src/components/MemoViewer.js';
 
@@ -100,27 +98,57 @@ describe('AC-8 — DRAFT path (Ch.5 Runtime RED)', () => {
     });
   });
 
-  describe('Post-Verifier transition → SafeWrite path (Ch.5 Runtime RED)', () => {
-    it('RED: rigor_score < 70 → memo written as .draft.md (not .md)', () => {
-      // const transition = postVerifierTransition(DRAFT_VERIFIER_OUTPUT, runState);
-      // expect(transition.kind).toBe('shipped-draft');
-      // expect(transition.memoPath).toMatch(/\.draft\.md$/);
-      // expect(transition.memoPath).not.toMatch(/(?<!\.draft)\.md$/);
-      expect(true).toBe(false); // intentional RED
+  describe('Post-Verifier transition → SafeWrite path (Ch.5 Runtime)', () => {
+    // Minimal verifier RunState for testing the transition
+    const verifierRunState: Extract<RunState, { kind: 'verifier' }> = {
+      kind: 'verifier',
+      runId: 'run-test-ch5',
+      memo: {
+        runId: 'run-test-ch5',
+        memoMarkdown: '',
+        executiveSummary: '',
+        keyDecisions: [],
+        citations: [],
+        positionMetadata: [],
+      },
+      verifierInput: {
+        runId: 'run-test-ch5',
+        memoMarkdown: '',
+        lensOutputs: [] as never,
+        toolCallAuditTrail: [],
+        positionMetadata: [] as never,
+        redTeamOutput: {
+          role: 'RedTeam', runId: 'run-test-ch5', challenges: [], overallRisk: 'low', citations: [],
+        },
+        steelmanOutput: {
+          role: 'Steelman', runId: 'run-test-ch5', steelmen: [], citations: [],
+        },
+        runPlaybook: 'cash_lever',
+        runQuestion: 'Test question',
+        assembledAt: 1748304000,
+      },
+    };
+
+    const BASE_MEMO_PATH = '/vault/memos/2026-05-27-cash-lever-loc-vs-aws.md';
+
+    it('rigor_score < 70 → memo written as .draft.md (not .md)', () => {
+      const transition = postVerifierTransition(DRAFT_VERIFIER_OUTPUT, verifierRunState, BASE_MEMO_PATH);
+      expect(transition.kind).toBe('shipped-draft');
+      expect(transition.memoPath).toMatch(/\.draft\.md$/);
+      // Must not have bare .md without .draft prefix
+      expect(transition.memoPath.endsWith('.draft.md')).toBe(true);
     });
 
-    it('RED: rigor_score ≥ 70 → memo written as .md (clean, no draft suffix)', () => {
-      // const transition = postVerifierTransition(CLEAN_VERIFIER_OUTPUT, runState);
-      // expect(transition.kind).toBe('shipped-clean');
-      // expect(transition.memoPath).toMatch(/\.md$/);
-      // expect(transition.memoPath).not.toMatch(/\.draft\.md$/);
-      expect(true).toBe(false); // intentional RED
+    it('rigor_score >= 70 → memo written as .md (clean, no draft suffix)', () => {
+      const transition = postVerifierTransition(CLEAN_VERIFIER_OUTPUT, verifierRunState, BASE_MEMO_PATH);
+      expect(transition.kind).toBe('shipped-clean');
+      expect(transition.memoPath).toMatch(/\.md$/);
+      expect(transition.memoPath).not.toMatch(/\.draft\.md$/);
     });
 
-    it('RED: shipped-draft RunState contains failure_reasons from Verifier', () => {
-      // const transition = postVerifierTransition(DRAFT_VERIFIER_OUTPUT, runState);
-      // expect(transition.failureReasons).toEqual(DRAFT_VERIFIER_OUTPUT.failure_reasons);
-      expect(true).toBe(false); // intentional RED
+    it('shipped-draft RunState contains failure_reasons from Verifier', () => {
+      const transition = postVerifierTransition(DRAFT_VERIFIER_OUTPUT, verifierRunState, BASE_MEMO_PATH);
+      expect(transition.failureReasons).toEqual(DRAFT_VERIFIER_OUTPUT.failure_reasons);
     });
   });
 
