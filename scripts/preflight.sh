@@ -61,6 +61,37 @@ else
   green "Vault not iCloud-synced (no fileprovider xattr)"
 fi
 
+# -------- Dropbox / Google Drive sync detection (BLOCKERS B33) --------
+section "Vault — other sync agents"
+
+# Dropbox: walks ancestors of VAULT_PATH looking for a .dropbox marker file
+# (Dropbox places it at every synced folder root).
+DROPBOX_HIT=""
+_check_dir="$VAULT_PATH"
+while [ "$_check_dir" != "/" ] && [ -n "$_check_dir" ]; do
+  if [ -f "$_check_dir/.dropbox" ] || [ -d "$_check_dir/.dropbox.cache" ]; then
+    DROPBOX_HIT="$_check_dir"
+    break
+  fi
+  _check_dir="$(dirname "$_check_dir")"
+done
+if [ -n "$DROPBOX_HIT" ]; then
+  fail "Vault is inside a Dropbox-synced folder ($DROPBOX_HIT) — atomic-rename hazard (B33). Move vault out of Dropbox."
+else
+  green "Vault not Dropbox-synced"
+fi
+
+# Google Drive: detect via FileProvider mount path or running process.
+# macOS Google Drive mounts under ~/Library/CloudStorage/GoogleDrive-* or
+# legacy ~/Google Drive/. Also check for com.google.drivefs kernel extension.
+if [[ "$VAULT_PATH" == *"CloudStorage/GoogleDrive"* ]] || [[ "$VAULT_PATH" == *"/Google Drive/"* ]]; then
+  fail "Vault is under a Google Drive mount — atomic-rename hazard (B33). Move vault out of Google Drive."
+elif kextstat 2>/dev/null | grep -q "com.google.drivefs" && [[ "$VAULT_PATH" == "$HOME"/* ]]; then
+  warn "Google Drive kernel extension loaded; vault is in HOME — verify vault is NOT inside any Google Drive folder."
+else
+  green "Vault not Google-Drive-synced"
+fi
+
 if [ -f "$VAULT_PATH/C_Suite_PRD.md" ]; then
   green "Vault contains C_Suite_PRD.md (source of truth)"
 else
@@ -138,6 +169,28 @@ for s in "${EXPECTED_INFRA[@]}"; do
     green "skill/plugin: $s reachable"
   else
     warn "skill/plugin: $s not found — confirm via /agents or plugin manager"
+  fi
+done
+
+# -------- Skill body line-count check (BLOCKERS B29) --------
+section "Skill body line-counts (B29 truncation detector)"
+
+EXPECTED_OP_SKILLS=(
+  "russell-voice" "run-critique" "weekly-cash-forecast" "covenant-tracker"
+  "renewal-forecast" "call-intelligence" "system-check" "class-aws-connector"
+)
+MIN_LINES=50          # below 50 lines == truncated stub (full bodies are 100-232)
+for skill in "${EXPECTED_OP_SKILLS[@]}"; do
+  skill_path="$SKILLS_DIR/$skill/SKILL.md"
+  if [ ! -f "$skill_path" ]; then
+    fail "skill missing: $skill_path — run scripts/install-extracted-skills.py"
+    continue
+  fi
+  lines=$(wc -l < "$skill_path" | tr -d ' ')
+  if [ "$lines" -lt "$MIN_LINES" ]; then
+    fail "skill $skill truncated: $lines lines < $MIN_LINES (B29). Re-run scripts/install-extracted-skills.py after the §7 fix."
+  else
+    green "skill $skill: $lines lines (OK)"
   fi
 done
 
