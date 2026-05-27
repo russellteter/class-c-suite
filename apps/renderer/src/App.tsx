@@ -1,17 +1,17 @@
 // apps/renderer/src/App.tsx
 // Source: docs/decisions/0002-ch1-process-architecture.md §1
 // Ch.6: adds state-based routing for WritebackPane, ConversationPane, AcceptedHistory.
-// WritebackPane lands as the primary writeback screen; ConversationPane opens on demand;
-// AcceptedHistory is accessible via test route (?screen=history&artifactId=...) per brief.
-// Original Ch.1 token-usage display preserved in home screen.
+// Ch.7: Home is the default route (replaces Ch.1 HomeScreen stub); adds plan-approval route
+//       wired to tile-click and Open Q&A submit per tasks/ch7-renderer-brief.md §4.
 
-import React, { useEffect, useState } from 'react';
-import { onIpc } from './ipc-client.js';
-import type { IpcMessage } from '@c-suite/shared-types/ipc';
+import React, { useState } from 'react';
 import type { WritebackDraft } from '@c-suite/shared-types/writeback';
 import { WritebackPane } from './screens/WritebackPane.js';
 import { ConversationPane } from './screens/ConversationPane.js';
 import { AcceptedHistory } from './screens/AcceptedHistory.js';
+import { Home } from './screens/Home.js';
+import { PlanApproval, type Ch5RunPlan } from './screens/PlanApproval.js';
+import type { PlaybookId } from './components/HomeTypes.js';
 
 // ---- Screen routing -------------------------------------------------------
 
@@ -19,7 +19,8 @@ type Screen =
   | { name: 'home' }
   | { name: 'writeback' }
   | { name: 'conversation'; writebackId: string; draft: WritebackDraft | null }
-  | { name: 'history'; artifactId: string };
+  | { name: 'history'; artifactId: string }
+  | { name: 'plan-approval'; plan: Ch5RunPlan };
 
 function initialScreen(): Screen {
   // Allow test navigation via URL query params (brief §Wiring: "openable via a test route")
@@ -39,71 +40,37 @@ function initialScreen(): Screen {
   return { name: 'home' };
 }
 
-// ---- Token usage display (original Ch.1 component) -----------------------
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
-interface TokenUsageState {
-  windowRemainingTokens: number | null;
-  windowResetsAt: number | null;
-  totalCostUsdReference: number | null;
+/**
+ * Build a minimal Ch5RunPlan stub from a tile click.
+ * Real plan building is Runtime's job (Phase B); this lets the plan-approval
+ * screen render with correct shape while the IPC round-trip isn't wired yet.
+ * TODO ch7-phase-b: replace with real plan from run.plan.ready IPC event.
+ */
+function stubPlanFromPlaybook(playbookId: PlaybookId): Ch5RunPlan {
+  return {
+    playbook: playbookId,
+    question: '',
+    lenses: [],
+    mcps: [],
+    tokenEstimate: 0,
+    memoPath: '',
+    degradations: [],
+  };
 }
 
-function HomeScreen(): React.ReactElement {
-  const [usage, setUsage] = useState<TokenUsageState>({
-    windowRemainingTokens: null,
-    windowResetsAt: null,
-    totalCostUsdReference: null,
-  });
-  const [status, setStatus] = useState<string>('initializing');
-
-  useEffect(() => {
-    const cleanup = onIpc((msg: IpcMessage) => {
-      if (msg.kind === 'cost.usage') {
-        setUsage({
-          windowRemainingTokens: msg.payload.windowRemainingTokens,
-          windowResetsAt: msg.payload.windowResetsAt,
-          totalCostUsdReference: msg.payload.totalCostUsdReference ?? null,
-        });
-      }
-      if (msg.kind === 'run.start') {
-        setStatus(`run active: ${msg.payload.runId}`);
-      }
-      if (msg.kind === 'run.failed') {
-        setStatus(`failed: ${msg.payload.reason}`);
-      }
-      if (msg.kind === 'scheduler.window.reset') {
-        setUsage((prev) => ({
-          ...prev,
-          windowRemainingTokens: msg.payload.newWindowCap,
-          windowResetsAt: msg.payload.resetAt + 5 * 60 * 60 * 1000,
-        }));
-      }
-    });
-    return cleanup;
-  }, []);
-
-  const resetsAt = usage.windowResetsAt
-    ? new Date(usage.windowResetsAt).toLocaleTimeString()
-    : 'unknown';
-
-  return (
-    <div style={{ fontFamily: 'monospace', padding: '24px', color: '#e5e7eb', background: '#111827', minHeight: '100vh' }}>
-      <h1>C-Suite</h1>
-      <p>Ch.1 runtime ready</p>
-      <hr />
-      <p>Status: {status}</p>
-      {usage.windowRemainingTokens !== null && (
-        <p>
-          Window remaining: {usage.windowRemainingTokens.toLocaleString()} tokens
-          (resets {resetsAt})
-        </p>
-      )}
-      {usage.totalCostUsdReference !== null && (
-        <p>
-          Cost reference: ${usage.totalCostUsdReference.toFixed(4)} (API-equivalent, not subscription credits)
-        </p>
-      )}
-    </div>
-  );
+function stubPlanFromPrompt(prompt: string): Ch5RunPlan {
+  return {
+    playbook: 'open_qa',
+    question: prompt,
+    lenses: [],
+    mcps: [],
+    tokenEstimate: 0,
+    memoPath: '',
+    stamp: 'AD-HOC',
+    degradations: [],
+  };
 }
 
 // ---- Root component -------------------------------------------------------
@@ -114,6 +81,16 @@ export function App(): React.ReactElement {
   const navigateTo = (next: Screen) => setScreen(next);
 
   switch (screen.name) {
+    case 'plan-approval':
+      return (
+        <PlanApproval
+          plan={screen.plan}
+          onApprove={() => navigateTo({ name: 'home' })}
+          onEdit={() => navigateTo({ name: 'home' })}
+          onCancel={() => navigateTo({ name: 'home' })}
+        />
+      );
+
     case 'writeback':
       return (
         <WritebackPane
@@ -143,11 +120,19 @@ export function App(): React.ReactElement {
     case 'home':
     default:
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-          <HomeScreen />
+        <>
+          <Home
+            onTileClick={(playbookId) =>
+              navigateTo({ name: 'plan-approval', plan: stubPlanFromPlaybook(playbookId) })
+            }
+            onOpenQASubmit={(prompt) =>
+              navigateTo({ name: 'plan-approval', plan: stubPlanFromPrompt(prompt) })
+            }
+            onWritebacksClick={() => navigateTo({ name: 'writeback' })}
+          />
           {/* Dev nav — visible only in non-production for screen testing */}
           {process.env.NODE_ENV !== 'production' && (
-            <div style={{ position: 'fixed', bottom: 12, right: 12, display: 'flex', gap: 8 }}>
+            <div style={{ position: 'fixed', bottom: 12, right: 12, display: 'flex', gap: 8, zIndex: 999 }}>
               <button
                 onClick={() => navigateTo({ name: 'writeback' })}
                 style={{ fontSize: 11, padding: '2px 8px', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155', borderRadius: 4, cursor: 'pointer' }}
@@ -162,7 +147,7 @@ export function App(): React.ReactElement {
               </button>
             </div>
           )}
-        </div>
+        </>
       );
   }
 }
