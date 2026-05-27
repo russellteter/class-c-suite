@@ -257,7 +257,7 @@ async function safeWrite(
 
 **Fuzz test (Ch.2 acceptance):** N concurrent writers (simulating Obsidian save + Cowork write + C-Suite write) against the same file path. Expected: zero data loss; one sidecar per conflict; the "winner" of the atomic-rename race writes the file content cleanly; no partial files.
 
-🔍 R2 VERIFY: under macOS + Sequoia + (potentially) iCloud-synced directories, the `rename(2)` syscall behaves atomically. If iCloud-Drive layer breaks atomicity, Ch.2 surfaces the requirement to move the vault out of iCloud (BLOCKERS B9).
+**[R0-Vault + R2 verified 2026-05-26]** Vault is NOT iCloud-synced (`xattr -p com.apple.fileprovider.fpfs#P` returns no such xattr). macOS Sequoia 15.x APFS atomic rename works. B9 clear. Preflight refuses to start if vault is detected inside any sync container (iCloud, Dropbox, Google Drive — R2 Area 4 noted Dropbox/Drive detection gap; Ch.0 preflight extends beyond iCloud).
 
 ## chokidar watch
 
@@ -520,7 +520,7 @@ Optional: a "vault audit export" command Russell can invoke that copies redacted
 | Vault iCloud-sync attribute check | R0 | B9 |
 | Vault git repo initialization status | R0 | Vault SOT |
 | Pre-existing SQLite or alternative store | R0 | Runtime store init |
-| chokidar behavior on macOS Sequoia + iCloud-synced (if applicable) | R2 | Watcher reliability |
+| chokidar behavior on macOS Sequoia 15.x + iCloud-synced (if applicable) | R2 | Watcher reliability — R2 verified no issues for non-iCloud vault |
 | `rename(2)` atomicity under macOS + iCloud + Time Machine | R2 | SafeWrite assumption |
 | stakeholder lean-frontmatter vs design-doc-claim divergence | R0 | StakeholderFrontmatter schema |
 | `amount_usd` actual format distribution in workstreams | R0 | B12 parser design |

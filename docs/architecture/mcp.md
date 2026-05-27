@@ -184,7 +184,7 @@ async function awsSpendSummary(opts: { months: number }) {
 }
 ```
 
-**Account count verification.** Ultraplan claims spec assumed ~50 AWS accounts; an agent found **60** on the `class` profile. R1 confirms actual count via `aws organizations list-accounts` per profile and updates the autonomy job math.
+**Account count verification.** Ultraplan claims spec assumed ~50 AWS accounts; an agent found **60** on the `class` profile. **R1-Remaining 2026-05-26 status: UNKNOWN** — both SSO sessions had expired (last login 2026-05-21); `aws organizations list-accounts` blocked with `Token has expired and refresh failed`. Russell action at next session: `aws sso login --profile class && aws organizations list-accounts --profile class | jq '.Accounts | length'` and same for `collab`. Tracked as item in `docs/research/R1-connector-reality.md`.
 
 🔍 R1 VERIFY: SSO session refresh behavior — when SSO expires mid-scheduled-job, surface re-consent in UI.
 
@@ -196,7 +196,11 @@ Google OAuth, read-only `gmail.readonly` scope. Used for: morning brief (recent 
 type GmailConfig = {
   clientId: string,
   clientSecret: string,
-  redirectUri: 'class-c-suite://oauth/gmail/callback',
+  // [R1-Remaining verified 2026-05-26] RFC 8252 loopback IP is the current
+  // best practice for desktop apps; custom scheme is fallback only. Register
+  // BOTH URIs in Google Cloud Console.
+  redirectUri: 'http://127.0.0.1:<port>/oauth/gmail/callback',
+  redirectUriFallback: 'class-c-suite://oauth/gmail/callback',
   scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
 };
 ```
@@ -211,13 +215,14 @@ Simple API key. The Chorus call-intelligence endpoint exposes AI-summaries of re
 
 ```typescript
 type ChorusConfig = {
-  apiBase: 'https://chorus.ai/api/v1',  // 🔍 R1 VERIFY current API base
-  apiKey: string,
+  apiBase: 'https://chorus.ai/v3',  // [R1-Remaining verified 2026-05-26] /v3 base, not /api/v1
+  apiKey: string,                    // header: Authorization: <key> (no "Bearer" prefix)
 };
 
 async function recentCallSummaries(opts: { sinceDays: number; accountFilter?: string[] }) {
-  // Returns AI summaries, NOT raw transcripts.
-  return chorus.get('/calls', { params: { since: isoDaysAgo(opts.sinceDays), account_in: opts.accountFilter }});
+  // Returns AI summaries, NOT raw transcripts. (B11; B31 noted Chorus contract-tier
+  // variance — utterance endpoints may exist on higher tiers; verify at Ch.8.)
+  return chorus.get('/engagements', { params: { since: isoDaysAgo(opts.sinceDays), account_in: opts.accountFilter }});
 }
 ```
 
@@ -245,7 +250,7 @@ async function recentCallSummaries(opts: { sinceDays: number; accountFilter?: st
 
 **(a) Import poc patterns directly into C-Suite.** Copy the connection code, queries, and auth into a new C-Suite module. Pros: no subprocess overhead; full type safety. Cons: takes on maintenance burden; couples C-Suite to PowerBI client library versions.
 
-**(b) Subprocess with stable tool interface (RECOMMENDED until R1 disproves).** Run `customer-dashboard-poc` as a Node child process. C-Suite calls it via a typed CLI interface (JSON-in / JSON-out). Pros: poc stays a separate-evolving artifact; clean tool contract; failure isolation. Cons: serialization overhead; the poc must be wrapped with a CLI entrypoint.
+**(b) Subprocess with stable tool interface (CONFIRMED by R0-Code + R1-Remaining 2026-05-26 — see Phase 0 decision #9 in `docs/research/phase-r-decisions.md`).** Run `customer-dashboard` as a Python child process via `child_process.spawn('python3', ['src/main.py', '-j', '/tmp/cdash-<runId>.json', '--validate'])`. C-Suite parses JSON output via Zod (only the 15 used fields, `passthrough()` rest). Power BI data is NOT live-queryable — Power Automate exports CSVs weekly; subprocess reads local files. Google Sheets requires `token.pickle` seeded interactively once at setup. Cold start 10-45s; scheduled, not per-session.
 
 **(c) Wrap as a new MCP server.** Conform to the same pattern as the V1 MCPs. Pros: consistent abstraction across all data sources; agents see PowerBI as "just another tool." Cons: highest engineering investment; only worth it if other consumers will use the MCP later.
 

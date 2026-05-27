@@ -5,7 +5,7 @@
 ## Design philosophy
 
 - **Honest signal over animation theater.** Every pulse, edge, ribbon-number, and indicator in the UI is bound to a real IPC event. Animation in the absence of substance is the Devin-style failure mode. The substance ribbon shows source count + verified citation ratio + coverage % **in real time, computed from actual tool-call results**. The verified citation ratio shows `—` until the Verifier actually grades.
-- **Dark menubar-native aesthetic.** The C-Suite lives in macOS Sonoma+/Sequoia menubar; design tokens fit that surface.
+- **Dark menubar-native aesthetic.** The C-Suite lives in macOS Sequoia 15.x+ menubar; design tokens fit that surface.
 - **Brand-aware re-skin surface.** Design tokens map to Class's brand palette so the C-Suite reads as a Class artifact, not generic Electron-AI.
 - **Density over chrome.** Russell is a power user; surfaces optimize for "scan-and-act in 30 seconds" not "tutorial."
 
@@ -194,7 +194,7 @@ Built on React; design-system primitives:
 - **LaunchAgent registration** in Ch.10 so the C-Suite runs at user login.
 - **Dock icon** hidden by default (it's a menubar app); show on focus only.
 
-🔍 R2 VERIFY: macOS Sequoia notification entitlement behavior; user must grant notification permission on first run. Document in setup runbook.
+**[R2 verified 2026-05-26]** macOS Sequoia 15.x notification entitlement: no special entitlement required for Developer ID distribution; `app.requestPermission` triggers user grant on first run. Document in Ch.11 setup runbook.
 
 ## Accessibility (for Russell single-user, but design for it)
 
