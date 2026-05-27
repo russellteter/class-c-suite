@@ -2,8 +2,8 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "phase-r-complete-ready-for-ch0",
-  "next_action": "Ch.0 Foundations: SPEC step dispatched to Architect (Backend Architect / Plan sub-agent, Opus 4.7). Architect reads the 20-item architecture-spec patch list in docs/build-log.md §Phase R complete + the R0-Vault constraints ledger + R0-Skills inventory, and produces the Ch.0 ADR with corrected Zod schemas + IPC types + CI/stub-harness skeleton.",
+  "current_phase": "ch-0-reopen",
+  "next_action": "Ch.0 REOPEN: single blocking fix required — add electron-builder@^26.8.1 (+ @electron/notarize, @electron/osx-sign, @electron/rebuild) to the appropriate workspace package.json devDependencies. Run pnpm install, verify 'pnpm exec electron-builder --version' reports 26.x, commit manifest + lockfile atomically. Then re-run ch0-audit-qa-report criterion 3 only to confirm PASS. After fix, update current_phase to 'ch-0-complete-ready-for-ch1'.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",
@@ -28,13 +28,21 @@
       "summary": "10 Phase 0 decisions resolved at docs/research/phase-r-decisions.md. Simple arch-spec patches applied (B33 Sequoia 15.x; R1-Remaining mcp.md fixes). 20-item structural patch list enumerated for Ch.0 architect. Phase R exit-gate: all 8 criteria MET.",
       "completed_on": "2026-05-26",
       "commits": ["50b6c77"]
+    },
+    {
+      "id": "ch-0-audit-qa",
+      "summary": "Ch.0 Audit/QA: 13 PASS / 1 FAIL / 4 CONCERN. REOPEN. Blocking issue: electron-builder not installed. B21/B23/B24/B26/B27/B29 MITIGATED. B22 MITIGATED-pending-execution. Full report at docs/reviews/ch0-audit-qa-report.md.",
+      "completed_on": "2026-05-27",
+      "verdict": "REOPEN",
+      "commits": ["pending — see auto-push after this edit"]
     }
   ],
   "pending_tasks": [
     {
-      "id": "ch-0-foundations",
-      "owner": "/goal Architect dispatch (Backend Architect / Plan sub-agent, Opus 4.7)",
-      "summary": "Per ROADMAP §Ch.0: TypeScript monorepo + Zod/IPC contracts + CI + stub-harness skeleton. Architect's ADR consumes the 20-item architecture-spec patch list from docs/build-log.md §Phase R complete. Includes vault-bootstrap.sh (B22), normalizeKeys() middleware (B23), corrected Zod schemas (B21/B24/B26/B27), parser-time type injection (B21), NAMED_ENTITY_REGISTRY load requirement (B3), per-playbook precondition matrix (Decision 4), updated mcp.md NRR cohort note (R1 Patch 9), and 13 other patches enumerated."
+      "id": "ch-0-electron-builder-fix",
+      "owner": "/goal (Runtime — Ch.0 architect must fix before Audit/QA re-check)",
+      "summary": "BLOCKING Ch.0 close. Add electron-builder@^26.8.1 (+ @electron/notarize, @electron/osx-sign, @electron/rebuild) to the appropriate workspace package.json devDependencies. Run pnpm install. Verify 'pnpm exec electron-builder --version' reports 26.x. Commit manifest + lockfile in same commit. Re-run audit criterion 3 and update ch0-audit-qa-report.md row 3 from FAIL to PASS. Update current_phase to 'ch-0-complete-ready-for-ch1'.",
+      "blockedBy": []
     },
     {
       "id": "ch-1-process-arch-ipc-sqlite-scheduler",
@@ -171,6 +179,6 @@
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-26T23:35:00-04:00",
-  "updated_by": "/goal Phase R completion synthesis"
+  "last_updated": "2026-05-27T00:00:00-04:00",
+  "updated_by": "EvidenceQA Ch.0 Audit/QA — REOPEN verdict"
 }
