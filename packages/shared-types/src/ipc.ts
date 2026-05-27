@@ -227,6 +227,16 @@ export const IpcMessage = z.discriminatedUnion('kind', [
       newWindowCap: z.number(),  // tokens
     }),
   }),
+  // Ch.2 G-1: vault.init.error — emitted when VaultNotInitializedError is thrown at startup.
+  // Source: docs/decisions/0003-ch2-safewrite.md §G-1
+  // Payload shape pinned by tests/unit/ipc.spec.ts (Test dispatch, DOCTRINE law #7).
+  z.object({
+    kind: z.literal('vault.init.error'),
+    payload: z.object({
+      message: z.string(),
+      vaultPath: z.string().optional(),
+    }),
+  }),
 ]);
 
 export type IpcMessage = z.infer<typeof IpcMessage>;
