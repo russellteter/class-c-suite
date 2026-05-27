@@ -766,3 +766,63 @@ B3 tag changed from VERIFIED → ACTIVE P0. Assembler reasoning-trace isolation 
 [CH-3-AUDIT-QA] REOPEN: 0 PASS / 1 FAIL / 9 NW. AC-2 (lens isolation) FAIL confirmed BY-HAND — Zod v4.4.3 strips unknown keys before superRefine. B3 ACTIVE P0. All other ACs NW — test assertions are tautology placeholders. Fix-Integration required before re-audit.
 
 ---
+
+## 2026-05-27 — Ch.4 Audit/QA (Prompts + Rigor Scoring + Verifier)
+
+**Status:** complete
+**Started:** 2026-05-27T09:00 ET
+**Completed:** 2026-05-27T09:30 ET
+**Token spend:** N/A (Max)
+**Cost:** N/A on Max
+**Owner:** EvidenceQA (Audit/QA — DOCTRINE law #7)
+
+### What got done
+
+- Read ADR-0005 §1-11 (accepted spec for Ch.4).
+- Read all 7 Ch.4 test files (rigor-score-table, is-quant-or-named, verifier-canary, named-entity-registry, lens-prompts, synthesizer-voice-bake, handoff-runcritic-prompts).
+- Read production code: `rigorScore.ts`, `isQuantOrNamed.ts`, `namedEntities.ts`, `Verifier.prompt.md`, `cro.prompt.md`, `Synthesizer.prompt.md`, canary fixture `Verifier.json`.
+- Ran `pnpm run test:unit`: 758 passed / 40 failed. All 40 failures are Ch.5 intentional RED stubs. Zero Ch.4 failures.
+- BY-HAND reproduced 12-case rigor table in Node REPL. All 12 cases PASS.
+- BY-HAND verified canary fixture: `ship_status: 'draft'`, `$43M` in `claims_unverified` with `score: 17 < 35`, sourced claim not flagged.
+- Verified Verifier prompt contains all 5 anti-sycophancy patterns per ADR §4.1.
+- Verified CRO prompt contains corrected B19 stage labels; explicitly excludes S4/S5/BestCase.
+- Verified Synthesizer prompt has both VOICE RULES sections (russell-voice + class-brand-voice).
+- Verified NAMED_ENTITY_REGISTRY has Barclays + all required bootstrap entities.
+- Verified B10 MITIGATED: deterministic classifier + 50+ test cases + hot-reload watcher.
+- Updated B3 and B10 in BLOCKERS.md.
+- Wrote `docs/reviews/ch4-audit-qa-report.md`.
+
+### Verdict: CLOSE
+
+**8 PASS / 1 NW / 0 FAIL**
+
+| AC | Verdict |
+|----|---------|
+| AC-1 (canary $43M) | PASS |
+| AC-2 (12-case table) | PASS |
+| AC-3 (isQuantOrNamed 50+ cases) | PASS |
+| AC-4 (registry loads) | PASS |
+| AC-5 (registry hot-reload) | PASS |
+| AC-6 (lens prompts) | PASS |
+| AC-7 (VerifierOutputSchema live parse) | NW — runVerifier() deferred to Ch.5 |
+| AC-8 (CRO corrected stage labels) | PASS |
+| AC-9 (RunCritic composite weights) | PASS |
+| AC-10 (quick_read bypass) | PASS |
+
+### Blocker deltas
+
+- B3: `VERIFIED` — Ch.4 prompt layer complete. Static canary guard operational. Dynamic `runVerifier()` deferred to Ch.5.
+- B10: `MITIGATED` — deterministic classifier shipped + tested. NAMED_ENTITY_REGISTRY pre-load confirmed.
+
+### Files committed this entry
+
+- `docs/reviews/ch4-audit-qa-report.md` — full audit report
+- `BLOCKERS.md` — B3 Ch.4 Audit/QA update; B10 MITIGATED
+- `docs/build-log.md` — this entry
+- `.claude/project-state.json` — current_phase updated to ch-4-complete-ready-for-ch5
+
+---
+
+[CH-4-AUDIT-QA] CLOSE: 8 PASS / 1 NW / 0 FAIL. B3 VERIFIED (static canary operational; runVerifier deferred Ch.5). B10 MITIGATED. Ch.5 Runtime unblocked.
+
+---

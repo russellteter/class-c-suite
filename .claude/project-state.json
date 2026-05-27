@@ -2,8 +2,8 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "ch-3-complete-ready-for-ch4",
-  "next_action": "Ch.4 Prompts + Rigor (per ROADMAP §Ch.4). Verbatim 5 lens prompts; rigorScore() unit-tested; planted-claim canary; NAMED_ENTITY_REGISTRY loaded. Ch.3 CLOSE confirmed: B3 VERIFIED, AC-2 PASS, all 9 NW→PASS (commits fa3848e–2254b3f). See docs/reviews/ch3-audit-qa-report.md for full findings.",
+  "current_phase": "ch-4-complete-ready-for-ch5",
+  "next_action": "Ch.5 First End-to-End Slice (per ROADMAP §Ch.5). Cash lever playbook fires end-to-end. Click-any-claim → tool-call result. Design gate (4 mockups via html-driven-codev). Ch.4 CLOSE: 8 PASS / 1 NW / 0 FAIL. B3 VERIFIED (static canary operational; runVerifier() deferred to Ch.5). B10 MITIGATED. See docs/reviews/ch4-audit-qa-report.md for full findings.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",
@@ -70,6 +70,13 @@
       "completed_on": "2026-05-27",
       "verdict": "CLOSE",
       "commits": ["fa3848e", "dc12ab2", "8d140e1", "714996d", "391a3d6", "5a9b7c6", "c99194c", "0a56e4d", "2254b3f"]
+    },
+    {
+      "id": "ch-4-audit-qa",
+      "summary": "Ch.4 Audit/QA: 8 PASS / 1 NW / 0 FAIL. CLOSE. BY-HAND: 12-case rigor table all PASS in Node REPL. Canary fixture verified: ship_status=draft, $43M in claims_unverified, score=17<35. All 5 anti-sycophancy patterns in Verifier prompt. CRO B19 stage labels corrected. Synthesizer both VOICE RULES baked. NAMED_ENTITY_REGISTRY with 16 bootstrap entities + hot-reload. B3 VERIFIED (static canary operational; runVerifier deferred Ch.5). B10 MITIGATED. AC-7 NW: verifier-runner.js absent, deferred to Ch.5. Full report at docs/reviews/ch4-audit-qa-report.md.",
+      "completed_on": "2026-05-27",
+      "verdict": "CLOSE",
+      "commits": []
     }
   ],
   "pending_tasks": [
@@ -202,6 +209,6 @@
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-27T08:00:00-04:00",
-  "updated_by": "Fix-Integration Ch.3 — REOPEN resolved (B3 VERIFIED, AC-2 PASS, all 9 NW→PASS, 9 commits)"
+  "last_updated": "2026-05-27T09:30:00-04:00",
+  "updated_by": "Audit/QA Ch.4 — CLOSE (8 PASS / 1 NW / 0 FAIL, B3 VERIFIED static canary, B10 MITIGATED)"
 }
