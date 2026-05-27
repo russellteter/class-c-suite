@@ -441,3 +441,25 @@ Per DOCTRINE law #9 (live-corrected learning): if a chapter discovers a blocker 
 
 (Russell may upgrade to formal B-entries during the morning checkpoint if he wants explicit tracking.)
 
+---
+
+## Phase 2 / Ch.6 new findings (2026-05-27)
+
+### B44 — Pre-existing apps/utility TS errors (3) survive Ch.6 build — fix-on-emit hack masks them `NEW` `P2`
+**What.** `apps/utility/src/orchestrator/run-loop.ts` lines 15, 121, 151 carry pre-existing Ch.3 type errors (stub-harness import + state discriminated-union narrowing). Ch.6 Runtime sub-agent's brief forbade patching them. To unblock `pnpm dev`, root + main dev scripts ship `build:soft` variants that `tsc || true` — emit despite errors. Production-broken types ship in dist/.
+**Bites at.** Ch.7 (next chapter inheriting the same run-loop), Ch.11 (notarized DMG must be type-clean).
+**Status.** NEW 2026-05-27.
+**Mitigation.** Spawn a focused sub-agent at Ch.7 entry to fix the 3 errors per the actual Ch.3 contract (`@c-suite/stub-harness/stub` path + RunEvent discriminated-union narrowing in run-loop.ts:121, :151). Remove `build:soft` from main + utility once `tsc` is exit-0 clean.
+**Owner.** Next-/goal Runtime at Ch.7 entry.
+
+### B45 — Utility process crash-loops under `pnpm dev` — likely better-sqlite3 dlopen failure inside utility's import chain `NEW` `P1`
+**What.** `pnpm dev` launches main + DB + migrations + vault watcher cleanly (Electron 33 + better-sqlite3 12.10.0 rebuilt for ABI 130). Main forks utility via `utilityProcess.fork(apps/utility/dist/index.js)`; utility starts, then crashes within ~150ms; supervisor restarts 6× then halts. Stderr capture in supervisor.ts:95 is wired (`'utility stderr'` lines DO appear once on first crash showing the ESM resolution path; subsequent crashes log without stderr — likely the resolved import chain crashes silently before parentPort.once is reached). Standalone `node apps/utility/dist/index.js` confirms it can't run outside Electron (`process.parentPort` undefined), so root cause is not the supervisor's fork target.
+**Bites at.** Ch.6 dev-launch acceptance (criterion 10 — CONCERN per Audit/QA verdict 2026-05-27). Ch.7+ (utility-side scheduled job dev), Ch.10 (LaunchAgent harness).
+**Status.** NEW 2026-05-27 — surfaced during Ch.6 dev-launch smoke. Pre-existing Ch.0/Ch.1 plumbing debt that escaped earlier audits because Ch.0-5 audits never actually launched the app under Electron's runtime (CI runs under plain Node where the existing pre-compiled binary matched).
+**Mitigation.**
+- Diagnose the actual utility stderr — supervisor.ts needs richer logging on first stderr line (it currently only captures the first emission; if dlopen crashes before any stderr is emitted, we get exit code 1 with no message). Add stdout pipe too. Surface to UI as `utility.crash.diagnostic` IPC.
+- Most likely root cause: utility imports `@c-suite/writeback-engine`, which imports `better-sqlite3`. Even after `electron-rebuild` against Electron 33 (ABI 130), the utilityProcess fork may load a fresh Node which doesn't match. Verify `process.versions.modules` inside utility at startup and log.
+- If ABI mismatch confirmed: either (a) pin utility's better-sqlite3 access through main's already-open DB handle via IPC (eliminate utility's direct dep), (b) ensure utility uses Electron's bundled Node not a different one, (c) bundle better-sqlite3 binary specifically for utility's ABI in build step.
+- Until fixed, `pnpm dev` is partially usable: window renders the scaffold; renderer screens unmountable until Vite is wired (Ch.7 polish per ADR §3.7); utility-side flows (writebacks end-to-end) cannot run in dev.
+**Owner.** Next-/goal — focused diagnostic + fix sub-agent at Ch.7 entry, OR a dedicated dependency-cleanup mini-session if Russell wants to unblock dev-launch before Ch.7.
+

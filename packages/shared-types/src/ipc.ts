@@ -157,6 +157,9 @@ export const IpcMessage = z.discriminatedUnion('kind', [
       writebackId: z.string(),
       artifactType: z.string(),
       draftPath: z.string(),
+      // ADR-0008 §10.4 — additive field carrying the row's domain/topic pill.
+      // Derived by writeback-engine/src/deriveTopic.ts per §10.1.
+      topic: z.string(),
     }),
   }),
   z.object({

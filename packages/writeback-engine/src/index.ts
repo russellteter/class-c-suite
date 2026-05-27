@@ -149,7 +149,8 @@ export async function draftWritebacks(args: {
         JSON.stringify(proposedBy), proposedAt,
       );
 
-      // Emit writeback.proposed IPC (existing payload shape — additive topic field per §10.4).
+      // Emit writeback.proposed IPC — payload conforms to packages/shared-types/src/ipc.ts
+      // including the additive `topic` field locked in ADR-0008 §10.4.
       emitIpc({
         kind: 'writeback.proposed',
         payload: {
@@ -157,6 +158,7 @@ export async function draftWritebacks(args: {
           writebackId,
           artifactType: proposal.artifactType,
           draftPath,
+          topic,
         },
       });
 
