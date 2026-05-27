@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@c-suite/shared-types": "workspace:*",
+    "@c-suite/writeback-engine": "workspace:*",
     "chokidar": "^3.6.0",
     "electron": "^42.3.0",
     "pino": "^10.3.1",

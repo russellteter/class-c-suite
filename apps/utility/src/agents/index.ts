@@ -207,7 +207,7 @@ const SynthesizerProposedWritebackSchema = z.object({
     'pre-mortem-update', 'stakeholder-update', 'workstream-advance',
   ]),
   targetArtifactId: z.string().nullable(), // null = create new; existing ID = update
-  proposedFrontmatterPatch: z.record(z.unknown()),
+  proposedFrontmatterPatch: z.record(z.string(), z.unknown()),
   proposedBodyPatch: z.string(),
   lensesContributing: z.array(AgentRoleSchema),
   oneSentenceDescription: z.string(),

@@ -35,7 +35,7 @@ export const WritebackDraftSchema = z.object({
   draftPath: z.string(),                   // absolute path to <vault>/<zone>/<id>.draft-<runId>.md
   activePath: z.string(),                  // absolute path the writeback would become on accept
   proposedBody: z.string(),               // full markdown (frontmatter + body)
-  proposedFrontmatter: z.record(z.unknown()), // parsed frontmatter for diff rendering
+  proposedFrontmatter: z.record(z.string(), z.unknown()), // parsed frontmatter for diff rendering
   diffAgainstActive: z.string().nullable(), // unified diff vs current active file; null if isNew
   description: z.string(),                 // one-sentence "what this writeback changes"
   topic: z.string(),                       // §10.1 derivation: workstream title | playbook label | "General"

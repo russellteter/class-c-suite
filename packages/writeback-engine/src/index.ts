@@ -6,7 +6,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import type Database from 'better-sqlite3';
-import { safeWrite } from '@c-suite/vault-writer/safeWrite';
+import { safeWrite } from '@c-suite/vault-writer';
 import type { IpcMessage } from '@c-suite/shared-types/ipc';
 import type { WritebackDraft } from '@c-suite/shared-types/writeback';
 import type { ArtifactZone } from '@c-suite/shared-types/vault-schemas';
