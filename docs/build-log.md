@@ -478,6 +478,46 @@ All auto-pushed via post-commit hook.
 
 [CH-0-AUDIT/QA] REOPEN: 14 PASS / 1 FAIL / 4 CONCERN. Single blocking fix: install electron-builder@^26.8.1 in a package.json + commit lockfile. All other deliverables (Zod schemas, IPC types, normalizeKeys, parseArtifact, vault-bootstrap.sh, preflight.sh, stub-harness, CI) verified PASS from primary evidence.
 
+---
+
+## 2026-05-27 — Ch.1 Architecture: ADR-0002 complete
+
+**Status:** complete (spec-only deliverable)
+**Started:** 2026-05-27
+**Completed:** 2026-05-27
+**Owner:** Backend Architect (Sonnet 4.6)
+**ADR:** `docs/decisions/0002-ch1-process-architecture.md`
+
+### What got done
+
+- Wrote ADR-0002 covering all 11 required sections: three-process Electron shell, subpath exports fix, supervised utility-process restart, SQLite runtime store + migration runner, token-budget scheduler, error handling table, heartbeat-only IPC relay, structured JSON logging, acceptance criteria (12 rows), considered alternatives, DOCTRINE amendment ratification.
+- Executed B30 gate: `sqlite3 ruvector.db .schema` returned "not a database"; `xxd` confirmed magic bytes `72 65 64 62` = `redb` (Ruflo plugin artifact). B30 closed — no conflict with `runtime.db`.
+- Fixed rolling-window semantics: replaced `setInterval` (app-start-anchored, breaks on utility restart) with lazy expiry check inside `canDispatch()`.
+- Fixed restart timing: `RESTART_DELAY_MS` tightened to 500ms so fork fires within 1,000ms of exit event, satisfying brief §3 "within 1 second" requirement.
+- Removed incorrect `import { parentPort } from 'electron'` — parent port is `process.parentPort`, not an import.
+
+### ADR-0001 amendment (IPC union)
+
+`scheduler.window.reset` is a new IpcMessage variant required by Ch.1's scheduler. ADR-0001 §3 currently has 21 variants. Ch.1 Runtime dispatch MUST add variant 22 to `packages/shared-types/src/ipc.ts`:
+
+```typescript
+{ kind: 'scheduler.window.reset', payload: { resetAt: number; newWindowCap: number } }
+```
+
+This is a forward-compatible addition (new discriminant, no existing variant modified). Acceptance criterion §9 row 11 gates on it type-checking cleanly.
+
+### Blocker deltas
+
+| Blocker | Old status | New status | Note |
+|---------|-----------|------------|------|
+| B30 | NEW P3 | CLOSED | ruvector.db = redb format (Ruflo), not SQLite. No path conflict. |
+
+### Files touched / commits
+
+- `docs/decisions/0002-ch1-process-architecture.md` — full Ch.1 ADR (spec)
+- `docs/build-log.md` — this entry
+
+---
 
 
 
