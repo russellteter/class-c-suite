@@ -48,7 +48,18 @@ fi
 if [ -d "$VAULT_PATH/.git" ]; then
   green "Vault is git-initialized"
 else
-  warn "Vault is NOT git-initialized — Ch.0/Ch.2 must run 'git init' before SafeWrite ships"
+  fail "Vault is NOT git-initialized — run 'git init' in vault dir and scripts/vault-bootstrap.sh (B22)"
+fi
+
+# B22: vault must have at least one commit before SafeWrite can operate.
+# VaultNotInitializedError is thrown at utility startup if this check fails.
+# Source: docs/decisions/0003-ch2-safewrite.md §4.4
+if [ -d "$VAULT_PATH/.git" ]; then
+  if git -C "$VAULT_PATH" log --oneline -1 &>/dev/null 2>&1; then
+    green "Vault git commits: OK (SafeWrite ready)"
+  else
+    fail "Vault has no commits — run scripts/vault-bootstrap.sh before starting C-Suite (B22)"
+  fi
 fi
 
 # iCloud-sync check (B9): files under iCloud-Drive-managed paths set the
