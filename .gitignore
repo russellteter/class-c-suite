@@ -51,6 +51,8 @@ env/
 
 # Local DBs / caches
 ruvector.db
+agentdb.rvf
+agentdb.rvf.lock
 *.sqlite
 *.sqlite3
 *.db-journal
