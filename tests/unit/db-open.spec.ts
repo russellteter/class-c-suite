@@ -28,13 +28,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-// Production module — does not exist yet. Uncomment when Runtime ships:
-// import { openDatabase } from '../../../apps/main/src/db/open.js';
-
-// Stub so TypeScript compiles now.
-function openDatabase(): Database.Database {
-  throw new Error('openDatabase not implemented — Runtime dispatch pending');
-}
+import { openDatabase } from '../../apps/main/src/db/open.js';
 
 // ── §9 row 8 — SQLite path + WAL ────────────────────────────────────────────
 
