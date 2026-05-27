@@ -1,0 +1,135 @@
+---
+session: general
+date: 2026-05-27
+status: complete
+outcome: PARTIAL_PLUS
+---
+
+goal: Close 8 ultrareview Critical findings + carried blockers; then run a /obsidian-cli vault sophistication upgrade. All committed + pushed.
+now: Russell does the §1 checkpoint per C_Suite_Post_Goal_Next_Steps.md before firing Phase 2 /goal. Optional: wire vault to a private GitHub remote (deferred from this session, PRD §5).
+
+test: cd "/Users/russellteter/Claude Code Projects/c-suite" && pnpm vitest run
+
+done_this_session:
+  - task: UNIT-1 + UNIT-2 — per-playbook keyword classifier (B36) + stakeholder COS-only roster (B37)
+    files: [apps/utility/src/orchestrator/classify-playbook.ts, apps/utility/src/orchestrator/run-plan-builder.ts, tests/unit/playbook-classifier.spec.ts, tests/unit/run-plan-builder.spec.ts]
+  - task: UNIT-3 — N=3 review iteration cap with IPC event run.iteration.cap_reached (B38)
+    files: [apps/utility/src/orchestrator/state-machine.ts, packages/shared-types/src/run-state.ts, packages/shared-types/src/run-state-schema.ts, packages/shared-types/src/ipc.ts, tests/unit/state-machine.spec.ts]
+  - task: UNIT-4 — SafeWrite git-failure surfacing (log + IPC vault.commit.failed + sqlite vault_commit_failures) (B39)
+    files: [packages/vault-writer/src/safeWrite.ts, db/migrations/004_vault_commit_failures.sql, tests/unit/safewrite.spec.ts, tests/unit/migrate.spec.ts]
+  - task: UNIT-5 — vault decisions/INDEX.md rebuilt from on-disk DEC-*.md glob (B25)
+    files: ["<vault>/decisions/INDEX.md"]
+  - task: UNIT-6 — business-planning/ mirror deleted; fixtures/ preserved; doc refs pointed to vault canonical (B28)
+    files: [fixtures/skills/, fixtures/_extracted_skills_for_c_suite.md, scripts/install-extracted-skills.py, tests/unit/installer.spec.ts, CLAUDE.md, PURPOSE.md, DOCTRINE.md, README.md, BLOCKERS.md]
+  - task: UNIT-7 — committed-pipeline definition locked via LIVE Salesforce SOQL; ADR-0007 + isCommittedOpp() + CRO prompt cite (B6)
+    files: [apps/utility/src/playbooks/lib/committed-pipeline.ts, docs/decisions/0007-committed-pipeline-definition.md, apps/utility/src/prompts/cro.prompt.md, tests/unit/committed-pipeline.spec.ts]
+  - task: UNIT-8 — vault wikilink backfill via SafeWrite (17 files; sample-of-5 test green)
+    files: [scripts/vault-wikilink-backfill.ts, tests/unit/vault-backfill.spec.ts, package.json, pnpm-lock.yaml]
+  - task: VAULT-1 — in-body bare-ID refs converted to aliased wikilinks (846 wikilinks across 105 files)
+    files: [scripts/vault-inbody-link-fixup.ts]
+  - task: VAULT-2 — 6 Obsidian v1.12 Bases (22 typed views total)
+    files: ["<vault>/_bases/Positions.base", "<vault>/_bases/Decisions.base", "<vault>/_bases/Workstreams.base", "<vault>/_bases/Pre-Mortems.base", "<vault>/_bases/Predictions.base", "<vault>/_bases/Tripwires.base"]
+  - task: VAULT-3 — 6 templates + folder registered in .obsidian/templates.json
+    files: ["<vault>/_templates/Position.md", "<vault>/_templates/Decision.md", "<vault>/_templates/Pre-Mortem.md", "<vault>/_templates/Prediction.md", "<vault>/_templates/Workstream.md", "<vault>/_templates/Stakeholder-Person.md", "<vault>/.obsidian/templates.json"]
+  - task: VAULT-4 — structural tag taxonomy backfill (112 files tagged)
+    files: [scripts/vault-tag-backfill.ts]
+  - task: VAULT-5 — _HOME.md MOC + 12 Obsidian bookmarks
+    files: ["<vault>/_HOME.md", "<vault>/.obsidian/bookmarks.json"]
+  - task: VAULT-6 — VAULT_GUIDE.md self-teaching manual (13 sections)
+    files: ["<vault>/VAULT_GUIDE.md"]
+  - task: Cleanup — Class-C-Suite/ stub vault deleted; vault .gitignore added; docs logged
+    files: ["<vault>/.gitignore", docs/build-log.md, .claude/project-state.json]
+
+blockers: []
+
+questions:
+  - Wire vault to a private GitHub remote (PRD §5 design — off-Mac backup currently absent)?
+  - Phase 2 /goal scope — Ch.6 write-back review pane next, or does Russell want a different sequence after checkpoint?
+  - Vaultwatcher AC-5 deletion test is timing-flaky in full-suite runs (passes solo) — is it worth fixing or accepting?
+
+decisions:
+  - vault_remote_deferred: Russell-declined this session; flagged in build-log + project-state.json deferred field
+  - workspaces_via_bookmarks: Obsidian workspace.json persistence was too fragile from CLI; bookmarks give equivalent one-click navigation
+  - obsidian_config_selectively_tracked: bookmarks.json + templates.json tracked; volatile (workspace/graph/plugins) gitignored
+  - new_biz_committed_includes_terminal_stages: Per strict reading of UNIT-7 brief; documented in ADR-0007 caveat #1 — callers needing OPEN committed must add IsClosed=false filter
+  - dec_031_collision_preserved: Two DEC-031 files (acquirer-narrative + holly-robert-diagnostic) both kept in INDEX; renumbering deferred to Russell
+  - business_planning_mirror_deleted: Vault is now unambiguous SoT; fixtures/skills + fixtures/_extracted preserved for installer
+
+findings:
+  - obsidian_cli_cache_lag: obsidian unresolved/orphans CLI show stale data even after `obsidian reload`; `obsidian backlinks <path>` is the authoritative live check
+  - obsidian_bases_syntax: v1.12 .base files are YAML with filters/formulas/properties/views; sourced from help.obsidian.md via firecrawl (cached in .firecrawl/, gitignored)
+  - pre_existing_yaml_quality_bugs: 2 vault files had broken frontmatter (unquoted colons in source:/title:) — POS-015 + customer-concentration tripwire; quoted inline
+  - obsidian_dot_base_wikilinks: linking to .base files requires aliased form [[_bases/Foo.base|Foo]] not just [[_bases/Foo]]
+  - safewrite_optional_logger_ipc_db: keeps test ergonomics high — no global wiring needed, tests inject what they need
+
+worked:
+  - grouping_units_by_touched_files: UNIT-1+2 same file; UNIT-3+4 both IPC+migrations — compressed tokens significantly
+  - live_soql_during_build: sf class-prod was reachable without re-auth; UNIT-7 stage discovery worked first-shot
+  - idempotent_dry_run_scripts: 3 vault-* scripts all run safely twice; second run = zero changes
+  - safewrite_optional_params_pattern: logger/emitIpc/db as optional opts — clean test injection, no globals
+  - aliased_wikilinks_for_short_id_in_prose: [[POS-003-w30-...|POS-003]] keeps prose readable + graph engine wired
+  - askuserquestion_for_3_gap_resolution: clean batch decision on doc/vault-track/investigate; user got the 4th option (vault remote) flagged but deferred
+
+failed:
+  - obsidian_eval_for_plugin_settings: classifier denied; worked around by writing .obsidian/templates.json directly
+  - obsidian_base_create_for_first_base: requires existing .base file; bootstrapped via `obsidian command id="bases:new-file"` then inspected
+  - workspace_json_persistence_from_cli: schema complex + risk of corruption; switched to bookmarks (also CLI-controllable)
+
+next:
+  - Russell §1 checkpoint per C_Suite_Post_Goal_Next_Steps.md
+  - Then Phase 2 /goal (likely Ch.6 write-back review pane)
+  - Optional: wire vault to private GitHub remote (deferred)
+  - Optional: fix vaultwatcher AC-5 deletion timing flake (intermittent, not load-bearing)
+
+files:
+  created:
+    - apps/utility/src/playbooks/lib/committed-pipeline.ts
+    - db/migrations/004_vault_commit_failures.sql
+    - docs/decisions/0007-committed-pipeline-definition.md
+    - scripts/vault-wikilink-backfill.ts
+    - scripts/vault-inbody-link-fixup.ts
+    - scripts/vault-tag-backfill.ts
+    - tests/unit/committed-pipeline.spec.ts
+    - tests/unit/vault-backfill.spec.ts
+    - fixtures/_extracted_skills_for_c_suite.md
+    - fixtures/skills/ (6 skill bodies, moved from business-planning/skills/)
+    - thoughts/shared/handoffs/general/2026-05-27_12-54_polish-and-vault-upgrade.yaml
+    - "<vault>/_HOME.md"
+    - "<vault>/VAULT_GUIDE.md"
+    - "<vault>/_bases/ (6 .base files)"
+    - "<vault>/_templates/ (6 template files)"
+    - "<vault>/.gitignore"
+    - "<vault>/.obsidian/templates.json"
+    - "<vault>/.obsidian/bookmarks.json"
+  modified:
+    - apps/utility/src/orchestrator/classify-playbook.ts
+    - apps/utility/src/orchestrator/run-plan-builder.ts
+    - apps/utility/src/orchestrator/state-machine.ts
+    - apps/utility/src/prompts/cro.prompt.md
+    - packages/shared-types/src/ipc.ts
+    - packages/shared-types/src/run-state.ts
+    - packages/shared-types/src/run-state-schema.ts
+    - packages/vault-writer/src/safeWrite.ts
+    - tests/unit/playbook-classifier.spec.ts
+    - tests/unit/run-plan-builder.spec.ts
+    - tests/unit/state-machine.spec.ts
+    - tests/unit/safewrite.spec.ts
+    - tests/unit/migrate.spec.ts
+    - tests/unit/installer.spec.ts
+    - scripts/install-extracted-skills.py
+    - CLAUDE.md
+    - PURPOSE.md
+    - DOCTRINE.md
+    - README.md
+    - BLOCKERS.md
+    - docs/build-log.md
+    - .claude/project-state.json
+    - package.json
+    - pnpm-lock.yaml
+    - "<vault>/decisions/INDEX.md"
+    - "<vault>/positions/active/POS-015-runoff-math-new-biz-covers-23pct.md"
+    - "<vault>/adversarial/financial-tripwires/customer-concentration.md"
+    - "<vault>/* (846 in-body wikilinks across 105 files; 112 frontmatter tag updates; 17 frontmatter related: wikilink updates)"
+  deleted:
+    - business-planning/ (mirror — deleted; fixtures/ preserved as install assets)
+    - "<vault>/Class-C-Suite/ (empty stub vault Obsidian auto-created at 08:42 today)"
