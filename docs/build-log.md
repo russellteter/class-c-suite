@@ -826,3 +826,77 @@ B3 tag changed from VERIFIED → ACTIVE P0. Assembler reasoning-trace isolation 
 [CH-4-AUDIT-QA] CLOSE: 8 PASS / 1 NW / 0 FAIL. B3 VERIFIED (static canary operational; runVerifier deferred Ch.5). B10 MITIGATED. Ch.5 Runtime unblocked.
 
 ---
+
+## 2026-05-27 — Ch.5 Audit/QA (First End-to-End Slice — Cash Lever)
+
+**Status:** complete (CLOSE-pending-ultrareview)
+**Started:** 2026-05-27
+**Completed:** 2026-05-27
+**Token spend:** N/A (Max)
+**Cost:** N/A on Max
+**Owner:** EvidenceQA (Audit/QA — DOCTRINE law #7)
+
+### What got done
+
+- Read ADR-0006 §1-11 (full 12-AC spec for Ch.5).
+- Read production source: `classify-playbook.ts`, `run-plan-builder.ts`, `cash-lever/index.ts`, `db/tool-calls.ts`.
+- Read E2E stub test (`cash-lever-stub.spec.ts`) and all 7 Ch.5 unit test files.
+- Ran `pnpm run test:unit`: 784 passed / 16 skipped / 0 failed. All 16 skips carry explicit "Ch.5 Audit/QA scope" or "RTL integration" labels.
+- Verified all 16 skip reasons match ADR-0006 deferrals (orchestrator harness + RTL not wired).
+- BY-HAND reproduced AC-7: `queryToolCallBySourceId(db, 'sf-pipeline-2026-05-27')` via `npx tsx` against populated in-memory SQLite. Returned `salesforce.committedPipelineQuery` row with 2 opportunities (Acme Renewal $120k, Beta Corp $85k). Unknown source_id returned null.
+- Confirmed all 8 mockups at `~/Desktop/cstuite-design-step-{1..8}.html`. Token check via `mockup-generator.spec.ts`: navy (#0A1849), purple (#4739E7), gold (#FFBA00) in all 8 steps. DRAFT amber banner in step 8.
+- Verified 5 ADR-0006 UNKNOWNs — all unresolved (AWS account count, NetSuite TBA, xlsx path/schema/lever rows). All deferred per documented resolution paths (B32 on-Mac, B1 Ch.8, xlsx first-run prompt).
+- Verified B22 (vault zero commits) STILL ACTIVE — Russell has not run `scripts/vault-bootstrap.sh`.
+- Verified B19 stage labels present in classifier and COS/CFO prompts; Day-Zero confirmation pending.
+- Updated BLOCKERS.md: B22 Ch.5 status stamp; B19 Ch.5 status stamp.
+
+### Verdict: CLOSE-pending-ultrareview
+
+**4 PASS / 3 NW / 0 FAIL / 5 DEFERRED (on-Mac)**
+
+| AC | Verdict |
+|----|---------|
+| AC-1 (E2E stub end-to-end) | NW — scaffolded RED; orchestrator harness not wired; 14 RunState transitions unproven |
+| AC-2 (Live: Salesforce) | DEFERRED — Russell on-Mac (Ch.11) |
+| AC-3 (Live: AWS) | DEFERRED — Russell on-Mac; B32 unresolved |
+| AC-4 (Live: NetSuite) | DEFERRED — Russell on-Mac; B1 TBA Ch.8 |
+| AC-5 (Live: xlsx parsed) | DEFERRED — Russell on-Mac; xlsx path unknown |
+| AC-6 (Full run memo in vault) | DEFERRED — Russell on-Mac; B22 still active |
+| AC-7 (Click-claim → tool-call result) | PASS — BY-HAND verified |
+| AC-8 (DRAFT path) | PASS — SafeWrite `.draft.md` proven; RTL banner render deferred |
+| AC-9 (Round-table ribbon real-time) | NW — RTL + jsdom not wired |
+| AC-10 (Plan-approval gate) | NW — orchestrator harness not wired |
+| AC-11 (8 mockups generated) | PASS — all 8 exist, all 3 tokens confirmed |
+| AC-12 (Degraded mode AWS) | NW — orchestrator harness not wired |
+
+### Blocker deltas
+
+- B22: STILL ACTIVE — vault has zero commits; Russell must run `scripts/vault-bootstrap.sh` before Ch.11 on-Mac demo.
+- B19: Day-Zero stage label confirmation still pending; stage labels correct in code; deferred to Ch.8 SOQL builder.
+- B32: UNRESOLVED — AWS account count unknown until Russell runs `aws sso login && aws organizations list-accounts`.
+- B1: Scoped to Ch.8 (NetSuite TBA). No change.
+
+### Phase 1 close summary
+
+Phase 1 (Ch.0-Ch.5) is architecturally complete. Infrastructure proven:
+- Ch.0: Vault schemas, normalizeKeys, SafeWrite foundation
+- Ch.1: Runtime spine, IPC event bus, heartbeat, cost meter
+- Ch.2: SafeWrite write-once guarantees, conflict sidecar, zone policy, git commit hook
+- Ch.3: RunState machine, orchestrator dispatch harness, scheduler
+- Ch.4: Verifier prompts, rigor scoring, canary fixture, CRO stage label correction (B19)
+- Ch.5: Playbook classifier, run-plan builder, click-claim SQLite helper, 8 design-token mockups
+
+The gap between "architecture proven" and "first usable product" is the 3 NW items (AC-1 orchestrator harness, AC-9/10/12 RTL + event tests). The ultrareview gate decides whether these require a Ch.5.1 polish task before Phase 2 opens or are acceptable as Ch.6+ absorption targets.
+
+### Files committed this entry
+
+- `docs/reviews/ch5-audit-qa-report.md` — full audit report
+- `BLOCKERS.md` — B22 Ch.5 stamp; B19 Ch.5 stamp
+- `docs/build-log.md` — this entry + Phase 1 close summary
+- `.claude/project-state.json` — current_phase updated to phase-1-complete-pending-ultrareview
+
+---
+
+[CH-5-AUDIT-QA] CLOSE-pending-ultrareview: 4 PASS / 3 NW / 0 FAIL / 5 DEFERRED. B22 STILL ACTIVE (vault bootstrap). 3 NW gaps (AC-1 harness, AC-9/10/12 RTL) surface for ultrareview decision. Phase 2 (Ch.6+) conditionally unblocked pending ultrareview.
+
+---

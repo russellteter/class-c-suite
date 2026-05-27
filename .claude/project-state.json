@@ -2,8 +2,8 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "ch-4-complete-ready-for-ch5",
-  "next_action": "Ch.5 First End-to-End Slice (per ROADMAP §Ch.5). Cash lever playbook fires end-to-end. Click-any-claim → tool-call result. Design gate (4 mockups via html-driven-codev). Ch.4 CLOSE: 8 PASS / 1 NW / 0 FAIL. B3 VERIFIED (static canary operational; runVerifier() deferred to Ch.5). B10 MITIGATED. See docs/reviews/ch4-audit-qa-report.md for full findings.",
+  "current_phase": "phase-1-complete-pending-ultrareview",
+  "next_action": "Ultrareview gate: Russell decides whether 3 NW gaps (AC-1 orchestrator harness, AC-9/10/12 RTL + degraded-mode tests) require a Ch.5.1 polish task before Phase 2 opens, or are acceptable as Ch.6/Ch.8 absorption targets. B22: Russell must run scripts/vault-bootstrap.sh before first live run. Phase 2 starts at Ch.6 (write-back review pane). Ch.5 CLOSE-pending-ultrareview: 4 PASS / 3 NW / 0 FAIL / 5 DEFERRED. See docs/reviews/ch5-audit-qa-report.md.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",
@@ -76,6 +76,13 @@
       "summary": "Ch.4 Audit/QA: 8 PASS / 1 NW / 0 FAIL. CLOSE. BY-HAND: 12-case rigor table all PASS in Node REPL. Canary fixture verified: ship_status=draft, $43M in claims_unverified, score=17<35. All 5 anti-sycophancy patterns in Verifier prompt. CRO B19 stage labels corrected. Synthesizer both VOICE RULES baked. NAMED_ENTITY_REGISTRY with 16 bootstrap entities + hot-reload. B3 VERIFIED (static canary operational; runVerifier deferred Ch.5). B10 MITIGATED. AC-7 NW: verifier-runner.js absent, deferred to Ch.5. Full report at docs/reviews/ch4-audit-qa-report.md.",
       "completed_on": "2026-05-27",
       "verdict": "CLOSE",
+      "commits": []
+    },
+    {
+      "id": "ch-5-audit-qa",
+      "summary": "Ch.5 Audit/QA: 4 PASS / 3 NW / 0 FAIL / 5 DEFERRED (on-Mac). CLOSE-pending-ultrareview. BY-HAND: AC-7 queryToolCallBySourceId against SQLite returns salesforce.committedPipelineQuery + 2 opportunities. AC-8 SafeWrite .draft.md proven. AC-11 all 8 mockups confirmed + token-validated. AC-1 NW: orchestrator harness unwired. AC-9/10/12 NW: RTL + degraded-mode tests unwired. ACs 2-6 DEFERRED to Russell on-Mac (Ch.11). B22 STILL ACTIVE (vault zero commits). B19 stage labels in code; Day-Zero pending. Full report at docs/reviews/ch5-audit-qa-report.md.",
+      "completed_on": "2026-05-27",
+      "verdict": "CLOSE-pending-ultrareview",
       "commits": []
     }
   ],
@@ -209,6 +216,6 @@
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-27T09:30:00-04:00",
-  "updated_by": "Audit/QA Ch.4 — CLOSE (8 PASS / 1 NW / 0 FAIL, B3 VERIFIED static canary, B10 MITIGATED)"
+  "last_updated": "2026-05-27T12:00:00-04:00",
+  "updated_by": "Audit/QA Ch.5 — CLOSE-pending-ultrareview (4 PASS / 3 NW / 0 FAIL / 5 DEFERRED, B22 STILL ACTIVE)"
 }
