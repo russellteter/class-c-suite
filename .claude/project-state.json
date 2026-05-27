@@ -2,8 +2,8 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "phase-1-polish-complete-awaiting-checkpoint",
-  "next_action": "POLISH 2026-05-27 closed all 8 UNITS: B36 per-playbook classifier (aac6117); B37 COS-only stakeholder roster (aac6117); B38 N=3 iteration cap + IPC event (bca3628); B39 SafeWrite git-failure surfacing — log+IPC+sqlite migration 004 (7e4b73c); B25 decisions INDEX rebuilt from on-disk DEC-*.md glob (vault commit f432ae3); B28 business-planning/ mirror deleted, fixtures preserved at fixtures/ (3e24f89); B6/UNIT-7 committed-pipeline definition locked via LIVE SOQL — ADR-0007 + isCommittedOpp() (965beb7); UNIT-8 vault wikilink backfill — 17 files via SafeWrite, 19/19 tests green (5b37078). Auto-push log clean (push OK on 5b37078). Russell does §1 checkpoint per C_Suite_Post_Goal_Next_Steps.md before Phase 2 /goal.",
+  "current_phase": "ch6-spec-complete-design-gate-pending",
+  "next_action": "Ch.6 SPEC done — ADR-0008 committed (39ac7fa) locks Synthesizer-authors-proposals + .draft-<runId>.md sidecar + per-writeback N=3 (distinct from B38 run-level N=3) + schema verbatim to vault VAULT_GUIDE.md §3. 4 build briefs at tasks/ch6-{runtime,renderer,test,dev-script}-brief.md ready. Frontend Developer sub-agent (background) is rendering 6 mockups (3 screens × A/B variants) + approval form + local submit server to ~/Desktop/csuite-ch6-design/. RUSSELL ACTION on completion: run launch.sh, open http://127.0.0.1:8765/, pick variants per screen, submit. Answers persist to /tmp/csuite-ch6-decisions.json. Then next /goal turn writes APPROVED.md, dispatches parallel build sub-agents (Runtime + Renderer + Dev-Script concurrent; Test sequential), integrates, and routes to Audit/QA per ADR §4 acceptance criteria. B22 reclassified MITIGATED (preflight green; vault has 237 commits) — close formally at Ch.6 boundary.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",
@@ -232,6 +232,6 @@
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-27T11:30:00-04:00",
-  "updated_by": "Vault sophistication upgrade (side project) 2026-05-27 — 6 VAULT units closed via /obsidian-cli; Bases + templates + tags + MOC + VAULT_GUIDE all live"
+  "last_updated": "2026-05-27T15:30:00-04:00",
+  "updated_by": "/goal Phase 2 kickoff 2026-05-27 — Ch.6 SPEC ADR-0008 committed 39ac7fa; build briefs at tasks/ch6-*-brief.md; design gate dispatched in background to Frontend Developer (Sonnet); awaiting Russell variant approval"
 }

@@ -1054,3 +1054,52 @@ The gap between "architecture proven" and "first usable product" is the 3 NW ite
 [VAULT-UPGRADE COMPLETE 2026-05-27] 6 VAULT units closed. Graph view + Bases + tags + templates + MOC + self-teaching guide all live. C-suite repo commits auto-pushed. Vault commits local-only (no remote per PRD §5; backup not yet wired).
 
 ---
+
+## 2026-05-27 — Ch.6 SPEC + briefs (Phase 2 kickoff)
+
+**Status:** in-progress (SPEC done; design gate dispatched; build briefs ready)
+**Started:** 2026-05-27T15:00 ET
+**Completed:** — (design gate awaiting Russell)
+**Token spend:** ~110K input / ~10K output across 1 main session + 1 background sub-agent
+**Cost:** N/A on Max
+**Owner:** /goal + Frontend Developer (mockup gallery sub-agent, background)
+
+### What got done
+- Phase 2 kickoff: read full doc-set + 6 architecture specs + Ch.5 ultrareview + ADR-0007 + VAULT_GUIDE.
+- Preflight green; B22 (vault zero commits) auto-closed during polish session — vault git log shows 234+ c-suite SafeWrite commits + 3 manual vault-upgrade commits.
+- ADR-0008 (docs/decisions/0008-write-backs-and-iterative-feedback.md) committed — locks Ch.6 contract: Synthesizer authors proposals (Verifier never authors, per B3 keystone), .draft-<runId>.md sidecar (collision-free with SafeWrite's .proposed-<ISO>.md conflict sidecars), per-writeback N=3 iteration counter distinct from B38 run-level N=3, schema verbatim to <vault>/VAULT_GUIDE.md §3 (kebab for positions/decisions/pre-mortems; snake for workstreams/predictions/tripwires), contested-lens-only re-dispatch on typed feedback.
+- 4 sub-agent briefs written under tasks/ch6-{runtime,renderer,test,dev-script}-brief.md — non-overlapping scopes, ADR §3 contract pins, forbidden-inferences enumerated per ADR §5. Will be dispatched in parallel (Runtime + Renderer + Dev-Script concurrent; Test sequential after they ship) when design gate clears.
+- Design-gate mockup gallery dispatched in background (Frontend Developer sub-agent, Sonnet). 6 mockups (3 screens × 2 variants A/B) + index + approval form + local Python submit server, landing at ~/Desktop/csuite-ch6-design/. Russell opens, picks variants, submits; orchestrator reads /tmp/csuite-ch6-decisions.json.
+
+### Decisions made (under doctrine, not surfaced to Russell)
+- **Sidecar suffix `.draft-<runId>.md`** (not `.proposed-<runId>.md`). Reason: SafeWrite already uses `.proposed-<ISO>.md` for hash-mismatch conflict sidecars (packages/vault-writer/src/safeWrite.ts:226). Two concepts under the same suffix is operator-hostile.
+- **Synthesizer authors proposals (not Verifier).** Per B3 keystone — Verifier remains structurally blind to lens reasoning traces. /goal directive wording inherited a pre-B3-fix brief; ADR-0008 §2.1 reads canonical and flags the wording inheritance.
+- **Two distinct N=3 counters** (run-level B38 + per-writeback new). Documented in ADR §2.3.
+- **Tag/wikilink derivation extracted as pure functions** (`packages/writeback-engine/src/{deriveTags,resolveWikilinks,aliasInBodyIds}.ts`) sourced from the existing `scripts/vault-*-backfill.ts` logic so the maintenance scripts and the drafters never disagree on the rules.
+
+### Discoveries that changed the plan
+- B22 already closed during polish session (preflight green; vault has 237 commits including the bootstrap commit). State.json was stale on this — will update at Ch.6 close.
+
+### Blocker deltas
+| ID | Action | Old status | New status | Note |
+|---|---|---|---|---|
+| B22 | reclassified | STILL ACTIVE per state.json | MITIGATED (verified) | preflight green; vault git log shows 237 commits. Will close at Ch.6 boundary. |
+
+### Repeat-issue tally
+- (none new this entry)
+
+### Hard gates surfaced
+- **Ch.6 design gate** — Frontend Developer sub-agent ships 6 mockups + approval form to ~/Desktop/csuite-ch6-design/. Russell opens http://127.0.0.1:8765/, picks A or B per screen, submits. Answers persist to /tmp/csuite-ch6-decisions.json. Orchestrator reads on resume; writes ~/Desktop/csuite-ch6-design/APPROVED.md; dispatches parallel build sub-agents (Runtime + Renderer + Dev-Script) against the briefs at tasks/ch6-*-brief.md.
+
+### Learnings for the next loop
+- Advisor caught two structural items the /goal text papered over: Verifier-vs-Synthesizer authorship (would have re-introduced reasoning-trace coupling) and two-counter conflation (would have broken B38's shipped invariant). Call advisor BEFORE writing ADRs that synthesize multi-source contracts.
+- Sub-agent briefs go to disk first (tasks/ch6-*-brief.md), not inlined in the Agent tool prompt — keeps the spawn prompt small + lets the sub-agent Read the contract into its own context per CLAUDE.md token-discipline rules.
+
+### Files touched / commits
+- docs/decisions/0008-write-backs-and-iterative-feedback.md (new ADR, 373 lines)
+- tasks/ch6-{runtime,renderer,test,dev-script}-brief.md (new, 4 briefs)
+- docs/build-log.md (this entry)
+- commits: 39ac7fa ch.6 spec ADR-0008
+- pending commit: ch.6 build briefs + build-log entry (after this write)
+
+---
