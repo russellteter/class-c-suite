@@ -1,172 +1,391 @@
 // apps/renderer/src/screens/Home.tsx
-// Source: docs/decisions/0006-ch5-cash-lever-slice.md §6 (Open Q&A UI contract)
-//         docs/decisions/0006-ch5-cash-lever-slice.md §8 AC-1 + AC-6
-// 8 playbook tiles + Open Q&A input + tripwire strip + cost meter.
+// Source: tasks/ch7-renderer-brief.md §1 — Variant B (dense rail) + §2 components + §3 hooks.
+// Ch.7 Phase A rewrite; replaces Ch.5 stub wholesale.
+// Layout: CSS Grid 280px | 1fr | 240px (desktop); single column below 900px.
+// Left rail is sticky. IPC stubs with TODO ch7-phase-b comments throughout.
 
-import React, { useState, useEffect, useRef } from 'react';
-import { sendIpc } from '../ipc-client.js';
-import { useCostUsage } from '../ipc/subscriptions.js';
+import React, { useState } from 'react';
+import '../design/tokens.css';
+import { PlaybookTile } from '../components/PlaybookTile.js';
+import { OpenQABar } from '../components/OpenQABar.js';
+import { WorkstreamRail } from '../components/WorkstreamRail.js';
+import { OpenDecisionsList } from '../components/OpenDecisionsList.js';
+import { WritebacksCounter } from '../components/WritebacksCounter.js';
+import { JobsStrip } from '../components/JobsStrip.js';
+import { useHomeData } from '../hooks/useHomeData.js';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts.js';
+import type { PlaybookTileData, PlaybookId } from '../components/HomeTypes.js';
 
-// ── Playbook tile definitions ─────────────────────────────────────────────────
+// ── Playbook tile catalogue ───────────────────────────────────────────────────
+// Ordinal order matches Cmd+1..Cmd+8 mapping in useKeyboardShortcuts.ts.
+// lastRunAt + freshness are runtime values; Phase A stubs them as null/gray
+// since home.playbookActivity IPC is not wired yet.
+// TODO ch7-phase-b: receive lastRunAt + freshness from home.playbookActivity IPC variant.
 
-interface PlaybookTile {
-  id: string;
-  label: string;
-  description: string;
-  lit: boolean;
+function computeFreshness(lastRunAt: Date | null): PlaybookTileData['freshness'] {
+  if (!lastRunAt) return 'gray';
+  const diffH = (Date.now() - lastRunAt.getTime()) / (1000 * 60 * 60);
+  if (diffH < 24) return 'green';
+  if (diffH < 24 * 7) return 'amber';
+  return 'gray';
 }
 
-const PLAYBOOK_TILES: PlaybookTile[] = [
-  { id: 'cash_lever',           label: 'Cash Lever',         description: 'W30 trough, LoC vs. AWS spend',         lit: true  },
-  { id: 'stakeholder_1on1_prep',label: 'Stakeholder 1:1',    description: 'Prep for key meetings',                 lit: false },
-  { id: 'quick_multi_lens',     label: 'Multi-Lens',         description: 'Quick cross-functional read',           lit: false },
-  { id: 'pre_mortem',           label: 'Pre-Mortem',         description: 'Identify failure modes before launch',  lit: false },
-  { id: 'gtm_reallocation',     label: 'GTM Reallocation',   description: 'Reallocate go-to-market spend',         lit: false },
-  { id: 'strategic_option',     label: 'Strategic Option',   description: 'Evaluate build/buy/partner decisions',  lit: false },
-  { id: 'board_narrative',      label: 'Board Narrative',    description: 'Prep board-ready materials',            lit: false },
-  { id: 'restructure_decision', label: 'Restructure',        description: 'Org design and role changes',           lit: false },
+const TILE_CATALOGUE: Omit<PlaybookTileData, 'lastRunAt' | 'freshness'>[] = [
+  { ordinal: 1, id: 'cash_lever_vs_trough',          name: 'Cash Lever vs Trough',   icon: '💰', keyboardHint: '⌘1' },
+  { ordinal: 2, id: 'gtm_resource_reallocation',      name: 'GTM Resource Realloc',   icon: '🎯', keyboardHint: '⌘2' },
+  { ordinal: 3, id: 'strategic_option_evaluation',    name: 'Strategic Option Eval',  icon: '♟️', keyboardHint: '⌘3' },
+  { ordinal: 4, id: 'stakeholder_1on1_prep',          name: 'Stakeholder 1:1 Prep',   icon: '🤝', keyboardHint: '⌘4' },
+  { ordinal: 5, id: 'board_narrative_prep',           name: 'Board Narrative / Deck', icon: '📊', keyboardHint: '⌘5' },
+  { ordinal: 6, id: 'restructure_decision',           name: 'Restructure Decision',   icon: '⚖️', keyboardHint: '⌘6' },
+  { ordinal: 7, id: 'pre_mortem_on_proposed_action',  name: 'Pre-mortem',             icon: '🔍', keyboardHint: '⌘7' },
+  { ordinal: 8, id: 'quick_multi_lens_read',          name: 'Quick Multi-Lens Read',  icon: '⚡', keyboardHint: '⌘8' },
 ];
 
-// ── Tripwire placeholder rows ─────────────────────────────────────────────────
+// ── Today's date display ──────────────────────────────────────────────────────
 
-const TRIPWIRE_STUBS = [
-  { id: 'tw-1', label: 'Cash runway < 90 days', status: 'watching' },
-  { id: 'tw-2', label: 'Committed pipeline < $4M', status: 'watching' },
-  { id: 'tw-3', label: 'AWS spend > $200K/mo', status: 'watching' },
-];
-
-// ── Component ─────────────────────────────────────────────────────────────────
-
-interface HomeProps {
-  onSubmitQuestion?: (question: string) => void;
+function formatToday(): string {
+  return new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
 }
 
-export function Home({ onSubmitQuestion }: HomeProps): React.ReactElement {
-  const [question, setQuestion] = useState('');
-  const [windowRemainingTokens, setWindowRemainingTokens] = useState<number | null>(null);
-  const windowCap = 180_000;
-  const inputRef = useRef<HTMLInputElement>(null);
+// ── Sub-components (layout helpers) ──────────────────────────────────────────
 
-  useCostUsage(({ windowRemainingTokens: remaining }) => {
-    setWindowRemainingTokens(remaining);
-  });
+function RailSectionLabel({ children }: { children: React.ReactNode }): React.ReactElement {
+  return (
+    <div style={{
+      fontSize: 'var(--text-2xs)',
+      textTransform: 'uppercase',
+      letterSpacing: '0.08em',
+      color: 'var(--color-text-muted)',
+      marginBottom: 'var(--space-2)',
+      paddingBottom: 'var(--space-1)',
+      borderBottom: '1px solid var(--color-border)',
+    }}>
+      {children}
+    </div>
+  );
+}
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const q = question.trim();
-    if (!q) return;
-    onSubmitQuestion?.(q);
-    // Emit run.requested IPC to main — main classifies playbook + builds RunPlan
-    sendIpc({ kind: 'run.requested', payload: { question: q } } as never);
-    setQuestion('');
+function RightLabel({ children }: { children: React.ReactNode }): React.ReactElement {
+  return (
+    <div style={{
+      fontSize: 'var(--text-2xs)',
+      textTransform: 'uppercase',
+      letterSpacing: '0.08em',
+      color: 'var(--color-text-muted)',
+      marginBottom: 'var(--space-2)',
+      paddingBottom: 'var(--space-1)',
+      borderBottom: '1px solid var(--color-border)',
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// ── Props ─────────────────────────────────────────────────────────────────────
+
+export interface HomeProps {
+  /** Called when a tile is clicked or Cmd+1-8 fires — nav to plan-approval */
+  onTileClick?: (playbookId: PlaybookId) => void;
+  /** Called when Open Q&A is submitted — nav to plan-approval with prompt */
+  onOpenQASubmit?: (prompt: string) => void;
+  /** Called when writebacks counter is clicked — nav to WritebackPane */
+  onWritebacksClick?: () => void;
+}
+
+// ── Home screen ───────────────────────────────────────────────────────────────
+
+export function Home({ onTileClick, onOpenQASubmit, onWritebacksClick }: HomeProps): React.ReactElement {
+  const [qaValue, setQaValue] = useState('');
+  const homeData = useHomeData();
+  useKeyboardShortcuts();
+
+  // W30 proximity: stubbed to "26 days" — Runtime sub-agent wires home.w30Proximity.
+  // TODO ch7-phase-b: wire home.w30Proximity IPC variant (W30 indexer hook).
+  const w30ProximityLabel = '26 days';
+
+  const tiles: PlaybookTileData[] = TILE_CATALOGUE.map((t) => ({
+    ...t,
+    lastRunAt: null, // TODO ch7-phase-b: wire from home.playbookActivity IPC
+    freshness: computeFreshness(null),
+  }));
+
+  function handleQASubmit(prompt: string) {
+    setQaValue('');
+    onOpenQASubmit?.(prompt);
   }
 
-  const usedTokens = windowRemainingTokens !== null ? windowCap - windowRemainingTokens : null;
-  const meterPct = usedTokens !== null ? Math.min(100, (usedTokens / windowCap) * 100) : 0;
+  function handleTileClick(id: PlaybookId) {
+    onTileClick?.(id);
+  }
+
+  const costUsage = homeData.costUsage;
+  const windowPct = costUsage?.windowPct ?? 0;
 
   return (
-    <div style={{ fontFamily: 'var(--font-sans)', padding: '24px', minHeight: '100vh', background: 'var(--bg-surface)' }}>
-      {/* Open Q&A input bar */}
-      <form onSubmit={handleSubmit} style={{ marginBottom: '24px' }}>
-        <div className="glass-card" style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '12px 16px' }}>
-          <input
-            ref={inputRef}
-            className="glass-input"
-            style={{ flex: 1, fontSize: '14px' }}
-            placeholder="Ask the C-Suite anything — or pick a playbook below"
-            value={question}
-            onChange={e => setQuestion(e.target.value)}
-            data-testid="open-qa-input"
-          />
-          <button
-            type="submit"
-            className="glass-btn-primary"
-            disabled={!question.trim()}
-            data-testid="open-qa-submit"
-          >
-            Run
-          </button>
-        </div>
-      </form>
-
-      {/* 8 playbook tiles */}
-      <div
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}
-        data-testid="playbook-tiles"
+    <div
+      style={{
+        background: 'var(--color-navy-900)',
+        color: 'var(--color-text-primary)',
+        minHeight: '100vh',
+        fontFamily: '-apple-system, "SF Pro Display", "Inter", system-ui, sans-serif',
+        fontSize: 'var(--text-sm)',
+        lineHeight: 'var(--leading-snug)',
+      }}
+      data-testid="home-screen"
+    >
+      {/* ── TOP BAR ────────────────────────────────────────────────────────── */}
+      <header
+        role="banner"
+        aria-label="Session context"
+        style={{
+          background: 'var(--color-navy-700)',
+          borderBottom: '1px solid var(--color-border)',
+          padding: '7px var(--space-4)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-3)',
+          flexWrap: 'wrap',
+        }}
       >
-        {PLAYBOOK_TILES.map(tile => (
-          <div
-            key={tile.id}
-            className={`glass-card ${tile.lit ? 'glass-card--selected' : ''}`}
-            style={{
-              opacity: tile.lit ? 1 : 0.55,
-              cursor: tile.lit ? 'pointer' : 'not-allowed',
-              position: 'relative',
-            }}
-            onClick={() => {
-              if (!tile.lit) return;
-              // Pre-fill the question input with the playbook prompt
-              inputRef.current?.focus();
-            }}
-            title={tile.lit ? tile.description : 'Coming in Ch.7'}
-            data-testid={`tile-${tile.id}`}
-          >
-            <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '4px', color: 'var(--navy)' }}>
-              {tile.label}
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--muted)', lineHeight: 1.4 }}>
-              {tile.description}
-            </div>
-            {tile.lit && (
-              <span className="glass-badge glass-badge--purple" style={{ marginTop: '8px', display: 'inline-flex' }}>
-                Active
+        {/* Date */}
+        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--color-text-secondary)' }}>
+          <span style={{ color: 'var(--color-text-primary)' }}>{formatToday()}</span>
+        </div>
+
+        {/* W30 trough chip */}
+        <div
+          style={{
+            fontSize: 'var(--text-xs)',
+            background: 'rgba(201,161,75,0.12)',
+            border: '1px solid rgba(201,161,75,0.3)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '2px 7px',
+            color: 'var(--color-gold-500)',
+          }}
+          aria-label={`W30 trough in ${w30ProximityLabel}`}
+        >
+          W30 in <strong>{w30ProximityLabel}</strong>
+        </div>
+
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Cost ribbon */}
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}
+          aria-label="Token usage"
+        >
+          {costUsage !== null ? (
+            <>
+              <span>
+                Window{' '}
+                <strong style={{ color: 'var(--color-text-secondary)' }}>
+                  {Math.round(windowPct)}%
+                </strong>
               </span>
-            )}
-            {!tile.lit && (
-              <span className="glass-badge glass-badge--navy" style={{ marginTop: '8px', display: 'inline-flex', opacity: 0.6 }}>
-                Ch.7
-              </span>
+              <div
+                role="progressbar"
+                aria-valuenow={Math.round(windowPct)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`Context window ${Math.round(windowPct)}% used`}
+                style={{
+                  width: '60px',
+                  height: '4px',
+                  background: 'var(--color-surface-2)',
+                  borderRadius: '2px',
+                  overflow: 'hidden',
+                }}
+              >
+                <div style={{
+                  height: '100%',
+                  width: `${windowPct}%`,
+                  background: 'linear-gradient(90deg, var(--color-purple-500), var(--color-purple-400))',
+                  borderRadius: '2px',
+                }} />
+              </div>
+              {costUsage.todayUsd !== null && (
+                <span>
+                  Today{' '}
+                  <strong style={{ color: 'var(--color-text-secondary)' }}>
+                    ${costUsage.todayUsd.toFixed(2)}
+                  </strong>
+                </span>
+              )}
+            </>
+          ) : (
+            <span style={{ color: 'var(--color-text-muted)' }}>Usage loading…</span>
+          )}
+        </div>
+      </header>
+
+      {/* ── THREE-COLUMN BODY ─────────────────────────────────────────────── */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '280px 1fr 240px',
+          minHeight: 'calc(100vh - 37px)',
+        }}
+      >
+        {/* ── LEFT RAIL ──────────────────────────────────────────────────── */}
+        <nav
+          aria-label="Context rail — workstreams, decisions, writebacks"
+          style={{
+            background: 'rgba(10,24,73,0.92)',
+            borderRight: '1px solid var(--color-border)',
+            padding: 'var(--space-3) 0',
+            overflowY: 'auto',
+            position: 'sticky',
+            top: 0,
+            height: 'calc(100vh - 37px)',
+          }}
+        >
+          {/* Workstreams */}
+          <div style={{ padding: '0 var(--space-3)', marginBottom: 'var(--space-4)' }}>
+            <RailSectionLabel>Workstreams</RailSectionLabel>
+            <WorkstreamRail workstreams={homeData.workstreams} />
+          </div>
+
+          {/* Open Decisions */}
+          <div style={{ padding: '0 var(--space-3)', marginBottom: 'var(--space-4)' }}>
+            <RailSectionLabel>Open Decisions</RailSectionLabel>
+            <OpenDecisionsList decisions={homeData.decisions} />
+          </div>
+
+          {/* Writebacks Counter */}
+          <div style={{ padding: '0 var(--space-3)', marginBottom: 'var(--space-4)' }}>
+            <RailSectionLabel>Writebacks</RailSectionLabel>
+            {onWritebacksClick ? (
+              <WritebacksCounter count={homeData.writebackCount} onClick={onWritebacksClick} />
+            ) : (
+              <WritebacksCounter count={homeData.writebackCount} onClick={() => {}} />
             )}
           </div>
-        ))}
-      </div>
+        </nav>
 
-      {/* Tripwire strip */}
-      <div className="glass-card" style={{ marginBottom: '24px' }} data-testid="tripwire-strip">
-        <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
-          Tripwires
-        </div>
-        {TRIPWIRE_STUBS.map(tw => (
-          <div
-            key={tw.id}
-            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--glass-border)' }}
-          >
-            <span style={{ fontSize: '13px', color: 'var(--navy)' }}>{tw.label}</span>
-            <span className="glass-badge glass-badge--navy">{tw.status}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Cost meter */}
-      <div className="glass-card" data-testid="cost-meter">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{ fontWeight: 600, fontSize: '12px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Context Window
-          </span>
-          <span style={{ fontSize: '12px', color: 'var(--navy)', fontFamily: 'var(--font-mono)' }} data-testid="cost-meter-text">
-            {windowRemainingTokens !== null
-              ? `${windowRemainingTokens.toLocaleString()} / ${windowCap.toLocaleString()} remaining`
-              : '— / 180,000 remaining'}
-          </span>
-        </div>
-        <div className="progress-bar">
-          <div
-            className="progress-bar__fill progress-bar__fill--primary"
-            style={{ transform: `scaleX(${meterPct / 100})` }}
-            data-testid="cost-meter-bar"
+        {/* ── CENTER CANVAS ──────────────────────────────────────────────── */}
+        <main
+          style={{
+            padding: 'var(--space-3) var(--space-4)',
+            overflowY: 'auto',
+          }}
+          data-testid="home-center"
+        >
+          {/* Open Q&A bar */}
+          <OpenQABar
+            value={qaValue}
+            onChange={setQaValue}
+            onSubmit={handleQASubmit}
+            decomposerPreview={null} // TODO ch7-phase-b: wire decomposer preview IPC
+            submitDisabled={false}
           />
-        </div>
+
+          {/* Playbook tiles — 4×2 grid */}
+          <div
+            style={{
+              fontSize: 'var(--text-xs)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--color-text-muted)',
+              marginBottom: 'var(--space-2)',
+            }}
+            id="pb-section-label"
+          >
+            Playbooks
+          </div>
+          <div
+            role="list"
+            aria-labelledby="pb-section-label"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 140px)',
+              gap: 'var(--space-2)',
+              marginBottom: 'var(--space-3)',
+            }}
+            data-testid="playbook-grid"
+          >
+            {tiles.map((tile) => (
+              <div key={tile.id} role="listitem">
+                <PlaybookTile {...tile} onClick={handleTileClick} />
+              </div>
+            ))}
+          </div>
+        </main>
+
+        {/* ── RIGHT COLUMN ───────────────────────────────────────────────── */}
+        <aside
+          aria-label="Cost and scheduled jobs"
+          style={{
+            borderLeft: '1px solid var(--color-border)',
+            padding: 'var(--space-3)',
+            overflowY: 'auto',
+          }}
+        >
+          {/* Token meter — fixed-height 120px section */}
+          <div style={{ marginBottom: 'var(--space-4)', minHeight: '120px' }}>
+            <RightLabel>Token Meter</RightLabel>
+            {costUsage !== null ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                {/* Window used */}
+                <div>
+                  <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)' }}>
+                    Window used
+                  </div>
+                  <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                    {Math.round(windowPct)}%
+                  </div>
+                  <div
+                    role="progressbar"
+                    aria-valuenow={Math.round(windowPct)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`Window ${Math.round(windowPct)}% used`}
+                    style={{ height: '5px', background: 'var(--color-surface-2)', borderRadius: '2px', overflow: 'hidden', marginTop: '2px' }}
+                  >
+                    <div style={{ height: '100%', width: `${windowPct}%`, background: 'linear-gradient(90deg, var(--color-purple-500), var(--color-purple-400))', borderRadius: '2px' }} />
+                  </div>
+                </div>
+
+                {/* Today's spend */}
+                {costUsage.todayUsd !== null && (
+                  <div>
+                    <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)' }}>Today's spend</div>
+                    <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                      ${costUsage.todayUsd.toFixed(2)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                Loading…
+              </p>
+            )}
+          </div>
+
+          {/* Scheduled jobs strip */}
+          <div>
+            <RightLabel>Scheduled Jobs</RightLabel>
+            <JobsStrip jobs={[]} /> {/* TODO ch7-phase-b: wire home.scheduledJobs IPC variant */}
+          </div>
+        </aside>
       </div>
+
+      {/* ── RESPONSIVE: single column under 900px ────────────────────────── */}
+      <style>{`
+        @media (max-width: 900px) {
+          [data-testid="home-screen"] > div:nth-child(2) {
+            grid-template-columns: 1fr !important;
+          }
+          [data-testid="home-screen"] > div:nth-child(2) > nav {
+            position: static !important;
+            height: auto !important;
+          }
+          [data-testid="home-screen"] [role="list"][aria-labelledby="pb-section-label"] {
+            grid-template-columns: repeat(2, 140px) !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
