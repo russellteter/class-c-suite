@@ -2,8 +2,8 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "ch-1-complete-ready-for-ch2",
-  "next_action": "Ch.2 SPEC: Architect dispatch reads ADR-0002 + ROADMAP §Ch.2 + Ch.1 Audit/QA outstanding items: (1) add recordUsage() lifecycle test to scheduler.spec.ts; (2) add vault.init.error IPC variant to ipc.ts (U-6); (3) implement SafeWrite + concurrent-write fuzz test (keystone safety proof); (4) execute vault-bootstrap.sh (B22 pending execution). See docs/reviews/ch1-audit-qa-report.md §9 for full outstanding items list.",
+  "current_phase": "ch-2-reopen-fix-integration",
+  "next_action": "Ch.2 Fix-Integration: (1) Resolve fuzz Invariant 3 — external-write-after-ok silent data loss, no sidecar produced (options: post-write re-read + sidecar, flock, git-SHA post-rename check); (2) Align zonePolicy.ts + primitive HASH_CHECK_ZONES with ADR §2.1 full shared-zone list (add pre-mortem, tripwire, competitor; fix prediction and stakeholder_person/account); (3) Add integration test for safewrite.conflict IPC emission at wrapper layer. After fix-integration, re-run EvidenceQA for CLOSE verdict. See docs/reviews/ch2-audit-qa-report.md for full findings.",
   "completed_tasks": [
     {
       "id": "scaffold-doc-set",
@@ -42,6 +42,13 @@
       "completed_on": "2026-05-27",
       "verdict": "CLOSE",
       "commits": ["see auto-push after this edit"]
+    },
+    {
+      "id": "ch-2-audit-qa",
+      "summary": "Ch.2 Audit/QA: 8 PASS / 1 FAIL / 1 NEEDS WORK / 1 CONCERN. REOPEN. AC-1 fuzz keystone fails Invariant 3 (silent data loss). AC-3 zonePolicy.ts diverges from ADR on 6 zones. AC-5 IPC emission untested. B9 VERIFIED; B22 still active pending Russell vault-bootstrap execution. G-1/G-2/G-6 correct. AC-6 hand-reproduced. Full report at docs/reviews/ch2-audit-qa-report.md.",
+      "completed_on": "2026-05-27",
+      "verdict": "REOPEN",
+      "commits": ["pending atomic commits below"]
     }
   ],
   "pending_tasks": [
