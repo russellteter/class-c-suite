@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "echo 'lint: no linter configured in Ch.0'",
     "test:unit": "echo 'no unit tests in apps/utility at Ch.0'",
-    "test:integration": "echo 'no integration tests in apps/utility at Ch.0'"
+    "test:integration": "echo 'no integration tests in apps/utility at Ch.0'",
+    "dev": "tsx watch src/index.ts"
   },
   "dependencies": {
     "@c-suite/shared-types": "workspace:*",
