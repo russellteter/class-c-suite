@@ -262,6 +262,21 @@ export const IpcMessage = z.discriminatedUnion('kind', [
       runId: z.string(),
     }),
   }),
+  // B45 instrumentation: utility.crash.diagnostic — first-crash env dump + buffered stderr.
+  // Emitted by supervisor once per crash cycle before the restart loop begins.
+  // Renderer can ignore; useful for dev-mode diagnostics and crash triage.
+  z.object({
+    kind: z.literal('utility.crash.diagnostic'),
+    payload: z.object({
+      nodeVersion: z.string(),
+      modulesAbi: z.string(),
+      electronVersion: z.string().optional(),
+      execPath: z.string(),
+      stderr: z.string(),       // full buffered stderr from crash cycle
+      stdout: z.string(),       // full buffered stdout from crash cycle
+      exitCode: z.number().nullable(),
+    }),
+  }),
   // Ch.6 ADR-0008 §3.3 — per-writeback iteration + accept/reject/edit IPC events.
   // Do NOT modify writeback.proposed / writeback.committed (existing shapes above).
   z.object({

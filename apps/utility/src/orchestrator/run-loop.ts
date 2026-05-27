@@ -117,7 +117,10 @@ export async function startRun(
   let computedMemoPath = `/vault/memos/${runId}.md`;
 
   try {
-    const synthState = { ...state, kind: 'synthesizer' as const, runId };
+    // Cast state to synthesizer shape for buildVerifierInput.
+    // In stub/replay runs the DB won't be fully seeded, so VerifierInputContractViolation
+    // fires below — this spread just satisfies the type; the contract check catches gaps.
+    const synthState = { ...state, kind: 'synthesizer' as const, runId } as RunState & { kind: 'synthesizer' };
     const verifierInput = buildVerifierInput(runId, synthState, db);
 
     const stubMode = (process.env.STUB_MODE ?? 'replay') as 'replay' | 'record' | 'live';
@@ -148,11 +151,11 @@ export async function startRun(
     }
   }
 
-  const verifierEvent: RunEvent = {
-    kind: computedPassed ? 'verifier.pass' : 'verifier.fail',
-    rigorScore: computedRigorScore,
-    memoPath: computedMemoPath,
-  };
+  // Use explicit if/else so TypeScript narrows each branch to its discriminated-union variant.
+  // verifier.pass carries rigorScore+memoPath; verifier.fail carries failureReasons+memoPath.
+  const verifierEvent: RunEvent = computedPassed
+    ? { kind: 'verifier.pass', rigorScore: computedRigorScore, memoPath: computedMemoPath }
+    : { kind: 'verifier.fail', failureReasons: [], memoPath: computedMemoPath };
   const afterVerifier = transition(state, verifierEvent, db);
   if ('code' in afterVerifier) return makeFailedReturn(runId, visitedStates, agentRolesInvoked, afterVerifier);
   state = afterVerifier;
