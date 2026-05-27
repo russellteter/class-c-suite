@@ -18,7 +18,8 @@
     "test:fuzz": "vitest run --config vitest.fuzz.config.ts",
     "test:integration": "echo 'no integration tests at Ch.0'",
     "build:packages": "pnpm --filter @c-suite/shared-types build && pnpm --filter @c-suite/stub-harness build && pnpm --filter @c-suite/soql-builder build",
-    "dev": "concurrently -k -n main,utility,renderer -c blue,magenta,green \"pnpm --filter @c-suite/main dev\" \"pnpm --filter @c-suite/utility dev\" \"pnpm --filter @c-suite/renderer dev\""
+    "dev": "concurrently -k -n main,renderer -c blue,green \"pnpm --filter @c-suite/main dev\" \"pnpm --filter @c-suite/renderer dev\"",
+    "dev:full": "concurrently -k -n main,utility,renderer -c blue,magenta,green \"pnpm --filter @c-suite/main dev\" \"pnpm --filter @c-suite/utility dev\" \"pnpm --filter @c-suite/renderer dev\""
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
