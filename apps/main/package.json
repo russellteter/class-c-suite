@@ -17,12 +17,12 @@
     "@c-suite/shared-types": "workspace:*",
     "better-sqlite3": "^12.10.0",
     "chokidar": "^3.6.0",
-    "electron": "^42.3.0",
     "js-yaml": "^4.1.1",
     "pino": "^10.3.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
+    "electron": "^33.4.11",
     "typescript": "^5.8.0"
   }
 }
