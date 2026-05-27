@@ -21,10 +21,17 @@ const RESTART_DELAY_MS = 500;       // wait 500ms before respawning
 // Resolved at runtime — compiled utility entry.
 const UTILITY_PATH = path.join(__dirname, '..', '..', 'utility', 'index.js');
 
+/** Structural IPC-sender subset used by supervisor to emit run.failed to renderer. */
+export interface IpcSender {
+  send: (channel: string, data: unknown) => void;
+}
+
 export interface SupervisionState {
   restarts: number[];   // timestamps of recent crashes (ms epoch)
-  proc: Electron.UtilityProcess | null;
-  port: Electron.MessagePortMain | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  proc: any | null;    // Electron.UtilityProcess in production; EventEmitter mock in tests
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  port: any | null;    // Electron.MessagePortMain in production; null in tests
 }
 
 function logCrashToSQLite(
@@ -74,7 +81,7 @@ export function setupUtilityChannel(proc: Electron.UtilityProcess): Electron.Mes
 export function startSupervision(
   state: SupervisionState,
   db: Database.Database,
-  webContents: Electron.WebContents,
+  webContents: IpcSender,
 ): void {
   const proc = forkUtility();
   state.proc = proc;

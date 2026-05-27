@@ -3,32 +3,22 @@
  * Test owner: Test dispatch (writer ≠ grader, DOCTRINE law #7)
  * Source: docs/decisions/0002-ch1-process-architecture.md §3 + §9 rows 2 + 10
  *
- * Spec ambiguities:
+ * Spec ambiguities (resolved per brief):
  *   1. ADR §3.1 uses Electron's `utilityProcess.fork()` and `UtilityProcess` events.
- *      These are unavailable in vitest's Node context. Tests mock them with
- *      EventEmitter-based stand-ins per brief line 25 ("Mock utilityProcess.fork()").
+ *      These are unavailable in vitest's Node context. Tests mock electron via vi.mock
+ *      so `forkUtility()` inside `startSupervision` returns a MockUtilityProcess.
  *   2. ADR §3.1 shows `startSupervision(state, db, webContents)`. The `webContents`
- *      parameter is mocked. Runtime must accept an injectable IPC-sender so tests
- *      can capture `run.failed` emissions without a real BrowserWindow.
+ *      parameter is typed as `IpcSender` (structural) in production — tests pass a
+ *      compatible function directly.
  *   3. ADR §3.1 RESTART_DELAY_MS = 500ms. Tests use vi.useFakeTimers to advance
  *      time without real 500ms waits.
- *   4. ADR §9 row 2: "resumed run emits `run.start` with original runId within 1500ms total."
- *      This requires resumeRun to fire and emit run.start IPC after respawn.
- *      This is a compound assertion (supervisor → orchestrator integration). The unit
- *      test here asserts respawn timing and run.failed emission; full run.start
- *      emission is covered by integration tests once Runtime ships.
- *   5. The `process_events` table is seeded by the tests; the DB handle is injected.
- *
- * Tests fail until Runtime ships apps/main/src/supervisor.ts.
+ *   4. ADR §9 row 2 compound assertion (supervisor → orchestrator): unit test asserts
+ *      respawn timing and run.failed emission; full run.start integration is deferred.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
 import Database from 'better-sqlite3';
-
-// Production module — does not exist yet. Uncomment when Runtime ships:
-// import { startSupervision } from '../../../apps/main/src/supervisor.js';
-// import type { SupervisionState } from '../../../apps/main/src/supervisor.js';
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -46,24 +36,22 @@ function createMockUtilityProcess(): MockUtilityProcess {
   return proc;
 }
 
-// Stub: Real supervisor will be imported from apps/main/src/supervisor.ts.
-// The stub captures the invocation chain for now.
+// Mock electron before importing production module.
+// Provides: utilityProcess.fork → MockUtilityProcess, MessageChannelMain → mock channel.
+vi.mock('electron', () => {
+  const mockFork = vi.fn(() => createMockUtilityProcess());
+  const mockChannel = {
+    port1: { start: vi.fn(), postMessage: vi.fn() },
+    port2: {},
+  };
+  return {
+    utilityProcess: { fork: mockFork },
+    MessageChannelMain: vi.fn(() => mockChannel),
+  };
+});
 
-interface SupervisionState {
-  restarts: number[];
-  proc: MockUtilityProcess | null;
-  port: unknown | null;
-}
-
-type IpcSender = (channel: string, data: unknown) => void;
-
-function startSupervision(
-  _state: SupervisionState,
-  _db: Database.Database,
-  _send: IpcSender,
-): void {
-  throw new Error('startSupervision not implemented — Runtime dispatch pending');
-}
+import { startSupervision } from '../../apps/main/src/supervisor.js';
+import type { SupervisionState, IpcSender } from '../../apps/main/src/supervisor.js';
 
 // ── DB setup: minimal process_events table ───────────────────────────────────
 
@@ -90,11 +78,15 @@ describe('startSupervision — crash + respawn within 1000ms (§9 row 2)', () =>
   const ipcEvents: Array<{ channel: string; data: unknown }> = [];
   let send: IpcSender;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.useFakeTimers();
     db = createTestDb();
     ipcEvents.length = 0;
-    send = (channel, data) => ipcEvents.push({ channel, data });
+    send = { send: (channel, data) => ipcEvents.push({ channel, data }) };
+
+    // Reset fork mock call count before each test.
+    const { utilityProcess } = await import('electron');
+    (utilityProcess.fork as ReturnType<typeof vi.fn>).mockClear();
   });
 
   afterEach(() => {
@@ -104,19 +96,14 @@ describe('startSupervision — crash + respawn within 1000ms (§9 row 2)', () =>
   });
 
   it('respawns the utility process within 1000ms after non-zero exit', async () => {
-    let forkCallCount = 0;
-    // Mock utilityProcess.fork — inject via a factory override.
-    // Runtime supervisor must accept a forkFn parameter or use DI for testability.
-    const forkFn = vi.fn(() => {
-      forkCallCount++;
-      return createMockUtilityProcess();
-    });
+    const { utilityProcess } = await import('electron');
+    const forkMock = utilityProcess.fork as ReturnType<typeof vi.fn>;
 
     const state: SupervisionState = { restarts: [], proc: null, port: null };
     startSupervision(state, db, send);
 
     // Initial fork (count = 1).
-    expect(forkCallCount).toBe(1);
+    expect(forkMock).toHaveBeenCalledTimes(1);
 
     // Simulate crash.
     state.proc?.emit('exit', 1);
@@ -125,7 +112,7 @@ describe('startSupervision — crash + respawn within 1000ms (§9 row 2)', () =>
     vi.advanceTimersByTime(1000);
 
     // Second fork should have fired.
-    expect(forkFn).toHaveBeenCalledTimes(2);
+    expect(forkMock).toHaveBeenCalledTimes(2);
   });
 
   it('inserts a process_events crash row on non-zero exit (§9 row 10)', () => {
@@ -175,11 +162,14 @@ describe('startSupervision — halt after 5 crashes in 60s (§9 row 2)', () => {
   const ipcEvents: Array<{ channel: string; data: unknown }> = [];
   let send: IpcSender;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.useFakeTimers();
     db = createTestDb();
     ipcEvents.length = 0;
-    send = (channel, data) => ipcEvents.push({ channel, data });
+    send = { send: (channel, data) => ipcEvents.push({ channel, data }) };
+
+    const { utilityProcess } = await import('electron');
+    (utilityProcess.fork as ReturnType<typeof vi.fn>).mockClear();
   });
 
   afterEach(() => {
