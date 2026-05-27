@@ -13,6 +13,21 @@ import {
 } from './vault-schemas.js';
 import { normalizeKeys } from './normalizeKeys.js';
 
+/**
+ * Wraps a Zod parse error with vault-zone context.
+ * ADR-0001 §2 — parseArtifact must expose zone + zodIssues on failure.
+ */
+export class VaultSchemaParseError extends Error {
+  readonly zone: ArtifactZone;
+  readonly zodIssues: z.ZodIssue[];
+  constructor(zone: ArtifactZone, zodError: z.ZodError) {
+    super(`VaultSchemaParseError [zone=${zone}]: ${zodError.message}`);
+    this.name = 'VaultSchemaParseError';
+    this.zone = zone;
+    this.zodIssues = zodError.issues;
+  }
+}
+
 const ZoneToSchema = {
   position: PositionFrontmatter,
   decision: DecisionFrontmatter,
@@ -36,10 +51,17 @@ const ZoneToSchema = {
 export function parseArtifact(rawYaml: unknown, zone: ArtifactZone) {
   const normalized = normalizeKeys(rawYaml);
   const schema = ZoneToSchema[zone];
-  const parsed = schema.parse(normalized);
-  // Inject discriminator post-parse (B21: vault YAML has no `type:` key — type
-  // is derived from file-path zone, not embedded in the frontmatter).
-  return { ...parsed, type: zone } as typeof parsed & { type: ArtifactZone };
+  try {
+    const parsed = schema.parse(normalized);
+    // Inject discriminator post-parse (B21: vault YAML has no `type:` key — type
+    // is derived from file-path zone, not embedded in the frontmatter).
+    return { ...parsed, type: zone } as typeof parsed & { type: ArtifactZone };
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      throw new VaultSchemaParseError(zone, e);
+    }
+    throw e;
+  }
 }
 
 /**
