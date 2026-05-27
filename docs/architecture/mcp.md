@@ -102,7 +102,12 @@ function renewalForecastQuery(opts: { windowMonths: number }) {
 }
 ```
 
-🔍 R1 VERIFY: exact Salesforce object/field names against Class's actual schema. The fields `Renewal_Date__c`, `Renewal_Risk__c`, `Account_Manager__r` are spec assumptions — confirm or correct. Use the `salesforce-connector` skill or `sf` CLI.
+**✓ R1 VERIFIED 2026-05-26 (`docs/research/R1-connector-reality.md`):** Account custom field schema confirmed against live Class production (org `00D4W000001WPt2UAG`, 325 Account custom fields). Critical corrections vs spec assumptions:
+- ✗ `Renewal_Date__c` — does NOT exist. ✓ Real field: **`Renewal_Anniversary_Date__c`** (date, Account-level). Also `DH_Renewal_Date__c` (date, Opp-level — likely per-deal override). BLOCKERS B20.
+- ✗ Stage labels `S4` / `S5` / `Commit` / `BestCase` — do NOT exist. ✓ Real labels documented in BLOCKERS B19 + R1 report. New-biz committed candidates: `Verbal Agreement`, `Verbal Approval`, `Contracting`, `Quote in Review`, `Negotiation`. Renewal-pipeline late: `Renewal Quote Sent`, `Qualified Renewal`.
+- ✓ `Account_Manager__c` (reference) exists; traversal via `Account_Manager__r.IsActive` works. B7 mitigation verified.
+- ✓ `Renewal_at_Risk__c` (boolean), `Renewal_Anniversary_Date__c` (date), `ARR__c` (currency), `Customer_Health_Level__c` (picklist — use this, not the deprecated `Health_Status__c`), `Account_ID_18_Digit__c` (string — **join key with customer-dashboard PowerBI data**), `PowerBI_Class_URL__c` (url — per-account PowerBI link) all confirmed.
+- ✓ Auth: `sf` CLI as `class-prod` alias (username `sf.operations@classedu.com`, web auth, persistent).
 
 **Injection defense:** `buildSoql` rejects any value not passed through a parameterized binder. Fuzz test in Ch.8 acceptance: inject SOQL metacharacters into every parameter; expect parametric binding to neutralize.
 
@@ -147,7 +152,15 @@ function cashPositionQuery() {
 }
 ```
 
-🔍 R1 VERIFY: actual SuiteQL syntax + the Saved Searches Russell currently uses; some queries may have to run via Saved Search rather than SuiteQL.
+**✓ R1 VERIFIED 2026-05-26 (`docs/research/R1-connector-reality.md`):** NetSuite is fully accessible via the `mcp__claude_ai_Class_Technologies_NetSuite__*` MCP (already loaded in Claude Code session). Confirmed against live Class production:
+- 4 subsidiaries: Class Technologies Inc. (id=1), Class Parent Holdco LLC (id=2), Ele-Class Parent Holdco LLC (id=3), Consolidated (id=-2).
+- 1 Primary Accounting Book (id=1).
+- Live SuiteQL works against `transaction` table (verified with monthly cash query returning 7 months of data, $-6.5M to +$21.7M monthly nets).
+- **Cash Saved Searches (6 found)** — including `customsearch_atlas_wkly_cshproject_rpt` "Weekly Cash Projection Overview" (likely the spine of `weekly-cash-forecast`), plus AR/AP cash searches.
+- **Renewal Saved Searches (9 found)** — including `customsearch_class_renewalviewer`, `customsearch_class_upcm_rnwls_qt`, `customsearch_atlas_saas_renewalrecurring`.
+- **Covenant Saved Searches (0 found)** — `covenant-tracker` must derive from raw SuiteQL on cash + LoC GL accounts. Confirm covenant definition with Russell via Day-Zero form (BLOCKERS B6).
+- **Permission limit:** `ns_getSuiteQLMetadata` returns 403 ("REST Web Services" tier not enabled for this MCP). Schema enumeration limited; use NetSuite docs + extracted Cowork patterns + known table names instead. Not blocking — queries work.
+- **Implication for B1:** Phase R + Synthesizer-stage research can run today via MCP. TBA tokens (Brian's task) needed only for the standalone Electron app's Ch.8 utility process.
 
 ## AWS
 

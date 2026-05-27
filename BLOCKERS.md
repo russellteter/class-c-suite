@@ -23,16 +23,16 @@
 
 ## Critical-path / external dependencies (P0-P1)
 
-### B1 — NetSuite TBA admin enablement (Brian) `SEEDED` `P1`
-**What.** TBA tokens for NetSuite API access must be issued by a NetSuite admin (Brian). External-human dependency; longest lead time of any blocker.
-**Bites at.** Ch.8 acceptance criteria (NetSuite live).
-**Status.** Phase R R1 sends the request. Estimated lead: 1-4 weeks depending on Brian's queue.
+### B1 — NetSuite TBA admin enablement (Brian) — scope clarified `DOWNGRADED` `P2`
+**What.** TBA tokens for NetSuite API access must be issued by a NetSuite admin (Brian). External-human dependency.
+**Bites at.** Ch.8 acceptance criteria (the **standalone Electron app's** NetSuite path).
+**Status.** **2026-05-26 update:** Phase R R1 partial verification (`docs/research/R1-connector-reality.md`) confirms NetSuite is **fully accessible TODAY via the `mcp__claude_ai_Class_Technologies_NetSuite__*` MCP** — no TBA tokens needed for Phase R discovery, Synthesizer-stage research, or any work done inside Claude Code. The TBA tokens are still required for the **standalone Electron app's** Ch.8 utility process (which can't pipe through Claude's MCP — it needs direct API auth). Severity downgraded P1 → P2.
 **Mitigation.**
-- Request sent earliest possible point in Phase R R1.
-- Spine architecture isolates NetSuite from spine readiness — Ch.0-7 do not depend on NetSuite.
-- Cash playbooks degrade to local cash model + AWS data until tokens arrive.
-- If TBA slips past Ch.8, ship Ch.8 with NetSuite skip-and-flag; close as post-V1 patch when tokens arrive.
-**Owner.** Russell (relay to Brian); `/goal` tracks.
+- Request template ready at `scripts/send-tba-request.md`; send when Ch.8 implementation starts (not earlier).
+- Phase R + all Synthesizer-side prototyping uses the MCP — no blocking dependency on Brian's queue.
+- Ch.0-7 do not depend on NetSuite at all.
+- If TBA slips past Ch.8 start, the C-Suite Electron app ships with NetSuite skip-and-flag; close as post-V1 patch.
+**Owner.** Russell (relay to Brian when Ch.8 starts); `/goal` tracks.
 
 ### B2 — PowerBI `customer-dashboard` shape now partially known `DOWNGRADED` `P2`
 **What.** The PowerBI dataset shape isn't documented in operating-model artifacts; the integration approach depends on what the project actually does.
@@ -43,6 +43,26 @@
 - Integration shape default: **Python subprocess invoked from utility process** with JSON output captured to a tool-call result (per the project's existing `-j` flag). Avoids rewriting 43K LOC of battle-tested Python.
 - `Account ID 18 Digit` is the canonical join key for any cross-source query.
 - CRO/CPO lenses consume product-usage + Google-Sheets-renewal signal with citable `source_id` per PRD §6 Supplementary Data Source section.
+
+### B19 — Connector Playbook "Committed" stage filter assumes wrong stage labels `NEW` `P1`
+**What.** The Connector Playbook canonical rule is `Committed pipeline = StageName IN (S4, S5, Commit, BestCase)`. **Verified 2026-05-26 against live Class production:** these stage labels DO NOT EXIST in the org. Actual stages with live counts: `Closed Won` (39,154), `Closed Lost` (31,637), `Qualified Renewal` (514), `Discovery` (152), `Evaluation` (80), `Qualified Opportunity` (74), `Renewal Quote Sent` (50), `Outreach` (35), `Engagement` (34), `Unsuccessful` (15), `Verbal Approval` (15), `Quote in Review` (15), `Negotiation` (7), `Contracting` (6), `Verbal Agreement` (4).
+**Bites at.** Ch.8 (typed SOQL builder); any playbook using committed-pipeline filter (Cash lever, GTM reallocation, Board narrative, Strategic option).
+**Mitigation.**
+- Recommended "Committed" filter per `docs/research/R1-connector-reality.md`:
+  - New business: `StageName IN ('Verbal Agreement', 'Verbal Approval', 'Contracting', 'Quote in Review', 'Negotiation')` (~47 active deals).
+  - Renewal: `StageName IN ('Renewal Quote Sent', 'Qualified Renewal')` (~564 deals; `Qualified Renewal` may be too early — needs Russell's confirmation).
+- **Day-Zero form question:** confirm Russell's mental model for "committed" so the filter matches the forecasting practice he actually runs.
+- Update Connector Playbook (`business-planning/Strategic_AI_Connector_Playbook.md`) when Russell confirms.
+**Owner.** Russell (Day-Zero confirmation); /goal updates Connector Playbook + the typed SOQL builders.
+
+### B20 — Real renewal date field is `Renewal_Anniversary_Date__c`, not `Renewal_Date__c` `NEW` `P1`
+**What.** `docs/architecture/mcp.md` §Salesforce + the Connector Playbook reference `Renewal_Date__c` as the renewal date field. **Verified 2026-05-26 against live Class production:** `Renewal_Date__c` does not exist. The real field is `Renewal_Anniversary_Date__c` (date) on the Account object. There is also a separate `DH_Renewal_Date__c` on the Opportunity object — likely a per-deal renewal-date capture.
+**Bites at.** Ch.8 (typed SOQL builder); the renewal-forecast scheduled job (Ch.10); any playbook that asks "who's up for renewal in the next N months."
+**Mitigation.**
+- mcp.md `renewalForecastQuery` updated to use `Renewal_Anniversary_Date__c` (Account-level).
+- When `renewal-forecast` skill is extracted from Cowork (B17), correct any `Renewal_Date__c` references.
+- Confirm with Russell whether Account.`Renewal_Anniversary_Date__c` or Opp.`DH_Renewal_Date__c` is the canonical source for renewal-forecast (probably Account.RAD with Opp.DH overriding when populated).
+**Owner.** /goal in Ch.8; Russell confirms canonical source.
 
 ### B18 — Python subprocess from Electron utility process — runtime + packaging implications `NEW` `P2`
 **What.** `customer-dashboard` is Python (not Node). The C-Suite is Electron + Node. Wrapping Python as a subprocess from the utility process introduces: (a) Python runtime dependency on the user's Mac (must install + version-pin), (b) the subprocess must run inside a venv (or pyenv) — the C-Suite's setup runbook needs to provision this, (c) `electron-builder` notarization of the C-Suite app does NOT include Python — Python is a separate user-installed prerequisite, (d) inter-process communication is JSON over stdout (per the project's `-j` flag), (e) error handling: if Python crashes, the utility process must catch + retry + degrade gracefully.
@@ -94,12 +114,13 @@
 - Until captured, covenant readings labeled "directional" with a banner in any memo that cites them.
 - Russell can paste credit-agreement excerpts into the form; Verifier source-checks against them.
 
-### B7 — `renewal-forecast` skill uses `Owner.Name` — contradicts active-AM rule `SEEDED` `P2`
+### B7 — `renewal-forecast` skill uses `Owner.Name` — contradicts active-AM rule `VERIFIED` `P2`
 **What.** The renewal-forecast skill reads `Account.Owner.Name` from Salesforce. The Connector Playbook canonical rule is `Account_Manager__r` + `IsActive` (active AMs, not just current owners).
+**Status.** **2026-05-26 verified live:** `Account_Manager__c` (reference) exists on the live Account object. Traversal via `Account_Manager__r.IsActive` works. The corrected field is confirmed.
 **Bites at.** Ch.8 (MCP integration); flagged for Russell.
 **Mitigation.**
-- C-Suite's typed SOQL builders use `Account_Manager__r` + `IsActive` — never `Owner.Name`.
-- Flag the existing skill file to Russell for correction in Cowork (separate from C-Suite build).
+- C-Suite's typed SOQL builders use `Account_Manager__r` + `IsActive` — never `Owner.Name`. Verified pattern in `docs/research/R1-connector-reality.md`.
+- Once `renewal-forecast` skill is extracted from Cowork (B17), explicitly correct the `Owner.Name` reference.
 - C-Suite invocations of the skill (if any) wrap with the corrected query.
 
 ### B8 — Concurrent edits: Cowork `/deep` bypasses SafeWrite on shared zones `SEEDED` `P2`
