@@ -23,35 +23,8 @@
 
 import { describe, it, expect, vi } from 'vitest';
 
-// Production module — does not exist yet. Uncomment when Runtime ships:
-// import { createLogger } from '../../../apps/main/src/log.js';
-// import type { LogEntry } from '../../../apps/main/src/log.js';
-
-// ── LogEntry type (mirrors ADR §8.1) ─────────────────────────────────────────
-
-type LogProcess = 'main' | 'utility' | 'renderer';
-
-interface LogEntry {
-  ts: string;
-  level: 'debug' | 'info' | 'warn' | 'error';
-  process: LogProcess;
-  runId?: string;
-  agentId?: string;
-  message: string;
-  [key: string]: unknown;
-}
-
-// Stub: Runtime ships createLogger. The stub throws so tests are RED.
-function createLogger(
-  _process: LogProcess,
-  _sink: (entry: LogEntry) => void,
-): {
-  info: (fields: Omit<LogEntry, 'ts' | 'level' | 'process'> & { message: string }) => void;
-  error: (fields: Omit<LogEntry, 'ts' | 'level' | 'process'> & { message: string }) => void;
-  warn: (fields: Omit<LogEntry, 'ts' | 'level' | 'process'> & { message: string }) => void;
-} {
-  throw new Error('createLogger not implemented — Runtime dispatch pending');
-}
+import { createLogger } from '../../apps/main/src/log.js';
+import type { LogEntry } from '../../apps/main/src/log.js';
 
 // ── §9 row 5 — Log correlation: runId present in all run-related entries ──────
 
