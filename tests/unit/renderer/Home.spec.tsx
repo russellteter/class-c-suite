@@ -179,14 +179,14 @@ describe('Home screen — writebacks counter (ADR §11.2)', () => {
   it('shows FIXTURE_WRITEBACK_COUNT (3) as the writebacks count in aria-label', () => {
     render(React.createElement(Home, {}));
     // WritebacksCounter renders aria-label with count
-    expect(screen.getByRole('button', { name: /3 writebacks/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /3 pending writebacks/i })).toBeInTheDocument();
   });
 
   it('shows 0 when writebackCount is 0 (useHomeData mock override)', () => {
     mockUseHomeData.mockReturnValueOnce(EMPTY_HOME_DATA);
     render(React.createElement(Home, {}));
     // WritebacksCounter aria-label says "0 writebacks"
-    expect(screen.getByRole('button', { name: /0 writeback/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /0 pending writeback/i })).toBeInTheDocument();
   });
 
 });

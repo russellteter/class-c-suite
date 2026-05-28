@@ -83,22 +83,22 @@ describe('PlaybookTile — blocked state (ADR §3.6)', () => {
 
 describe('PlaybookTile — freshness dot (ADR §11.3)', () => {
 
-  it('freshness "green" → freshness dot has var(--color-success) background (PlaybookTile.tsx:line 49)', () => {
+  it('freshness "green" → freshness dot has var(--success) background (Editorial Sharp tokens)', () => {
     const { container } = render(<PlaybookTile {...makeTileProps({ freshness: 'green' })} />);
     const dot = container.querySelector('[aria-hidden="true"][title]') as HTMLElement | null;
-    expect(dot?.style.background).toBe('var(--color-success)');
+    expect(dot?.style.background).toBe('var(--success)');
   });
 
-  it('freshness "amber" → freshness dot has var(--color-warning) background', () => {
+  it('freshness "amber" → freshness dot has var(--gold) background', () => {
     const { container } = render(<PlaybookTile {...makeTileProps({ freshness: 'amber' })} />);
     const dot = container.querySelector('[aria-hidden="true"][title]') as HTMLElement | null;
-    expect(dot?.style.background).toBe('var(--color-warning)');
+    expect(dot?.style.background).toBe('var(--gold)');
   });
 
-  it('freshness "gray" → freshness dot has var(--color-text-muted) background', () => {
+  it('freshness "gray" → freshness dot has var(--gray-300) background', () => {
     const { container } = render(<PlaybookTile {...makeTileProps({ freshness: 'gray' })} />);
     const dot = container.querySelector('[aria-hidden="true"][title]') as HTMLElement | null;
-    expect(dot?.style.background).toBe('var(--color-text-muted)');
+    expect(dot?.style.background).toBe('var(--gray-300)');
   });
 
 });

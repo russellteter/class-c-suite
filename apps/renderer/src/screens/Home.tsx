@@ -176,7 +176,7 @@ export function Home({
             ) : (
               homeData.decisions.map((d) => (
                 <div key={d.id} className="cs-row" title={d.title} data-testid={`decision-${d.id}`}>
-                  <span className="ws">{d.id}</span>
+                  <span className="ws">{d.title}</span>
                 </div>
               ))
             )}
