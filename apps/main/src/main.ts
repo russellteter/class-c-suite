@@ -79,11 +79,12 @@ app.whenReady().then(() => {
   const win = createRendererWindow();
 
   // Load renderer entry point.
-  // dev: Vite dev server on port 5173 (set via NODE_ENV=development or VITE_DEV)
+  // dev: Vite dev server on port 5273 (must match apps/renderer/vite.config.ts
+  // server.port + strictPort; set via NODE_ENV=development or VITE_DEV)
   // prod/packaged: load built dist/index.html
   const isDev = !app.isPackaged && (process.env.NODE_ENV === 'development' || process.env.VITE_DEV === '1');
   if (isDev) {
-    win.loadURL('http://localhost:5173').catch((err) => {
+    win.loadURL('http://localhost:5273').catch((err) => {
       log.error({ message: 'failed to load renderer dev server', err: String(err) });
     });
   } else {

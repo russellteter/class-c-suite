@@ -43,7 +43,11 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    port: 5173,
+    // Unique C-Suite port + strictPort so we never silently drift onto (or
+    // collide with) another local Vite app squatting 5173. main.ts loads this
+    // exact port in dev — keep the two in sync.
+    port: 5273,
+    strictPort: true,
   },
   resolve: {
     alias: {
