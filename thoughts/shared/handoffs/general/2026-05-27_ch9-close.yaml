@@ -1,0 +1,77 @@
+---
+session: general
+date: 2026-05-27
+status: complete
+outcome: CONCERN_CLOSE
+---
+
+goal: Phase 2 Ch.9 (Cowork execution handoff). Continue /goal through Ch.10 with hard pause at Ch.11.
+now: Ch.9 CLOSED CONCERN-CLOSE per docs/reviews/ch9-final-audit-qa-report.md (12/13 PASS; AC-13 stale-fixture issue resolved in audit-fix). Handoff brief schema + Chief-of-Staff Handoff agent + writer + INDEX regen + executionLinkback watcher + 4-surface DrawUpCTA + HandoffPreview screen + LinkedExecution component all live. +156 net new Ch.9 specs. All hard guards passed (B3 invariant zero hits; CTA forbidden surfaces clean; explicit-trigger-only verified). Phase 2 progresses to Ch.10 (last build chapter — 5 scheduled jobs + LaunchAgent).
+
+test: cd "/Users/russellteter/Claude Code Projects/c-suite" && pnpm vitest run
+
+done_this_session:
+  - task: Ch.9 SPEC — ADR-0011 framework §3 + Handoff agent §4 (Chief of Staff per Phase R Decision 10) + 4 UI surfaces §5 + return-loop chokidar §6 + 13 ACs + 2-sub-agent build
+    files: [docs/decisions/0011-ch9-cowork-handoff.md, tasks/ch9-runtime-brief.md, tasks/ch9-renderer-brief.md, tasks/ch9-audit-brief.md]
+  - task: Ch.9 Runtime (ab4b6) — 7 handoff modules + executionLinkback watcher + 5 IPC variants + 113 specs (mid-session prompt.ts dist + IPC wiring fix in second commit)
+    files: [packages/shared-types/src/{handoff,ipc}.ts, apps/utility/src/agents/handoff/{index,prompt,runner,slug,skill-selector,writer,indexRegen}.ts, apps/utility/src/watchers/executionLinkback.ts, apps/utility/src/index.ts, tests/unit/agents/handoff/, tests/unit/watchers/]
+  - task: Ch.9 Renderer (a955d) — HandoffPreview screen (2-col layout) + DrawUpCTA + LinkedExecution + handoff IPC helpers + 43 specs; CTA gated to DEC-/POS-/PM- prefixes only
+    files: [apps/renderer/src/screens/HandoffPreview.tsx, apps/renderer/src/components/{DrawUpCTA,LinkedExecution}.tsx, apps/renderer/src/ipc/handoff.ts, apps/renderer/src/screens/{MemoViewer,AcceptedHistory}.tsx, apps/renderer/src/App.tsx, tests/unit/renderer/{HandoffPreview,DrawUpCTA,LinkedExecution}.spec.tsx]
+  - task: Ch.9 final audit (a3d11) — CONCERN-CLOSE 12/13 PASS. AC-13 stale handoff fixture; pre-mortem path drift (index.ts pre_mortems/ vs linkback.ts pre-mortems/); IPC handler empty enrichment
+    files: [docs/reviews/ch9-final-audit-qa-report.md]
+  - task: Ch.9 audit-fix — handoff fixture updated to current schema; pre_mortem→pre-mortems originDirMap in IPC handler; async-IIFE wrapper + vault-side fs.readFile + js-yaml enrichment
+    files: [tests/fixtures/vault/handoff/sample.md, tests/unit/parseArtifact.spec.ts, apps/utility/src/index.ts]
+  - task: Ch.9 close — build-log + state.json + this handoff
+    files: [docs/build-log.md, .claude/project-state.json, thoughts/shared/handoffs/general/2026-05-27_ch9-close.yaml]
+
+blockers:
+  - id: none-new
+    severity: none
+    summary: No new blockers. Ch.10 dispatch unblocked.
+
+decisions:
+  - chief_of_staff_framing_no_new_lens: Handoff agent uses Chief of Staff perspective per Phase R Decision 10d. Avoided creating a 6th lens role.
+  - kebab_vault_convention_canonical: pre-mortems/ with hyphen is the vault directory convention (parseArtifact.ts:80 + data.md §Shared zone). Any future code generating origin paths must use originDirMap to translate (pre_mortem → pre-mortems).
+  - ipc_handler_async_iife: ipcPort.on('message', ...) callbacks needing await are wrapped `void (async () => { ... })().catch(...)`. Pattern for cross-async IPC dispatchers.
+  - explicit_trigger_only_handoff_generation: handoff brief generation NEVER auto-fires on writeback.accepted. Only on `handoff.preview.requested` IPC from the renderer's "Draw up for Cowork" CTA. Codified in apps/utility/src/index.ts dispatcher.
+
+worked:
+  - small_2_sub_agent_pattern_for_small_chapter: Ch.9 was 6-9 days estimate; 2 parallel sub-agents (Runtime + Renderer) with single final audit (no intermediate) was right-sized. No wasted dispatch overhead.
+  - cta_gating_by_id_prefix: Renderer used DEC-/POS-/PM- prefix check in AcceptedHistory to gate DrawUpCTA. Clean, single-source-of-truth rule that mirrors the ADR's forbidden-surface list.
+  - vault_enrichment_in_ipc_handler: when the audit caught that IPC handler built empty HandoffGeneratorInput, the fix added best-effort vault read with try/catch + graceful degradation. The Handoff agent now gets real artifact body + frontmatter; if file isn't there, it gets empty strings and degrades — neither crashes the request.
+
+failed:
+  - prompt_md_dist_not_copied: Runtime sub-agent initially used loadSystemPrompt() reading handoff.prompt.md at runtime. Markdown files aren't copied to dist/ by tsc. Fixed in mid-session second commit by inlining HANDOFF_SYSTEM_PROMPT as a TS constant. Pattern note for future agent prompts.
+  - audit_caught_3_issues_post_dispatch: AC-13 fixture + pre-mortem path drift + IPC empty enrichment. None were in the original briefs' explicit guard list. Strengthens the case for richer audit briefs that name MORE specific forbidden-states-to-grep. (Costs more brief tokens; saves more audit-fix iterations.)
+
+next:
+  - Ch.10 entry — 5 scheduled jobs (Mon 6am tripwire, Mon 7am stakeholder refresh, Sun 6pm renewal+Chorus, Sun 8pm WS dashboard, Daily 6am morning brief) + LaunchAgent per Phase R Decision 7 + catch-up logic + retry semantics per Phase R Decision 5 + degraded-mode flags + native macOS notifications. ROADMAP §Ch.10. Depends on Ch.7 (done) + Ch.8 (done). 8-12 days. ADR-0012.
+  - Phase 2 COMPLETE emission after Ch.10 final audit closes. HARD STOP at Ch.11 (Russell on-Mac demos — 8 PRD §4 outcomes must pass on his Mac; cannot be skipped or simulated).
+  - Russell-actions still pending from Ch.8: Salesforce Connected App, Gmail OAuth, NetSuite TBA via Brian, Chorus API key, AWS SSO refresh, customer-dashboard venv bootstrap, Apple credentials, Day-Zero form. None block Ch.10 build. All unblock live operation post-Ch.11.
+
+files:
+  created:
+    - docs/decisions/0011-ch9-cowork-handoff.md
+    - docs/reviews/ch9-final-audit-qa-report.md
+    - packages/shared-types/src/handoff.ts
+    - apps/utility/src/agents/handoff/{index,prompt,runner,slug,skill-selector,writer,indexRegen}.ts
+    - apps/utility/src/watchers/executionLinkback.ts
+    - apps/renderer/src/screens/HandoffPreview.tsx
+    - apps/renderer/src/components/{DrawUpCTA,LinkedExecution}.tsx
+    - apps/renderer/src/ipc/handoff.ts
+    - tasks/ch9-{runtime,renderer,audit}-brief.md
+    - tests/unit/agents/handoff/ (multiple specs)
+    - tests/unit/watchers/executionLinkback.spec.ts
+    - tests/unit/renderer/{HandoffPreview,DrawUpCTA,LinkedExecution}.spec.tsx
+    - thoughts/shared/handoffs/general/2026-05-27_ch9-close.yaml
+  modified:
+    - packages/shared-types/src/ipc.ts (5 new handoff variants)
+    - apps/utility/src/index.ts (IPC handler + async IIFE + vault enrichment)
+    - apps/utility/src/orchestrator/run-loop.ts (handoff imports)
+    - apps/renderer/src/screens/{MemoViewer,AcceptedHistory}.tsx (CTA placement)
+    - apps/renderer/src/App.tsx (HandoffPreview screen routing)
+    - tests/fixtures/vault/handoff/sample.md (schema-updated)
+    - tests/unit/parseArtifact.spec.ts (validHandoff fixture)
+    - docs/build-log.md
+    - .claude/project-state.json
+  deleted: []

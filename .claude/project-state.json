@@ -2,7 +2,7 @@
   "$schema_note": "Conforms to the Session Continuity schema documented in ~/.claude/CLAUDE.md. Updated by /goal at every chapter boundary (and key in-chapter decisions). Read at session start to resume from last known state.",
   "project": "c-suite",
   "remote": "https://github.com/russellteter/class-c-suite.git",
-  "current_phase": "ch8-complete-concern-close",
+  "current_phase": "ch9-complete-concern-close",
   "next_action": "Ch.8 CLOSED CONCERN-CLOSE 2026-05-27 — all 16 ACs PASS per docs/reviews/ch8-final-audit-qa-report.md. 20+ commits from 9d226af (ADR-0010) through 6b699bc (final audit). Wave 1 (Salesforce + PowerBI subprocess + Day-Zero form + safeStorage infra) → intermediate audit CONCERN-CLOSE (PowerBIClient implements gap fixed) → Wave 2 (Gmail + NetSuite token-absent fallback + AWS+Chorus + Notarization smoke) → buildDeps wiring → final audit CONCERN-CLOSE. ~625 net new MCP specs. B7 + B19 + B20 + B11 + B14 + B6 all wired/mitigated (B6 + B14 partial pending Russell-action). B1 NetSuite TBA still pending Brian — token-absent fallback ships. Test suite at ~1860 passing / 80-100 pre-existing failed (zero regressions). 5 V1 MCPs + PowerBI subprocess live. NEXT /goal: Ch.9 (Cowork handoff — Handoff Agent + brief schema + UI preview + auto-link back). Then Ch.10 (5 scheduled jobs + LaunchAgent + catch-up + retry). Then emit PHASE-2 COMPLETE; HARD STOP at Ch.11 (Russell on-Mac demos). Russell-actions pending: Salesforce Connected App, Gmail OAuth, NetSuite TBA via Brian, Chorus API key, AWS SSO refresh, customer-dashboard venv bootstrap, Apple credentials, Day-Zero form submission. None block Ch.9 dispatch. Handoff at thoughts/shared/handoffs/general/2026-05-27_ch8-close.yaml.",
   "completed_tasks": [
     {
@@ -232,6 +232,6 @@
     "state": [".claude/project-state.json"],
     "augmented_mirrors": ["business-planning/C_Suite_PRD.md", "business-planning/C_Suite_CLAUDE.md"]
   },
-  "last_updated": "2026-05-27T23:30:00-04:00",
-  "updated_by": "Ch.8 close 2026-05-27 — 5 V1 MCPs + PowerBI subprocess + safeStorage credentials + buildDeps wiring. CONCERN-CLOSE per final audit (all 16 ACs PASS). +625 net new specs. Phase 2 progresses to Ch.9."
+  "last_updated": "2026-05-28T00:30:00-04:00",
+  "updated_by": "Ch.9 close 2026-05-27 — Cowork handoff brief + UI preview + chokidar link-back watcher. CONCERN-CLOSE per final audit (12/13 PASS; AC-13 fixed in audit-fix). +156 net new specs. Phase 2 progresses to Ch.10 (last build chapter — 5 scheduled jobs + LaunchAgent)."
 }

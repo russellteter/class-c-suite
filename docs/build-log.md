@@ -1322,3 +1322,26 @@ The gap between "architecture proven" and "first usable product" is the 3 NW ite
 ---
 
 [CH-8 COMPLETE 2026-05-27] All 5 V1 MCPs + PowerBI subprocess shipped. ~625 net new specs. Russell-actions documented; pre-conditions for live operation (no bugs). Next: Ch.9 (Cowork handoff brief schema + UI preview + auto-link back).
+
+---
+
+## Ch.9 — Cowork Execution Handoff (2026-05-27)
+
+**Verdict.** CONCERN-CLOSE per `docs/reviews/ch9-final-audit-qa-report.md` — 12 PASS / 1 CONCERN (AC-13, resolved in audit-fix). Ch.10 green-lit.
+
+**Sequence (autonomous, post-Ch.8 close).**
+1. ADR-0011 written (`cd88d5a`) — schema verbatim from Phase R Decision 10 + Handoff agent (Chief of Staff framing) + 4 UI surfaces + return-loop chokidar watcher + 13 ACs + 2-sub-agent dispatch.
+2. **Runtime sub-agent** (`5d28f51` + `f9f1137`) — handoff schema + Handoff agent + slug/skill-selector + writer + INDEX regen + executionLinkback watcher + 5 IPC variants + run-loop integration + 113 specs. Fixed prompt.ts dist resolution + IPC wiring mid-session.
+3. **Renderer sub-agent** (`e0e1207`) — HandoffPreview screen (2-col layout) + DrawUpCTA (4 surfaces) + LinkedExecution component + App.tsx routing + 43 specs. CTA gated to DEC-/POS-/PM- prefixes only (forbidden on PRED-/STK-/WS-).
+4. **Final audit** (`a3d11c…`) — CONCERN-CLOSE. AC-13 stale fixture + pre-mortem path drift + empty IPC enrichment.
+5. **Audit-fix** — handoff fixture updated to current schema (origin_type / origin_path / created_by_run_id / executed_by + valid brand skill IDs); originDirMap added to IPC handler so pre_mortem → pre-mortems (kebab vault convention); IPC handler wrapped in async IIFE + vault-side enrichment reads originating artifact via fs.readFile + js-yaml.
+
+**Test delta.** +156 new Ch.9 specs (113 Runtime + 43 Renderer). All hard guards passed: B3 invariant grep zero hits; DrawUpCTA forbidden-surfaces grep clean; explicit-trigger guard verified.
+
+### Hard gates surfaced — none.
+
+### Russell-action items — none new. Ch.9 has no external prerequisites.
+
+---
+
+[CH-9 COMPLETE 2026-05-27] Cowork handoff brief + UI preview + auto-link return loop shipped. Next: Ch.10 (5 scheduled jobs + LaunchAgent + catch-up + retry).
