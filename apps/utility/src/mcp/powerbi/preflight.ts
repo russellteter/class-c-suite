@@ -11,6 +11,16 @@ export interface PowerBIPreflightResult {
   pythonVersion?: string;
   venv: 'ok' | 'missing';
   project: 'ok' | 'missing';
+  /**
+   * Customer-dashboard's own Google OAuth credentials file (separate from the
+   * C-Suite app's Gmail OAuth client). The customer-dashboard Python subprocess
+   * reads this file to authenticate with Google Sheets / Drive APIs.
+   *
+   * Default path: <projectPath>/credentials.json
+   * Override: CUSTOMER_DASHBOARD_GOOGLE_CREDENTIALS env var
+   */
+  googleCreds: 'ok' | 'missing' | 'not_checked';
+  googleCredsPath: string;
   projectPath: string;
   remediation: string[];
 }
@@ -18,6 +28,22 @@ export interface PowerBIPreflightResult {
 export const CUSTOMER_DASHBOARD_PATH =
   process.env.CUSTOMER_DASHBOARD_PATH ??
   '/Users/russellteter/Claude Code Projects/customer-dashboard';
+
+/**
+ * Resolve the path to the customer-dashboard's Google OAuth credentials file.
+ * This is the customer-dashboard project's own Google auth — entirely separate
+ * from the C-Suite app's Gmail OAuth client (GMAIL_CLIENT_ID/SECRET).
+ *
+ * Setup: download credentials.json from Google Cloud Console for the
+ * customer-dashboard service account or OAuth client, place it at this path.
+ * See docs/research/powerbi-customer-dashboard-google-oauth.md for full steps.
+ */
+export function resolveGoogleCredsPath(projectPath = CUSTOMER_DASHBOARD_PATH): string {
+  return (
+    process.env.CUSTOMER_DASHBOARD_GOOGLE_CREDENTIALS ??
+    join(projectPath, 'credentials.json')
+  );
+}
 
 /**
  * Check whether python3 ≥3.11 is on PATH.
@@ -75,11 +101,32 @@ export function preflightPowerBI(projectPath = CUSTOMER_DASHBOARD_PATH): PowerBI
     );
   }
 
+  // 4. Google OAuth credentials check (customer-dashboard's own creds — separate from C-Suite Gmail)
+  //    Only check when the project itself exists; otherwise the remediation above covers it.
+  const googleCredsPath = resolveGoogleCredsPath(projectPath);
+  let googleCreds: 'ok' | 'missing' | 'not_checked';
+  if (!projectExists) {
+    googleCreds = 'not_checked';
+  } else {
+    googleCreds = existsSync(googleCredsPath) ? 'ok' : 'missing';
+    if (googleCreds === 'missing') {
+      remediation.push(
+        `customer-dashboard Google OAuth credentials not found at ${googleCredsPath}. ` +
+        `Download credentials.json from Google Cloud Console (the customer-dashboard project) ` +
+        `and place it at that path. ` +
+        `See docs/research/powerbi-customer-dashboard-google-oauth.md for full setup steps. ` +
+        `Override path: CUSTOMER_DASHBOARD_GOOGLE_CREDENTIALS env var.`
+      );
+    }
+  }
+
   return {
     python,
     pythonVersion: pyCheck.version,
     venv,
     project,
+    googleCreds,
+    googleCredsPath,
     projectPath,
     remediation,
   };

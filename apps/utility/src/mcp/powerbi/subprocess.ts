@@ -85,7 +85,13 @@ export class PowerBIClient implements McpClient {
   // ── McpClient: isAuthenticated ─────────────────────────────────────────────
   async isAuthenticated(): Promise<boolean> {
     const result = preflightPowerBI(this.projectPath);
-    return result.python === 'ok' && result.venv === 'ok' && result.project === 'ok';
+    // googleCreds is required for the subprocess to run successfully
+    return (
+      result.python === 'ok' &&
+      result.venv === 'ok' &&
+      result.project === 'ok' &&
+      result.googleCreds === 'ok'
+    );
   }
 
   // ── McpClient: reconnect ───────────────────────────────────────────────────
@@ -101,12 +107,25 @@ export class PowerBIClient implements McpClient {
 
   // ── McpClient: healthCheck ─────────────────────────────────────────────────
   async healthCheck(): Promise<McpHealth> {
-    const authenticated = await this.isAuthenticated();
-    if (!authenticated) {
+    const result = preflightPowerBI(this.projectPath);
+    const ok =
+      result.python === 'ok' &&
+      result.venv === 'ok' &&
+      result.project === 'ok' &&
+      result.googleCreds === 'ok';
+
+    if (!ok) {
+      const issues: string[] = [];
+      if (result.python === 'missing') issues.push('python3 missing');
+      if (result.project === 'missing') issues.push('customer-dashboard project not found');
+      if (result.venv === 'missing') issues.push('venv not bootstrapped');
+      if (result.googleCreds === 'missing') {
+        issues.push(`Google OAuth credentials missing at ${result.googleCredsPath} — see docs/research/powerbi-customer-dashboard-google-oauth.md`);
+      }
       return {
         ok: false,
         lastSuccessAt: this._lastSuccessAt,
-        lastError: this._lastError ?? 'preflight check failed (python/venv/project missing)',
+        lastError: issues.join('; '),
         authMode: 'subprocess',
       };
     }
