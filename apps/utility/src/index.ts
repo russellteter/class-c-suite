@@ -73,7 +73,7 @@ process.parentPort.once('message', (e) => {
 
     // Listen for IPC messages from main.
     // Use .on() — MessagePortMain (Electron utility process) is NodeEventEmitter, not EventTarget.
-    ipcPort.on('message', (event: { data: unknown }) => {
+    ipcPort.on('message', (event: { data: unknown }) => { void (async () => {
       const msg = event.data as { kind?: string; payload?: unknown } | null;
 
       if (msg?.kind === 'scheduler:reset') {
@@ -90,17 +90,53 @@ process.parentPort.once('message', (e) => {
           log.error({ message: 'handoff.preview.requested: missing payload fields', payload });
           return;
         }
-        // Build a minimal HandoffGeneratorInput from the IPC payload.
-        // The renderer provides only the trigger fields; runner.ts enriches from vault.
-        // playbookId defaults to 'open_qa' (sentinel — caller didn't supply one).
+        // Build HandoffGeneratorInput from IPC payload + vault enrichment.
+        // Vault directory convention is kebab-case (pre-mortems/, not pre_mortems/).
+        // Source: packages/shared-types/src/parseArtifact.ts:80 + data.md §Shared zone.
+        const originDirMap: Record<string, string> = {
+          decision: 'decisions',
+          memo: 'memos',
+          position: 'positions',
+          pre_mortem: 'pre-mortems',
+        };
+        const originDir = originDirMap[payload.originType] ?? `${payload.originType}s`;
+        const originPath = `${originDir}/${payload.originId}.md`;
+
+        // Enrich from vault: read the originating artifact's body + frontmatter.
+        // Best-effort — if the file isn't readable, runner.ts gets empty strings
+        // and the brief generation degrades rather than failing.
+        let bodyMarkdown = '';
+        let frontmatter: Record<string, unknown> = {};
+        let title = payload.originId;
+        try {
+          const vaultPath = process.env.VAULT_PATH ?? `${process.env.HOME}/Documents/Claude/Projects/Business Planning`;
+          const fsMod = await import('node:fs/promises');
+          const pathMod = await import('node:path');
+          const yamlMod = await import('js-yaml');
+          const fullPath = pathMod.join(vaultPath, originPath);
+          const raw = await fsMod.readFile(fullPath, 'utf8');
+          const match = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+          if (match) {
+            const parsed = yamlMod.load(match[1]);
+            if (parsed && typeof parsed === 'object') frontmatter = parsed as Record<string, unknown>;
+            bodyMarkdown = match[2] ?? '';
+          } else {
+            bodyMarkdown = raw;
+          }
+          const fmTitle = frontmatter['title'];
+          if (typeof fmTitle === 'string' && fmTitle.trim()) title = fmTitle.trim();
+        } catch (err) {
+          log.warn({ message: 'handoff vault enrichment failed; proceeding with empty origin body', originPath, err: String(err) });
+        }
+
         const input: HandoffGeneratorInput = {
           origin: {
             type: payload.originType as HandoffGeneratorInput['origin']['type'],
             id: payload.originId,
-            path: `${payload.originType}s/${payload.originId}.md`,
-            title: payload.originId,
-            bodyMarkdown: '',
-            frontmatter: {},
+            path: originPath,
+            title,
+            bodyMarkdown,
+            frontmatter,
           },
           runContext: {
             runId: payload.runId,
@@ -115,7 +151,7 @@ process.parentPort.once('message', (e) => {
         );
         return;
       }
-    });
+    })().catch((err: unknown) => log.error({ message: 'ipcPort message handler crashed', err: String(err) })); });
   }
 });
 
