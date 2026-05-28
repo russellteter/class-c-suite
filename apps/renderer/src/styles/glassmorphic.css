@@ -9,7 +9,7 @@
   --purple: #4739E7;
   --purple-dark: #3730a3;
   --gold: #FFBA00;
-  --success: #059669;
+  --success: #00B1A2; /* ADR-0014 gap 5: CCC teal wins (was #059669) */
   --error: #DC2626;
   --warning: #D97706;
   --muted: #6B7280;
@@ -64,11 +64,11 @@
   /* Typography */
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
-  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace; /* ADR-0014 gap 4 */
 
   /* ui.md token aliases (docs/architecture/ui.md §design tokens) */
   --color-navy-900: #0a1849;
-  --color-gold-500: #c9a14b;
+  --color-gold-500: #FFBA00; /* ADR-0014 gap 2: saturated CCC gold wins (was #c9a14b) */
   --color-purple-500: #4739e7;
   --color-navy-700: #182a6b;
   --color-navy-500: #2a3f8a;
@@ -133,7 +133,7 @@
 .glass-badge--error   { background: var(--bg-error); color: var(--error); }
 .glass-badge--warning { background: var(--bg-warning); color: var(--warning); }
 .glass-badge--navy    { background: var(--bg-surface-alt); color: var(--navy); }
-.glass-badge--gold    { background: #FFF8E7; color: var(--color-gold-500); }
+.glass-badge--gold    { background: rgba(255,186,0,0.12); color: var(--color-gold-500); } /* ADR-0014 gap 2 */
 
 /* ============================================
    Buttons
@@ -266,7 +266,7 @@
   transition: transform 300ms ease;
 }
 
-.progress-bar__fill--success { background: linear-gradient(90deg, #059669, #34d399); }
+.progress-bar__fill--success { background: linear-gradient(90deg, #00B1A2, #3dd9c9); }
 .progress-bar__fill--warning { background: linear-gradient(90deg, #D97706, #fbbf24); }
 .progress-bar__fill--error   { background: linear-gradient(90deg, #DC2626, #f87171); }
 .progress-bar__fill--primary { background: linear-gradient(90deg, #4739E7, #6366f1); }

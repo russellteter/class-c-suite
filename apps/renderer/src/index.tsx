@@ -5,8 +5,13 @@
 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+// CCC editorial token layer first (ADR-0014 migration order: foundational tokens → primitives → screens).
+// glassmorphic.css extensions load after so legacy --color-* aliases still resolve for untouched screens.
+import './styles/tokens-ccc.css';
 import './styles/glassmorphic.css';
 import './styles/typography.css';
+import './styles/ccc-components.css';
+import './styles/ccc-overlays.css';
 import { App } from './App.js';
 
 const container = document.getElementById('root');

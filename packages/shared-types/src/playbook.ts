@@ -172,6 +172,34 @@ export const DegradationWarningSchema = z.object({
   attemptedQuery: z.string().optional(),
 });
 
+// ── OutputSurface — Google Workspace artifact metadata (ADR-0016) ─────────────
+// Appended to PlaybookResult.outputSurfaces[]. The renderer (TRACK 6) renders
+// 'View as Google Doc/Sheet/Slides' link badges for entries with kind !== 'memo'
+// and a url present.
+//
+// TRACK 6 import: import type { OutputSurface } from '@c-suite/shared-types/playbook';
+
+export const OutputSurfaceKindSchema = z.enum([
+  'memo',
+  'gdoc',
+  'gsheet',
+  'gslides',
+  'gdrive_upload',
+]);
+export type OutputSurfaceKind = z.infer<typeof OutputSurfaceKindSchema>;
+
+export const OutputSurfaceSchema = z.object({
+  /** Artifact type. 'memo' = the markdown memo itself (always present as first entry). */
+  kind: OutputSurfaceKindSchema,
+  /** Shareable Google URL. Absent until the artifact is created, or if creation failed. */
+  url: z.string().url().optional(),
+  /** Human-readable artifact title. */
+  title: z.string().optional(),
+  /** Connector-defined extra metadata (sheet row count, slide count, etc.). */
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+export type OutputSurface = z.infer<typeof OutputSurfaceSchema>;
+
 // ── PlaybookResult per ADR-0009 §3.1 + §13.6 (rigorRawScore for open_qa) ────
 
 export const PlaybookResultSchema = z.object({
@@ -186,6 +214,9 @@ export const PlaybookResultSchema = z.object({
   // Per-table NetSuite degradation warnings (Ch.8 hardening).
   // Empty array when all NS tables are accessible or NS is not used.
   degradationWarnings: z.array(DegradationWarningSchema).optional(),
+  // External-document render targets (TRACK 5). Present when the result was
+  // materialized to one or more Google Workspace surfaces.
+  outputSurfaces: z.array(OutputSurfaceSchema).optional(),
 });
 export type PlaybookResult = z.infer<typeof PlaybookResultSchema>;
 

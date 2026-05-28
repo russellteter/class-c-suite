@@ -1,0 +1,712 @@
+/* apps/renderer/src/styles/ccc-components.css
+ * Editorial Sharp (Variant A) component layer for the hero screens.
+ * Ported from the approved csuite-design-*.html Variant-A CSS + CCC
+ * snippets/components-essentials.css. Requires tokens-ccc.css first.
+ *
+ * Classes are `cs-`-prefixed editorial primitives (no .ccc-root scope — Variant A
+ * is the single confirmed hero direction and the mockups apply tokens at :root).
+ * Motion uses the CCC signature easing cubic-bezier(0.16,1,0.3,1) per 05-motion.md.
+ */
+
+/* ── Eyebrow (the signature pattern — 50% of CCC visual identity) ──────────── */
+.cs-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.cs-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 1px;
+  background: var(--gray-300);
+  flex-shrink: 0;
+}
+.cs-eyebrow.light {
+  color: rgba(255, 255, 255, 0.5);
+}
+.cs-eyebrow.light::before {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ── Stamp / timestamp (mono, system-data signal) ─────────────────────────── */
+.cs-stamp {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  font-variant-numeric: tabular-nums;
+}
+.cs-stamp.dark {
+  color: var(--gray-500);
+}
+
+/* ── Editorial header (navy + gradient underline brand contract) ──────────── */
+.cs-header {
+  background: var(--navy);
+  color: #fff;
+  padding: 14px 22px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cs-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--purple) 0%, var(--purple-400) 50%, var(--gold) 100%);
+}
+.cs-header h1 {
+  font-size: 15px;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: var(--tracking-display);
+  color: #fff;
+}
+
+/* ── Primary / ghost buttons ──────────────────────────────────────────────── */
+.cs-btn {
+  background: var(--purple);
+  color: #fff;
+  border: 1px solid var(--purple);
+  border-radius: var(--r-sm);
+  padding: 9px 16px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: var(--tracking-tight);
+  cursor: pointer;
+  transition: all 0.12s var(--ease);
+}
+.cs-btn:hover {
+  background: var(--purple-dark);
+  border-color: var(--purple-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-accent);
+}
+.cs-btn:active {
+  transform: translateY(0);
+}
+.cs-btn:disabled {
+  background: var(--gray-300);
+  border-color: var(--gray-300);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.cs-btn.ghost {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.cs-btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border-color: var(--purple-soft);
+  box-shadow: none;
+  transform: none;
+}
+.cs-btn.sm {
+  padding: 7px 13px;
+  font-size: 12px;
+}
+
+/* ── Input ────────────────────────────────────────────────────────────────── */
+.cs-input {
+  border: 1px solid var(--gray-300);
+  border-radius: var(--r-sm);
+  padding: 9px 12px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  background: var(--paper);
+  color: var(--navy);
+  letter-spacing: var(--tracking-tight);
+}
+.cs-input::placeholder {
+  color: var(--gray-500);
+}
+.cs-input:focus {
+  outline: none;
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(71, 57, 231, 0.1);
+}
+
+/* ── Pill / status pill (mono, source-colored triplet) ────────────────────── */
+.cs-pill {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cs-pill.success {
+  background: var(--success-soft);
+  color: var(--success-ink);
+}
+.cs-pill.warning {
+  background: var(--warning-soft);
+  color: var(--warning-ink);
+}
+.cs-pill.error {
+  background: var(--error-soft);
+  color: var(--error-ink);
+}
+.cs-pill.info,
+.cs-pill.live {
+  background: var(--purple-soft);
+  color: var(--purple);
+}
+
+/* ── Status dot (workstream health) ───────────────────────────────────────── */
+.cs-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.cs-dot.g {
+  background: var(--success);
+}
+.cs-dot.y {
+  background: var(--gold);
+}
+.cs-dot.r {
+  background: var(--error);
+}
+
+/* ── Tree-pane sidebar rows (selection via left-edge accent) ──────────────── */
+.cs-tree {
+  background: var(--paper);
+  border-right: 1px solid var(--gray-200);
+  overflow: auto;
+  padding: 12px 0;
+}
+.cs-tree-sec {
+  margin-bottom: 18px;
+}
+.cs-tree-sec > .cs-eyebrow {
+  padding: 0 16px;
+  margin-bottom: 6px;
+}
+.cs-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px;
+  border-left: 2px solid transparent;
+  font-size: 12px;
+  color: var(--gray-900);
+  cursor: pointer;
+  transition: background 0.1s var(--ease);
+  background: none;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-sans);
+}
+.cs-row:hover {
+  background: var(--purple-50);
+}
+.cs-row.sel {
+  background: var(--purple-soft);
+  border-left-color: var(--purple);
+  font-weight: 600;
+}
+.cs-row .ws {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.cs-row .cnt {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--gray-100);
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  font-variant-numeric: tabular-nums;
+}
+.cs-row.sel .cnt {
+  background: var(--purple);
+  color: #fff;
+}
+
+/* ── Playbook tile (hover accent strip slide-in) ──────────────────────────── */
+.cs-pb {
+  background: var(--paper);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-sm);
+  padding: 14px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s var(--ease);
+  text-align: left;
+  width: 100%;
+  font-family: var(--font-sans);
+  overflow: hidden;
+}
+.cs-pb::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--purple);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.2s var(--ease);
+}
+.cs-pb:hover::before {
+  transform: scaleX(1);
+}
+.cs-pb:hover {
+  border-color: var(--navy);
+  box-shadow: var(--shadow-2);
+}
+.cs-pb .ico {
+  font-size: 18px;
+  line-height: 1;
+}
+.cs-pb .nm {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--navy);
+  margin-top: 6px;
+  letter-spacing: var(--tracking-tight);
+}
+.cs-pb .hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+
+/* ── KPI cell / substance-ribbon cell ─────────────────────────────────────── */
+.cs-kpi-strip {
+  display: grid;
+  gap: 1px;
+  background: var(--gray-200);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-sm);
+  overflow: clip;
+}
+.cs-kpi {
+  background: var(--paper);
+  padding: 14px 22px 18px;
+  transition: background 0.12s var(--ease);
+}
+.cs-kpi:hover {
+  background: var(--purple-soft);
+}
+.cs-kpi .lbl {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  display: block;
+}
+.cs-kpi .val {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--navy);
+  line-height: 1.1;
+  margin-top: 6px;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum', 'ss01';
+}
+.cs-kpi .val.em {
+  color: var(--gray-300);
+}
+
+/* ── Lens node (round-table) ──────────────────────────────────────────────── */
+.cs-node {
+  background: var(--paper);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-sm);
+  padding: 16px;
+  text-align: center;
+  position: relative;
+}
+.cs-node.dim {
+  opacity: 0.4;
+}
+.cs-node.on {
+  border-color: var(--purple);
+}
+.cs-node .circle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--gray-300);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  margin: 0 auto 8px;
+}
+.cs-node.on .circle {
+  background: var(--purple);
+}
+.cs-node .role {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.cs-node .run {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--purple);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 6px;
+}
+.cs-node .t {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--navy);
+}
+.cs-node .s {
+  font-size: 11px;
+  color: var(--gray-500);
+  margin-top: 3px;
+}
+
+/* ── Pulse animation (active lens / live tool call) ───────────────────────── */
+@keyframes cs-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(71, 57, 231, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(71, 57, 231, 0);
+  }
+}
+.cs-pulsing {
+  animation: cs-pulse 2s ease-in-out infinite;
+}
+
+/* ── Citation badge (memo body) ───────────────────────────────────────────── */
+.cs-cite {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--purple-soft);
+  color: var(--purple);
+  border: none;
+  padding: 1px 5px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  vertical-align: super;
+  transition: background 0.12s var(--ease);
+}
+.cs-cite:hover {
+  background: var(--purple-tint);
+}
+
+/* ── Memo document surface ────────────────────────────────────────────────── */
+.cs-doc {
+  background: var(--paper);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-sm);
+  padding: 24px 28px;
+  line-height: 1.7;
+  font-size: 14px;
+  color: var(--navy);
+}
+.cs-doc h1,
+.cs-doc h2 {
+  font-size: 16px;
+  margin: 0 0 4px;
+  letter-spacing: var(--tracking-tight);
+  color: var(--navy);
+}
+.cs-doc h3 {
+  font-size: 13px;
+  margin: 18px 0 6px;
+  color: var(--navy);
+}
+.cs-doc p {
+  margin: 0 0 12px;
+}
+.cs-doc .sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  margin-bottom: 16px;
+}
+
+/* ── Tool-call detail panel (docked right) ────────────────────────────────── */
+.cs-panel {
+  border-left: 1px solid var(--gray-200);
+  background: var(--paper);
+  overflow: auto;
+  padding: 18px;
+}
+.cs-panel .ph {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.cs-panel .ph .t {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--navy);
+}
+.cs-panel .x {
+  border: 1px solid var(--gray-200);
+  background: none;
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  padding: 3px 9px;
+  cursor: pointer;
+  color: var(--gray-500);
+  font-family: var(--font-sans);
+}
+.cs-panel .x:hover {
+  color: var(--navy);
+  border-color: var(--purple);
+}
+.cs-panel .fld {
+  margin-bottom: 12px;
+}
+.cs-panel .fld .l {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+.cs-panel code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--purple);
+}
+.cs-panel pre {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  margin: 0;
+  overflow: auto;
+  color: var(--navy);
+}
+
+/* ── Draft banner (saturated-gold, editorial) ─────────────────────────────── */
+.cs-draft {
+  background: rgba(255, 186, 0, 0.12);
+  border: 1px solid rgba(255, 186, 0, 0.4);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--r-sm);
+  padding: 14px 16px;
+}
+.cs-draft .t {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--gold-700);
+}
+.cs-draft .d {
+  font-size: 12px;
+  color: var(--gray-700);
+  margin-top: 3px;
+}
+.cs-draft .why {
+  margin-top: 8px;
+  background: var(--paper);
+  border: 1px solid rgba(255, 186, 0, 0.4);
+  color: var(--gold-700);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.cs-draft ul {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  font-size: 12px;
+  color: var(--gray-700);
+}
+.cs-draft li {
+  margin-bottom: 4px;
+}
+
+/* ── Degradation warning banner (TRACK 3 — NS table inaccessible) ─────────── */
+.cs-degrade {
+  background: var(--warning-soft);
+  border: 1px solid rgba(255, 186, 0, 0.4);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--r-sm);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+.cs-degrade .hd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--warning-ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cs-degrade table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 12px;
+}
+.cs-degrade th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gray-500);
+  padding: 4px 10px 4px 0;
+  border-bottom: 1px solid rgba(255, 186, 0, 0.3);
+}
+.cs-degrade td {
+  padding: 6px 10px 6px 0;
+  color: var(--gray-900);
+  vertical-align: top;
+  border-bottom: 1px solid var(--gray-100);
+}
+.cs-degrade td .tbl {
+  font-family: var(--font-mono);
+  color: var(--warning-ink);
+  font-weight: 600;
+}
+
+/* ── Output-surface link badge (TRACK 5 — View as Google Doc/Sheet/Slides) ── */
+.cs-surface-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--purple);
+  background: var(--purple-soft);
+  border: 1px solid var(--purple-tint);
+  border-radius: var(--r-sm);
+  padding: 4px 9px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.12s var(--ease);
+}
+.cs-surface-link:hover {
+  background: var(--purple-tint);
+  border-color: var(--purple);
+}
+
+/* ── Token meter + scheduled-job rows (Home right column) ─────────────────── */
+.cs-meter .big {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--navy);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.cs-meter .bar {
+  height: 5px;
+  background: var(--gray-200);
+  border-radius: 2px;
+  overflow: clip;
+  margin-top: 4px;
+}
+.cs-meter .bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--purple), var(--purple-400));
+}
+.cs-meter .cap {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cs-job {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--gray-100);
+  font-size: 11px;
+}
+.cs-job .nm {
+  flex: 1;
+  color: var(--gray-700);
+}
+.cs-job .st {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Empty / loading / error helpers ──────────────────────────────────────── */
+.cs-empty {
+  color: var(--gray-500);
+  font-size: 12px;
+  font-style: italic;
+  padding: 8px 0;
+}
+.cs-error {
+  color: var(--error-ink);
+  background: var(--error-soft);
+  border-left: 3px solid var(--error);
+  border-radius: var(--r-sm);
+  padding: 10px 14px;
+  font-size: 12px;
+}
+.cs-skel {
+  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
+  background-size: 200% 100%;
+  animation: cs-shimmer 1.5s ease infinite;
+  border-radius: var(--r-sm);
+}
+@keyframes cs-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
