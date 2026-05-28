@@ -13,6 +13,21 @@ import {
 } from '../../../../apps/utility/src/mcp/netsuite/errors.js';
 import type { SafeStorageVault } from '../../../../apps/utility/src/credentials/safeStorageVault.js';
 
+// Keep reconnect() tests deterministic regardless of the caller's shell: a dev who
+// runs `source apps/main/.env.local && pnpm test` would otherwise leak NETSUITE_*
+// into process.env and flip the "throws when no credential" case.
+const NETSUITE_ENV_KEYS = [
+  'NETSUITE_ACCOUNT_ID',
+  'NETSUITE_CONSUMER_KEY',
+  'NETSUITE_CONSUMER_SECRET',
+  'NETSUITE_TBA_TOKEN_ID',
+  'NETSUITE_TBA_TOKEN_SECRET',
+];
+
+beforeEach(() => {
+  for (const k of NETSUITE_ENV_KEYS) delete process.env[k];
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });

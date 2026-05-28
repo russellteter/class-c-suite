@@ -57,6 +57,14 @@ export async function buildDeps(playbookId: PlaybookId, db: Database.Database): 
     try {
       const { NetSuiteClient } = await import('../../mcp/netsuite/client.js');
       deps.netsuite = new NetSuiteClient(vault);
+      // First-launch seed: if the vault has no credential yet but NETSUITE_* env is
+      // present (apps/main/.env.local), persist it so the client leaves token-absent
+      // mode. No-op when env is blank (stays degraded) or a credential already exists.
+      if (!(await deps.netsuite.isAuthenticated())) {
+        await deps.netsuite.reconnect().catch((err) => {
+          log.warn({ message: 'buildDeps: netsuite env seed skipped (token-absent)', err: String(err) });
+        });
+      }
     } catch (err) {
       log.warn({ message: 'buildDeps: netsuite construction failed', err: String(err) });
     }
