@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+# hooks/pre-commit — credential leak prevention.
+# This repo sets core.hooksPath=hooks (see scripts/install-hooks.sh), so the
+# tracked hooks/ directory is authoritative — NOT .git/hooks and NOT husky's
+# .husky/. Husky is deliberately NOT used: it would hijack core.hooksPath to
+# .husky/ and silently disable hooks/post-commit (the mandatory auto-push).
+#
+# Runs scan-staged-secrets.sh before every commit; a non-zero exit blocks it.
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+"$REPO_ROOT/scripts/scan-staged-secrets.sh"
