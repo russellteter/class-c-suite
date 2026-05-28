@@ -1788,8 +1788,14 @@ opens its own in-memory DB seeded from the real migrations. Commits 06b839f → 
 ### Deferred (named, not silent)
 - Shared-DB persistence: crash-resume + the run appearing in main's runs-list need the
   real DB (a later async-proxy-refactor vs second-connection decision).
-- `tool_calls` write path: unexercised in replay (tool hooks don't fire); not yet
-  reconciled to prod schema. Do it when live MCP tool calls land.
+- `tool_calls` write path: unexercised in replay (tool hooks don't fire). **NOTE: normal
+  app launch defaults to STUB_MODE=live** (`forkUtility`), where lens MCP calls DO fire
+  `hooks.onPostToolUse` → its INSERT still uses test-schema columns (`role`, `input_json`,
+  `ts`, no `call_id`/`invocation_id`), so it WILL throw against the prod schema on the first
+  tool call — the same bug class just fixed for `agent_invocations`. The proof is therefore
+  **replay-only**; a normal (live) launch is NOT yet proven and needs (a) this tool_calls
+  reconciliation, (b) CLAUDE_CODE_OAUTH_TOKEN, (c) the bespoke cash-lever MCP path. Reconcile
+  tool_calls before the first live run.
 - Migrate the 6 DB unit tests (run-loop-e2e, checkpoint-resume, verifier-contract, etc.) to
   seed-from-migrations AND run under Electron ABI in CI, so schema-drift is caught next time.
 - "Cash Lever" routes to the GENERIC 6-lens template, not the bespoke CFO+COS MCP playbook
