@@ -18,11 +18,20 @@ export type {
 export {
   NetSuiteError,
   NetSuiteAuthMissingError,
-  NetSuiteTBAExpiredError,
+  NetSuiteOAuthAppMissingError,
+  NetSuiteAuthExpiredError,
+  NetSuiteTBAExpiredError, // deprecated alias of NetSuiteAuthExpiredError
   NetSuiteSavedSearchNotFoundError,
   NetSuiteSuiteQLError,
   NetSuiteNetworkError,
   NetSuiteVaultError,
 } from './errors.js';
-export { buildTBAAuthHeader, parseTBACredentials } from './tba-auth.js';
-export type { TBACredentials, TBAAuthHeader } from './tba-auth.js';
+export {
+  NETSUITE_SCOPE,
+  readNetSuiteOAuthEnv,
+  buildNetSuiteOAuthConfig,
+  requireNetSuiteOAuthConfig,
+  netsuiteAuthorizeEndpoint,
+  netsuiteTokenEndpoint,
+} from './oauth-config.js';
+export type { NetSuiteOAuthEnv } from './oauth-config.js';

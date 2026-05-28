@@ -52,19 +52,16 @@ export async function buildDeps(playbookId: PlaybookId, db: Database.Database): 
     }
   }
 
-  // NetSuite — construct unconditionally (client handles token-absent mode internally).
+  // NetSuite — construct unconditionally (client handles credential-absent mode internally).
+  // OAuth 2.0: there is NO env auto-seed. Tokens are minted only by the interactive
+  // Connect flow (Settings → Connectors → NetSuite), which opens the browser and
+  // captures the loopback redirect. If the vault has no NetSuite credential, the client
+  // stays in degraded mode (returns null) until Russell runs Connect. NETSUITE_OAUTH_CLIENT_ID
+  // is only the bootstrap value used when reconnect() runs the flow.
   if (vault) {
     try {
       const { NetSuiteClient } = await import('../../mcp/netsuite/client.js');
       deps.netsuite = new NetSuiteClient(vault);
-      // First-launch seed: if the vault has no credential yet but NETSUITE_* env is
-      // present (apps/main/.env.local), persist it so the client leaves token-absent
-      // mode. No-op when env is blank (stays degraded) or a credential already exists.
-      if (!(await deps.netsuite.isAuthenticated())) {
-        await deps.netsuite.reconnect().catch((err) => {
-          log.warn({ message: 'buildDeps: netsuite env seed skipped (token-absent)', err: String(err) });
-        });
-      }
     } catch (err) {
       log.warn({ message: 'buildDeps: netsuite construction failed', err: String(err) });
     }

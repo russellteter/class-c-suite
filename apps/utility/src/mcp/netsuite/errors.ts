@@ -10,23 +10,44 @@ export class NetSuiteError extends Error {
   }
 }
 
-/** TBA credentials not present in vault — client runs degraded (returns null). */
+/** OAuth credentials not present in vault — client runs degraded (returns null). */
 export class NetSuiteAuthMissingError extends NetSuiteError {
   constructor(
-    message = 'NetSuite TBA credentials not in vault — awaiting Brian (BLOCKERS B1). Run reconnect() after tokens are provisioned.'
+    message = 'NetSuite OAuth credential not in vault — run the Connect flow in Settings → Connectors → NetSuite.'
   ) {
     super(message);
     this.name = 'NetSuiteAuthMissingError';
   }
 }
 
-/** TBA token expired (401 from REST) — Russell must re-paste tokens from Brian. */
-export class NetSuiteTBAExpiredError extends NetSuiteError {
-  constructor(message = 'NetSuite TBA token expired — re-paste credentials from Brian into Settings') {
+/** OAuth bootstrap values missing from env — Russell must register the Integration Record. */
+export class NetSuiteOAuthAppMissingError extends NetSuiteError {
+  constructor(
+    message = 'NETSUITE_OAUTH_CLIENT_ID missing — register a NetSuite OAuth 2.0 Integration Record (public client, scope=mcp) and set NETSUITE_OAUTH_CLIENT_ID in apps/main/.env.local.'
+  ) {
     super(message);
-    this.name = 'NetSuiteTBAExpiredError';
+    this.name = 'NetSuiteOAuthAppMissingError';
   }
 }
+
+/**
+ * OAuth access/refresh token rejected (401, or refresh returns invalid_grant) —
+ * the grant was revoked or expired; Russell must re-run the Connect flow.
+ */
+export class NetSuiteAuthExpiredError extends NetSuiteError {
+  constructor(message = 'NetSuite OAuth token rejected — re-authenticate in Settings → Connectors → NetSuite.') {
+    super(message);
+    this.name = 'NetSuiteAuthExpiredError';
+  }
+}
+
+/**
+ * Back-compat alias for the pre-OAuth name. External importers (index.ts, tests)
+ * referenced NetSuiteTBAExpiredError; keep the symbol so nothing breaks while the
+ * meaning moves to OAuth. Prefer NetSuiteAuthExpiredError in new code.
+ * @deprecated use NetSuiteAuthExpiredError
+ */
+export const NetSuiteTBAExpiredError = NetSuiteAuthExpiredError;
 
 /** A referenced Saved Search ID was not found or not accessible. */
 export class NetSuiteSavedSearchNotFoundError extends NetSuiteError {
