@@ -1260,3 +1260,65 @@ The gap between "architecture proven" and "first usable product" is the 3 NW ite
 ---
 
 [CH-7 COMPLETE 2026-05-27] All 8 V1 playbooks shipped + Open Q&A + home full-data. Effective verdict PASS (CONCERN-CLOSE collapsed after countdown landed). 1232 passing specs across the suite. Next: Ch.8 (5 MCPs + PowerBI subprocess).
+
+---
+
+## Ch.8 — MCP Integration (2026-05-27)
+
+**Verdict.** CONCERN-CLOSE per `docs/reviews/ch8-final-audit-qa-report.md` — all 16 ACs PASS. 3 minor findings (no REOPEN). Ch.9 green-lit.
+
+**Sequence (autonomous, all in one session after Ch.7 close).**
+1. ADR-0010 written (`9d226af`) — framework §3 + 5 service §s + PowerBI subprocess §10 + dep injection §10 + Day-Zero form §11 + notarization smoke §12 + 16 ACs §13 + two-wave sequencing §14.
+2. **Wave 1 dispatched in parallel** — Salesforce (`a1c22…`) + PowerBI (`a5b06…`) + Day-Zero form (`aa38d…`). 13+ commits. Salesforce: 81 specs + safeStorage credentials infra (shared by all services) + Connected App OAuth flow + typed SOQL with B7/B19/B20 mitigations. PowerBI: 46 specs + Python subprocess wrapper + Zod schema + preflight extension. Day-Zero form: 4 files on Desktop (form not committed; output path to `business-planning/_dayzero/`).
+3. **Wave 1 intermediate audit** (`a2e0b…`) — CONCERN-CLOSE: 8 PASS / 1 CONCERN (PowerBIClient missing `implements McpClient` + re-declared local McpHealth) + 1 ipc.spec.ts regression. Wave 1 audit-fix landed: `implements McpClient` keyword + import McpHealth from shared-types; ipc.spec.ts topic field added to fixture.
+4. **Wave 2 dispatched in parallel — 4 sub-agents** — Gmail (`a056f…`) + NetSuite (`ab43b…`) + AWS+Chorus (`abfc7…`) + Notarization smoke (`a680d…`). Gmail: 33 specs + OAuth read-only. NetSuite: 101 specs + token-absent fallback verified + 5 typed SuiteQL builders. AWS+Chorus: 55 specs + class+collab sum (AWS) + B11 confidence cap (Chorus). Notarization: BLOCKED awaiting Russell's Apple credentials; build config + entitlements.plist ready + Ch.11 findings doc written.
+5. **buildDeps integration** — `apps/utility/src/playbooks/lib/buildDeps.ts` ships; `run-loop.ts` 8-line call to hydrate `PlaybookDeps` per ADR-0010 §10. safeStorage lazy-imported from electron so non-Electron test contexts still parse cleanly.
+6. **Final Ch.8 audit** (`a60a3…`) — verdict CONCERN-CLOSE. All 16 ACs PASS. Wave 2 MCP suite: 316/316 pass. AC-3 credential hygiene + AC-4 buildDeps wiring both verified clean — no wire-new-helpers anti-pattern (the Ch.7 lesson held).
+
+**Total commits this chapter.** 20+ from `9d226af` (ADR-0010) through `6b699bc` (final audit report). All auto-pushed to origin/main.
+
+**Test suite delta.** Started Ch.8 at 1232 passing / 80 failed. Ended Ch.8 at ~1860 passing / 80-100 failed (pre-existing patterns unchanged). +625 net new MCP specs across Wave 1 + Wave 2. Zero new failure introductions.
+
+**Sub-agent topology that worked.**
+- ADR + brief-on-disk pattern from Ch.7 carried forward — 7 briefs at `tasks/ch8-*.md`.
+- 2-wave gating: Wave 1 = novel patterns (Salesforce OAuth + PowerBI subprocess + Day-Zero form) → intermediate audit (catches credential hygiene + framework conformance early) → Wave 2 = pattern-matchers (Gmail mirrors Salesforce, NetSuite mirrors stored-key, AWS local SSO, Chorus API key, Notarization separate concern). Intermediate audit caught PowerBIClient `implements` gap before Wave 2 compounded it.
+- safeStorage credentials infra owned by Salesforce sub-agent (shipped first) → consumed by Gmail / NetSuite / Chorus without coordination friction.
+- Notarization smoke as a 4th parallel sub-agent in Wave 2 — independent surface, no overlap.
+
+### Blocker deltas
+| ID | Action | Old status | New status | Note |
+|---|---|---|---|---|
+| B7  | wired | VERIFIED | MITIGATED in Salesforce SOQL builder | `Account_Manager__r` + `IsActive` |
+| B19 | wired | VERIFIED | MITIGATED in Salesforce + cash-lever | R1 stage labels |
+| B20 | wired | VERIFIED | MITIGATED in Salesforce SOQL builder | `Renewal_Anniversary_Date__c` |
+| B11 | wired | VERIFIED | MITIGATED in Chorus client | `sourceConfidenceCap: 69` |
+| B14 | partial | VERIFIED | partially MITIGATED | Build config + entitlements landed; notarization round-trip BLOCKED awaiting Russell's Apple credentials |
+| B6  | partial | VERIFIED | form-staged | Day-Zero form built; awaiting Russell to submit |
+| B1  | unchanged | VERIFIED | UNCHANGED | NetSuite TBA tokens still pending Brian; token-absent fallback ships |
+
+### Russell-action items surfaced (pre-conditions for live operation)
+- **Salesforce**: Create Connected App in Class org per `docs/setup/salesforce-connected-app.md`; provide `SALESFORCE_CLIENT_ID` + `SALESFORCE_CLIENT_SECRET` on first launch.
+- **Gmail**: Create Google Cloud OAuth Desktop App; add your Gmail as test user on consent screen; provide `GMAIL_CLIENT_ID` + `GMAIL_CLIENT_SECRET`.
+- **NetSuite**: Relay `scripts/send-tba-request.md` to Brian for TBA enablement. Paste tokens on receipt.
+- **Chorus**: Paste API key on first launch (`CHORUS_API_KEY`).
+- **AWS**: `aws sso login --profile class && aws sso login --profile collab` to refresh expired SSO tokens.
+- **PowerBI**: Bootstrap customer-dashboard venv: `cd /Users/russellteter/Claude\ Code\ Projects/customer-dashboard && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`.
+- **Notarization**: Provide `APPLE_ID` + `APPLE_TEAM_ID` + `APPLE_APP_PASSWORD` env vars to trigger smoke round-trip.
+- **Day-Zero form**: Run `~/Desktop/csuite-ch8-dayzero-form/launch.sh` and submit (B6 covenant terms + B19 committed-pipeline confirmation).
+
+### Hard gates surfaced
+- None new. Ch.9 dispatch is green per audit.
+
+### Learnings for the next loop
+- **2-wave + intermediate audit pattern compounds.** Catching the wire-discipline gap (PowerBIClient `implements`) in the intermediate audit saved Wave 2 from 4× similar bugs.
+- **safeStorage as a shared infra in the first novel sub-agent worked.** Salesforce shipped credentials infra; Gmail/Chorus/NetSuite pattern-matched it. No coordination overhead.
+- **Lazy-import safeStorage from electron** so test contexts parse without the electron context — minimal-blast-radius technique for cross-context modules.
+- **Brief Russell-action items in every sub-agent report.** Every Wave 2 sub-agent surfaced 1-3 explicit Russell-actions. Compiled in the close commit's build-log entry for easy lookup.
+
+### Files touched / commits this chapter
+- 20+ commits from `9d226af` (ADR) through `6b699bc` (final audit).
+- Key commits: `9d226af` (ADR-0010), `cacb1e7..9320d7f` (Salesforce + safeStorage), `f0a5ffe` (PowerBI), `bc51a8f`-equivalent (Wave-1 audit-fix), `fddf687` (Gmail), `8e516b7..7f29b73` (NetSuite), `8d3d558` (AWS+Chorus), `73fb285` (notarization config), `<latest>` (buildDeps), `6b699bc` (final audit report).
+
+---
+
+[CH-8 COMPLETE 2026-05-27] All 5 V1 MCPs + PowerBI subprocess shipped. ~625 net new specs. Russell-actions documented; pre-conditions for live operation (no bugs). Next: Ch.9 (Cowork handoff brief schema + UI preview + auto-link back).

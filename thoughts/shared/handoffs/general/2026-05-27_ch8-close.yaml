@@ -1,0 +1,129 @@
+---
+session: general
+date: 2026-05-27
+status: complete
+outcome: CONCERN_CLOSE
+---
+
+goal: Phase 2 Ch.8 (5 V1 MCPs + PowerBI subprocess + safeStorage credentials + Day-Zero form + notarization smoke + buildDeps wiring). Continue /goal autonomous build through Ch.10 with hard pause at Ch.11.
+now: Ch.8 CLOSED CONCERN-CLOSE per docs/reviews/ch8-final-audit-qa-report.md (all 16 ACs PASS; 3 minor findings, no REOPEN). 20+ commits 9d226af..6b699bc durable + auto-pushed. ~1860 passing specs across the suite. Phase 2 progresses to Ch.9 (Cowork handoff) next.
+
+test: cd "/Users/russellteter/Claude Code Projects/c-suite" && pnpm vitest run
+
+done_this_session:
+  - task: Ch.8 SPEC — ADR-0010 framework §3 + 5 service §4-9 + PowerBI subprocess §10 + dep injection §10 + Day-Zero form §11 + notarization smoke §12 + 16 ACs §13 + two-wave sequencing §14
+    files: [docs/decisions/0010-ch8-mcp-integration.md, tasks/ch8-salesforce-brief.md, tasks/ch8-powerbi-brief.md, tasks/ch8-dayzero-form-brief.md, tasks/ch8-gmail-brief.md, tasks/ch8-netsuite-brief.md, tasks/ch8-aws-chorus-brief.md, tasks/ch8-notarization-brief.md, tasks/ch8-wave1-audit-brief.md, tasks/ch8-final-audit-brief.md]
+  - task: Wave 1 Salesforce (a1c22) — Connected App OAuth + safeStorage credentials infra (shared by all services) + typed SOQL builder + B7/B19/B20 mitigations + 81 specs
+    files: [packages/shared-types/src/mcp.ts, apps/utility/src/credentials/safeStorageVault.ts, apps/utility/src/credentials/index.ts, apps/utility/src/mcp/salesforce/{client,oauth-flow,typed-queries,errors,index}.ts, db/migrations/006_credentials.sql, docs/setup/salesforce-connected-app.md, scripts/mcp-live-smoke.sh, tests/unit/mcp/salesforce/{injection-fuzz,typed-queries,client}.spec.ts, tests/unit/credentials/safeStorage-vault.spec.ts]
+  - task: Wave 1 PowerBI (a5b06) — Python subprocess wrapper for customer-dashboard project + Zod JSON validation + preflight extension + 46 specs
+    files: [apps/utility/src/mcp/powerbi/{subprocess,schema,preflight,errors,index}.ts, scripts/preflight.sh, scripts/mcp-live-smoke.sh, tests/unit/mcp/powerbi/{subprocess,schema,preflight,types}.spec.ts]
+  - task: Wave 1 Day-Zero form (aa38d) — 5-question html form for B6 (covenant terms) + B19 (committed-pipeline definition); non-blocking
+    files: ["~/Desktop/csuite-ch8-dayzero-form/ (4 files — index, submit, server, launch)"]
+  - task: Wave 1 intermediate audit (a2e0b) — CONCERN-CLOSE (8 PASS / 1 CONCERN). PowerBIClient missing 'implements McpClient'; ipc.spec.ts topic-field fixture missing
+    files: [docs/reviews/ch8-wave1-audit-qa-report.md]
+  - task: Wave 1 audit-fix — PowerBIClient 'implements McpClient' + import McpHealth from shared-types + ipc.spec.ts topic field added to writeback.proposed fixtures
+    files: [apps/utility/src/mcp/powerbi/subprocess.ts, tests/unit/ipc.spec.ts]
+  - task: Wave 2 Gmail (a056f) — Google OAuth read-only + typed queries + 33 specs
+    files: [apps/utility/src/mcp/gmail/{client,oauth-flow,typed-queries,errors,index}.ts, docs/setup/gmail-oauth-app.md, scripts/mcp-live-smoke.sh, tests/unit/mcp/gmail/{client,typed-queries}.spec.ts]
+  - task: Wave 2 NetSuite (ab43b) — TBA tokens + token-absent fallback (every method returns null + degraded:true) + 5 typed SuiteQL builders + 101 specs
+    files: [apps/utility/src/mcp/netsuite/{client,tba-auth,typed-queries,errors,index}.ts, scripts/mcp-live-smoke.sh, tests/unit/mcp/netsuite/{client,typed-queries,tba-auth,injection-fuzz}.spec.ts]
+  - task: Wave 2 AWS+Chorus (abfc7) — AWS local SSO (class+collab sum) + Chorus API key (B11 sourceConfidenceCap:69) + 55 specs
+    files: [apps/utility/src/mcp/aws/{client,typed-queries,errors,index}.ts, apps/utility/src/mcp/chorus/{client,typed-queries,confidence-cap,errors,index}.ts, scripts/mcp-live-smoke.sh, tests/unit/mcp/aws/{client,typed-queries,errors}.spec.ts, tests/unit/mcp/chorus/{client,typed-queries,confidence-cap}.spec.ts]
+  - task: Wave 2 Notarization smoke (a680d) — BLOCKED awaiting Apple credentials. Build config + entitlements.plist landed + Ch.11 findings doc written
+    files: [apps/main/build/entitlements.mac.plist, electron-builder.yml (verified existing), docs/research/R3-notarization-smoke.md]
+  - task: buildDeps integration — hydrates real MCP clients into PlaybookDeps per ADR-0010 §10; safeStorage lazy-imported from electron for non-Electron test contexts
+    files: [apps/utility/src/playbooks/lib/buildDeps.ts, apps/utility/src/orchestrator/run-loop.ts]
+  - task: Final Ch.8 audit (a60a3) — CONCERN-CLOSE; all 16 ACs PASS; 3 minor findings (no REOPEN). Wave 2 MCP suite 316/316 pass. AC-3 credential hygiene + AC-4 buildDeps wiring both verified clean
+    files: [docs/reviews/ch8-final-audit-qa-report.md]
+  - task: Ch.8 close — build-log + state.json + this handoff
+    files: [docs/build-log.md, .claude/project-state.json, thoughts/shared/handoffs/general/2026-05-27_ch8-close.yaml]
+
+blockers:
+  - id: none-new
+    severity: none
+    summary: No new blockers. Russell-action pre-conditions for live operation (not bugs).
+    next_action: n/a
+
+russell_actions_pending:
+  - service: salesforce
+    action: Create Connected App in Class org per docs/setup/salesforce-connected-app.md. Provide SALESFORCE_CLIENT_ID + SALESFORCE_CLIENT_SECRET on first launch.
+  - service: gmail
+    action: Create Google Cloud OAuth Desktop App with read-only scope. Add your Gmail as test user on the consent screen. Provide GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET.
+  - service: netsuite
+    action: Relay scripts/send-tba-request.md to Brian (B1). Paste 5 token values on receipt — safeStorage saves them.
+  - service: chorus
+    action: Paste API key on first launch (CHORUS_API_KEY).
+  - service: aws
+    action: Refresh expired SSO tokens — `aws sso login --profile class && aws sso login --profile collab`.
+  - service: powerbi
+    action: Bootstrap customer-dashboard venv — `cd /Users/russellteter/Claude\ Code\ Projects/customer-dashboard && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`.
+  - service: notarization
+    action: Provide APPLE_ID + APPLE_TEAM_ID + APPLE_APP_PASSWORD env vars to trigger smoke round-trip (B14). Verify "Developer ID Application" cert in keychain.
+  - service: day-zero
+    action: Run ~/Desktop/csuite-ch8-dayzero-form/launch.sh and submit (B6 covenant terms verbatim + B19 committed-pipeline definition).
+
+questions:
+  - Ch.9 dispatch model — single sub-agent or split (schema + UI preview + integration)? Recommend single Runtime sub-agent (handoff brief schema + UI preview component + auto-link logic) — Ch.9 is smallest chapter at 6-9 days. Renderer sub-agent for UI preview is the only other parallel candidate. So 2 parallel max.
+  - Cowork brand-skill names to reference in handoff briefs — class-brand-document, class-brand-excel, class-brand-presentations, class-ppt-cyan-light, class-brand-voice already in PRD §6. Confirm none missing.
+  - Auto-link mechanism: how does a Cowork-produced artifact (project plan / business plan / process doc) returning to the vault discover the originating decision? Match by handoff_id frontmatter field, or filename pattern, or git commit message convention? Lock in ADR-0011.
+
+decisions:
+  - two_wave_with_intermediate_audit_validated: Ch.8 used same pattern as Ch.7 — Wave 1 novel (Salesforce + PowerBI + Day-Zero) → intermediate audit → Wave 2 pattern-match (Gmail + NetSuite + AWS+Chorus + Notarization). Intermediate audit caught PowerBIClient implements gap before Wave 2 compounded it. Pattern now standard for chapters with 5+ workstreams.
+  - safestorage_owned_by_first_sub_agent: Salesforce sub-agent shipped safeStorage credentials infra; Gmail / Chorus / NetSuite pattern-matched it without coordination friction. Saves a coordination sub-agent.
+  - lazy_electron_import_for_test_compat: buildDeps lazy-imports `electron` so non-Electron test contexts parse cleanly. Minimal-blast-radius technique for cross-context modules.
+  - notarization_smoke_at_ch8_not_ch11: caught entitlements + bundle ID + cert keychain absence findings at Ch.8 entry rather than Ch.11 deadline. Russell can address Apple credentials in parallel with Ch.9/Ch.10 build instead of in crunch time.
+  - day_zero_form_non_blocking: Day-Zero form ships as a parallel surface; sub-agents continue with conservative defaults. Russell answers async. Memos that consume B6/B19 sources flagged "directional pending Day-Zero confirmation" until form submits.
+
+findings:
+  - credential_hygiene_pattern_held: AC-3 greps returned zero hits across the FULL Ch.8 surface (5 services × multiple credential variants). The "first sub-agent owns the shared infra" pattern + the explicit forbidden-grep guard in every brief enforced discipline. No env-var leaks; no console.log; no plaintext writes.
+  - buildDeps_wire_new_helpers_check_passed: AC-4 caught the wire-new-helpers anti-pattern preemptively. run-loop.ts:88 calls buildDeps with the correct (playbookId, db) signature; result flows into PlaybookContext.deps via the existing playbookCtx assignment. No silent regression like Ch.7's KNOWN_CH7_PLAYBOOK_IDS bug.
+  - parallel_4_sub_agents_in_wave_2_with_non_overlapping_scopes: Gmail (apps/utility/src/mcp/gmail/), NetSuite (apps/utility/src/mcp/netsuite/), AWS+Chorus (apps/utility/src/mcp/{aws,chorus}/), Notarization (apps/main/build/) — zero file collisions. Each sub-agent's brief explicitly listed forbidden directories. Held.
+  - powerbi_subprocess_zod_passthrough: PowerBI sub-agent correctly used Zod's passthrough on the full record but strict on lens-critical fields. account_id stays optional per intentional design (latent risk; documented). Future Ch.9+ work that consumes PowerBI must check for account_id presence before doing lens joins.
+
+worked:
+  - adr_first_then_brief_then_dispatch: Ch.8 mirrored Ch.7 — ADR codifies spec gaps; briefs reference ADR sections; sub-agent spawn prompts are tiny. Saved ~50k tokens of inline-brief context across 7 dispatches.
+  - intermediate_audit_at_wave_boundary: caught implements-McpClient gap before Wave 2 pattern-matched it 4×. Cost: ~5 min. Avoided cost: 4× similar bugs in Wave 2 + final-audit REOPEN.
+  - russell_action_items_compiled_in_close: every Wave 2 sub-agent surfaced 1-3 actions; close commit compiled them into one list. Easier than Russell hunting through 4 sub-agent reports.
+  - electron_lazy_import: buildDeps loads electron at runtime, not import time. Tests that don't load electron still parse the file cleanly. Pattern note for any future cross-context module.
+
+failed:
+  - notarization_smoke_blocked_on_first_attempt: Apple credentials weren't pre-provisioned. Sub-agent correctly halted with BLOCKED + remediation steps in the findings doc. Cost: zero (the alternative was discovering this at Ch.11 with no time).
+  - ipc_spec_topic_field_missed_in_ch6_audit_fix: the writeback.proposed test fixture was added to ipc.spec.ts before the topic field was added to ipc.ts (Ch.6 ADR §10.4). The fixture-update was supposed to land in Ch.6 audit-fix but only the runtime schema landed. Wave 1 audit caught it; Wave 1 audit-fix landed it. Pattern: when adding a required field to a Zod IPC variant, grep tests/unit/ for the variant's `kind:` value + update every fixture.
+
+next:
+  - Ch.9 entry — Cowork handoff. ROADMAP §Ch.9. Depends on Ch.6 (done). 6-9 days. ADR-0011. Single Runtime sub-agent (brief schema + auto-link + handoff agent prompt) + optional Renderer sub-agent for UI preview. Recommend dispatching them in parallel (Renderer can stub the preview against fixture brief while Runtime builds the brief generator).
+  - Ch.10 entry after Ch.9 close — 5 scheduled jobs + LaunchAgent. Depends on Ch.7 (done) + Ch.8 (done). 8-12 days. ADR-0012.
+  - Phase 2 COMPLETE emission after Ch.10 audit closes. HARD STOP at Ch.11 (Russell on-Mac demos — 8 PRD §4 outcomes must pass on his Mac; cannot be skipped or simulated).
+  - Russell-actions list (8 items) is the unblock path for live operation. Ch.9/Ch.10 can build to completion against the framework; live verification awaits Russell's onboarding flow run.
+
+files:
+  created:
+    - docs/decisions/0010-ch8-mcp-integration.md
+    - docs/reviews/ch8-wave1-audit-qa-report.md
+    - docs/reviews/ch8-final-audit-qa-report.md
+    - docs/research/R3-notarization-smoke.md
+    - docs/setup/salesforce-connected-app.md
+    - docs/setup/gmail-oauth-app.md
+    - tasks/ch8-{salesforce,powerbi,dayzero-form,gmail,netsuite,aws-chorus,notarization,wave1-audit,final-audit}-brief.md
+    - packages/shared-types/src/mcp.ts
+    - db/migrations/006_credentials.sql
+    - apps/utility/src/credentials/{safeStorageVault,index}.ts
+    - apps/utility/src/mcp/{salesforce,powerbi,gmail,netsuite,aws,chorus}/ (5-6 files each)
+    - apps/utility/src/playbooks/lib/buildDeps.ts
+    - apps/main/build/entitlements.mac.plist
+    - tests/unit/credentials/safeStorage-vault.spec.ts
+    - tests/unit/mcp/{salesforce,powerbi,gmail,netsuite,aws,chorus}/ (multiple specs each)
+    - scripts/mcp-live-smoke.sh
+    - "~/Desktop/csuite-ch8-dayzero-form/ (4 files)"
+    - thoughts/shared/handoffs/general/2026-05-27_ch8-close.yaml
+  modified:
+    - apps/utility/src/orchestrator/run-loop.ts (buildDeps call)
+    - apps/utility/src/mcp/powerbi/subprocess.ts (implements McpClient + import McpHealth)
+    - packages/shared-types/src/{index,playbook}.ts (mcp.ts re-exports + client interface updates)
+    - packages/shared-types/package.json (mcp subpath export)
+    - vitest.config.ts (renderer/jsdom env-match)
+    - scripts/preflight.sh (PowerBI section)
+    - tests/unit/ipc.spec.ts (topic field added to writeback.proposed fixtures)
+    - docs/build-log.md
+    - .claude/project-state.json
+  deleted: []
