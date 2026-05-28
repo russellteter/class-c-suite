@@ -188,18 +188,16 @@
 - Synthesizer/Verifier populate the typed arrays on new decisions; back-fill is optional.
 - Use plain YAML arrays (not Dataview inline annotation syntax) for Bases compatibility.
 
-### B14 — better-sqlite3 + native-module notarization entitlements `VERIFIED` `P2`
-**What.** Native node modules (better-sqlite3, possibly chokidar's OS-watcher backend) require correct electron-builder entitlements to pass Apple notarization. Pinning is touchy.
-**Bites at.** Ch.8 / Ch.11.
-**Status.** **R2 verified 2026-05-26.** Required `.plist` entitlement keys confirmed (source: `https://www.forasoft.com/blog/article/the-pain-of-publishing-electron-apps-on-macos-303`, updated 2026-04-26): `com.apple.security.cs.allow-jit` is the **minimum required** (V8 JIT). `com.apple.security.cs.disable-library-validation` needed only if electron-rebuild doesn't re-sign `better-sqlite3` pre-built binary. `altool --notarize-app` is dead (removed November 2023) — only `xcrun notarytool` is valid. Use `@electron/osx-sign` + `@electron/notarize` (scoped packages, not old unscoped). `electron-rebuild` must run as part of the CI build step, not only at dev install. **Spec correction needed:** architecture docs that reference "Sequoia 14.4+" are wrong — Darwin 24.x = macOS Sequoia 15.x. Sonoma = 14, Sequoia = 15.
-**Mitigation.**
-- **`electron-rebuild` runs in the CI/build step** (not just dev install) to compile native modules against the exact Electron Node.js ABI.
-- Minimum `entitlements.mac.plist` key: `com.apple.security.cs.allow-jit`. Add `disable-library-validation` only if pre-built binary signing fails.
-- **`xcrun notarytool`** is the only valid notarization tool (2026). Pipeline: sign → package → `notarytool submit --wait` → `xcrun stapler staple`.
-- Use `@electron/osx-sign` + `@electron/notarize` (scoped packages).
-- **Test notarization on a throwaway build mid-Ch.8** — don't wait for Ch.11 to discover this is broken.
-- Document working entitlements + signing identity in the Ch.11 setup runbook.
-- **Architecture-spec patch:** replace "Sequoia 14.4+" with "Sequoia 15.x+" in all architecture docs.
+### B14 — better-sqlite3 native-module ABI compatibility `DOWNGRADED` `P3`
+**What.** Native node modules (better-sqlite3, possibly chokidar's OS-watcher backend) must be compiled against the exact Electron Node.js ABI. Mismatched ABI causes `ERR_DLOPEN_FAILED` / `NODE_MODULE_VERSION` crashes at utility-process startup.
+**Bites at.** Ch.0/Ch.1 (dev `pnpm dev` smoke — caught by B45 fix), Ch.11 (build the unsigned `.app`).
+**Status.** **DOWNGRADED 2026-05-28 (per ROADMAP Ch.11 amendment — single-user unsigned-local-install pattern, no notarization).** Original P2 scope assumed notarization with `.plist` entitlements + Apple Developer signing pipeline; that whole surface is removed. Only the ABI/`electron-rebuild` concern remains, and Ch.6's B45 fix already validated it (Electron 33.4.11 + better-sqlite3 12.10.0 + ABI 130 — utility process stable under `pnpm dev`). **Spec correction still standing:** Darwin 24.x = macOS Sequoia 15.x (Sonoma = 14, Sequoia = 15) — any architecture doc referencing "Sequoia 14.4+" is wrong.
+**Mitigation (reduced scope).**
+- `electron-rebuild` runs in the build step (already wired post-B45) to compile native modules against the exact Electron Node.js ABI.
+- No entitlements file required for personal install. No `xcrun notarytool`. No `@electron/osx-sign` / `@electron/notarize`.
+- **Architecture-spec patch (still needed):** replace "Sequoia 14.4+" with "Sequoia 15.x+" in all architecture docs.
+- **Ch.11 unsigned-install pattern** (per ROADMAP §Ch.11): build `.app` → `xattr -dr com.apple.quarantine` → right-click → Open. One-time friction per install.
+**Carryforward note.** If Russell ever needs to distribute the C-Suite to a second machine or another user, the notarization scope re-opens. Today it doesn't.
 
 ### B15 — Calibration-freshness when zero positions cited — product-philosophy call `VERIFIED` `P3`
 **What.** The rigor formula's calibration-freshness component (15 points) penalizes stale calibration use. But what if a memo legitimately cites zero positions because the question is novel? Penalty or pass?

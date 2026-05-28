@@ -1345,3 +1345,27 @@ The gap between "architecture proven" and "first usable product" is the 3 NW ite
 ---
 
 [CH-9 COMPLETE 2026-05-27] Cowork handoff brief + UI preview + auto-link return loop shipped. Next: Ch.10 (5 scheduled jobs + LaunchAgent + catch-up + retry).
+
+---
+
+## ROADMAP Ch.11 amendment — drop notarization (2026-05-28)
+
+**Decision.** Single-user personal-install only. No App Store, no external distribution, no Apple Developer Program required. Replace signed/notarized DMG with **unsigned `.app` + `xattr -dr com.apple.quarantine` + right-click → Open** one-time install friction.
+
+**Why.** Russell is the only user on the only machine. Notarization solves a problem (Gatekeeper trust for redistributed builds) that doesn't exist here. The unsigned-local pattern is the standard hobbyist/personal-Electron-app pattern; macOS handles it cleanly with the one-time approval gesture.
+
+**Spec changes.**
+- `ROADMAP.md` §Ch.11 — exit criteria replace "signed + notarized DMG" with "unsigned `.app` bundle + documented unsigned-local-install pattern." 4-step setup runbook codified inline. Effort estimate reduced from 6-10 days to 4-7 days.
+- `BLOCKERS.md` §B14 — DOWNGRADED P2 → P3. Original scope assumed full notarization pipeline (`.plist` entitlements + `xcrun notarytool` + `@electron/osx-sign` + `@electron/notarize`); all removed. Only `electron-rebuild` ABI compatibility remains, and Ch.6 B45 fix already validated that.
+- LaunchAgent (Ch.10) — no change. LaunchAgent works on unsigned binaries; the plist references the `.app` Mach-O directly.
+
+**Inherited prior work.**
+- `apps/main/build/entitlements.mac.plist` (Ch.8 B14 sub-agent landed it) — keep file for now, harmless on unsigned builds. Mark in a comment that it's defensive (in case Russell later distributes).
+- `docs/research/R3-notarization-smoke.md` (Ch.8 notarization sub-agent) — keep as reference; the BLOCKED status now means "not pursued by design," not "awaiting Apple credentials." If Russell ever needs notarization, the doc is the starting point.
+
+**Russell-action items removed.**
+- ~~Provide `APPLE_ID` / `APPLE_TEAM_ID` / `APPLE_APP_PASSWORD`~~ — no longer needed.
+- ~~Verify "Developer ID Application" cert in keychain~~ — no longer needed.
+- ~~Apple Developer Program membership~~ — no longer needed.
+
+**Carryforward note.** If single-user assumption ever breaks (Russell distributes to a second machine or another person), B14 re-opens at full scope. Document this assumption explicitly so the next conversation about Mac distribution doesn't rebuild a notarization plan from scratch.

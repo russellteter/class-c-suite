@@ -55,10 +55,25 @@ export interface DecisionSummary {
   title: string;
 }
 
+export type JobRunStatus = 'succeeded' | 'failed' | 'caught_up' | 'skipped_auth_expired';
+
 export interface ScheduledJobStatus {
   id: string;
   name: string;
+  /** Set only when job not yet live — e.g. "Pending Ch.10". Falls back to placeholder render. */
   pendingNote?: string;
+  /** Human-readable cron summary, e.g. "Mondays 6am ET". */
+  cronSummary?: string;
+  /** ISO timestamp of last run, or null if never run. */
+  lastRunAt?: string | null;
+  /** Status of most recent run. */
+  lastRunStatus?: JobRunStatus;
+  /** Source service IDs that returned degraded/partial data. */
+  degradedSources?: string[];
+  /** Path to output memo file; present when the job wrote a memo. */
+  outputMemoPath?: string;
+  /** Auth-expired service name, populated when status is skipped_auth_expired. */
+  authExpiredService?: string;
 }
 
 // ── Home aggregated data ──────────────────────────────────────────────────────

@@ -199,13 +199,21 @@ All other gates from the ultraplan ("billing path confirmation," "Cowork concurr
 **Effort.** 8-12 days.
 
 ### Ch.11 — On-Mac packaging + verification
-**Goal.** Notarized DMG. On-Mac hardening. **All 8 outcome demos pass.**
+**Goal.** Unsigned local `.app` install. On-Mac hardening. **All 8 outcome demos pass.**
 **PRD outcome.** All.
 **Gates.** **On-Mac verification gate — Russell runs the demos on his Mac.** Cannot be skipped or simulated.
+**Distribution model.** Single-user personal use only. No App Store, no external distribution, no notarization, no Apple Developer Program required. The unsigned-local-install pattern is sufficient — Russell is the only user on the only machine.
 **Exit criteria.**
-- electron-builder produces signed + notarized DMG.
-- `better-sqlite3` + other native modules rebuild correctly under notarization entitlements (BLOCKERS B14).
-- Setup runbook documents: install DMG, grant Mac permissions, install Obsidian plugins (Bases per Phase R recommendation), connect MCPs (auth flow per service), vault location verification (non-iCloud — BLOCKERS B9).
+- electron-builder produces an UNSIGNED `.app` bundle (no signed DMG, no notarization).
+- `better-sqlite3` + other native modules rebuild correctly against the Electron ABI (no notarization entitlements required; BLOCKERS B14 reduced scope — only ABI/`electron-rebuild` matters).
+- Setup runbook documents the unsigned-local-install pattern:
+  1. Build the `.app` via `pnpm build` (or whatever Ch.0 wired) — typically lands at `dist/mac-arm64/C-Suite.app` (or `mac/`).
+  2. Drag into `/Applications/` (or run from `dist/` directly — both work for personal use).
+  3. Run once: `xattr -dr com.apple.quarantine /Applications/C-Suite.app` — strips Gatekeeper's quarantine flag added on download/copy.
+  4. First launch: right-click → Open → confirm "Open anyway" in the Gatekeeper prompt. macOS remembers the approval thereafter.
+  5. One-time friction per fresh install or app rebuild.
+- Setup runbook also documents: grant Mac permissions (notifications + full-disk-access if vault is outside `~/Documents/`), install Obsidian plugins (Bases per Phase R recommendation), connect MCPs (auth flow per service), vault location verification (non-iCloud — BLOCKERS B9).
+- LaunchAgent registration works on unsigned binaries — no change to Ch.10's plist/install path.
 - **All 8 PRD §4 outcome demos pass on Russell's Mac:**
   1. Russell opens C-Suite, runs a strategic question, gets a sourced rigor-scored memo.
   2. Click any claim → tool-call result surfaces.
@@ -215,7 +223,7 @@ All other gates from the ultraplan ("billing path confirmation," "Cowork concurr
   6. Menubar + global hotkey + native notification on tripwire flip.
   7. Cowork `/deep` runs against the same vault.
   8. "Draw up for Cowork" produces a brief; brief opened in Cowork; resulting project plan returns to vault auto-linked.
-**Effort.** 6-10 days.
+**Effort.** 4-7 days (down from 6-10 — notarization removed).
 
 ### Ch.12 *(optional)* — Audit instrumentation & rigor-threshold tuning
 **Goal.** First-month rigor-threshold tuning hook. 70-84 audit queue.
