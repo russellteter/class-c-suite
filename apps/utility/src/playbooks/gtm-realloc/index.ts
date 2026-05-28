@@ -20,8 +20,11 @@
 // Writebacks: workstream-update proposals (WS transitions per reallocation).
 // Stamps: CLEAN | DRAFT | DEGRADED.
 
-import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule } from '@c-suite/shared-types/playbook';
+import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, StubbedSource } from '@c-suite/shared-types/playbook';
 import type { DegradedSource } from '@c-suite/shared-types/playbook';
+
+// B47 honest-stub declaration (audit Finding 2): rigorScore is hardcoded, not from a real Verifier run.
+export const STUBBED_SOURCES: readonly StubbedSource[] = ['verifier_rigor'];
 import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
 import { createLogger } from '../../logger.js';
 

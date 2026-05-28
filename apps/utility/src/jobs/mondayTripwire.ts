@@ -162,8 +162,12 @@ export async function runMondayTripwire(
 
   if (flipped.length > 0) {
     try {
-      const { runPlaybook } = (await import(CASH_LEVER_MODULE)) as { runPlaybook: (input: unknown, ctx: unknown) => Promise<{ memoMarkdown: string; degradedSources: string[] }> };
-      const cashResult = await runPlaybook(
+      const cashModule = (await import(CASH_LEVER_MODULE)) as unknown as import('@c-suite/shared-types/playbook').PlaybookModule;
+      const { runPlaybookGuarded } = await import('../orchestrator/stubGuard.js');
+      // B47 stub guard: refuses (STUB_MODE=live) if cash-lever still fabricates data.
+      const cashResult = await runPlaybookGuarded(
+        cashModule,
+        'cash_lever',
         {
           playbookId: 'cash_lever',
           prompt: `Tripwire flip detected on ${today}: ${flipped.map(f => `${f.tripwireId} ${f.previousState}→${f.currentState}`).join(', ')}. Assess cash lever options.`,

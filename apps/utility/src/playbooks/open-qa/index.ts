@@ -18,7 +18,10 @@
 // run-loop.ts detects this and re-dispatches to the target playbook WITHOUT
 // re-decomposing (skipDecompose: true per ADR-0009 §5 run-loop integration).
 
-import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, PlaybookId } from '@c-suite/shared-types/playbook';
+import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, PlaybookId, StubbedSource } from '@c-suite/shared-types/playbook';
+
+// B47 honest-stub declaration (audit Finding 2): rigorScore is hardcoded, not from a real Verifier run.
+export const STUBBED_SOURCES: readonly StubbedSource[] = ['verifier_rigor'];
 import type { LensRole } from '@c-suite/shared-types/agent-definition';
 import { decompose } from '../lib/decomposer.js';
 import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';

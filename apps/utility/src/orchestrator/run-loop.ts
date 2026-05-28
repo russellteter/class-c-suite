@@ -21,6 +21,7 @@ import { rigorScore, rigorThreshold, shipStatus as computeShipStatus } from '../
 import { modelClientFromEnv } from '../agents/modelClient.js';
 import { draftWritebacks } from '@c-suite/writeback-engine';
 import { routeToPlaybook } from '../playbooks/lib/playbookRouter.js';
+import { runPlaybookGuarded } from './stubGuard.js';
 import { buildDeps } from '../playbooks/lib/buildDeps.js';
 // Ch.9: handoff brief generation (explicit-trigger only — NOT auto on every accepted decision)
 import { generateHandoffBrief } from '../agents/handoff/index.js';
@@ -100,7 +101,8 @@ export async function startRun(
       deps: playbookDeps,
     };
 
-    const playbookResult = await playbookModule.runPlaybook(playbookInput, playbookCtx);
+    // B47 stub guard: refuses (STUB_MODE=live) if this playbook still fabricates data.
+    const playbookResult = await runPlaybookGuarded(playbookModule, playbookId as PlaybookId, playbookInput, playbookCtx);
 
     // ADR-0016: append default OutputSurface metadata for playbooks that have configured surfaces.
     // The 'memo' surface is always first; additional surfaces are listed per outputSurfaceDefaults.
@@ -127,7 +129,7 @@ export async function startRun(
         prompt: question,
         context: { skipDecompose: true },
       };
-      await redirectModule.runPlaybook(redirectInput, playbookCtx);
+      await runPlaybookGuarded(redirectModule, targetId, redirectInput, playbookCtx);
     }
 
     // quick_read bypasses Verifier entirely (ADR-0009 §3.5 + §6 run-loop integration).

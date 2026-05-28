@@ -220,10 +220,49 @@ export const PlaybookResultSchema = z.object({
 });
 export type PlaybookResult = z.infer<typeof PlaybookResultSchema>;
 
+// ── StubbedSource — honest declaration of what a playbook still fabricates ────
+// Source: docs/reviews/mock-reliance-audit-2026-05-28.md (Findings 2-5) + B47.
+//
+// Every playbook module exports STUBBED_SOURCES (see PlaybookModule below). It is
+// the SINGLE SOURCE OF TRUTH for what a playbook fabricates in its production code
+// path. The live-mode guard (orchestrator/stubGuard.ts) reads it and, when
+// STUB_MODE=live, refuses to run a playbook that would emit fabricated tool-call
+// data or hardcoded engine scores — unless ALLOW_STUBBED_LIVE=1, in which case it
+// downgrades to a loud warning and merges the entries into degraded_sources.
+//
+// Vocabulary (REFUSE-level only — things that present false information as true):
+//   data sources       — fabricated MCP tool-call results (violate DOCTRINE #1)
+//   verifier_rigor     — hardcoded rigorScore instead of a real Verifier run
+//
+// Deliberately NOT in this vocabulary: empty Synthesizer write-back proposals.
+// An empty proposedWritebacks list is honest emptiness ("no vault updates
+// proposed"), not data masquerading as real, so it is a deferred enhancement
+// (audit Finding 3) rather than a guard-blocking fabrication.
+//
+// A playbook with STUBBED_SOURCES: [] asserts it is honest end-to-end. The anti-rot
+// test (tests/unit/orchestrator/stub-guard.spec.ts) fails if a "clean" playbook's
+// body still contains stub*Query calls or a hardcoded `rigorScore = NN` value.
+export type StubbedSource =
+  | 'salesforce'
+  | 'aws'
+  | 'netsuite'
+  | 'cash_model'
+  | 'gmail'
+  | 'chorus'
+  | 'powerbi'
+  | 'verifier_rigor';
+
 // ── PlaybookModule — the contract every playbook directory exports ────────────
 
 export interface PlaybookModule {
   runPlaybook(input: PlaybookInput, ctx: PlaybookContext): Promise<PlaybookResult>;
+  /**
+   * Honest declaration of what this playbook still fabricates in its production
+   * code path. Empty array = honest end-to-end. Read by the live-mode stub guard.
+   * Optional only for back-compat with modules predating B47; the anti-rot test
+   * requires every routed playbook to export it.
+   */
+  STUBBED_SOURCES?: readonly StubbedSource[];
 }
 
 // ── DecompositionResult — open_qa decomposer output (ADR-0009 §12.2) ─────────

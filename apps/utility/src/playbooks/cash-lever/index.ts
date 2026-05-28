@@ -365,7 +365,12 @@ async function runCosLens(
 // Does NOT rewrite cash-lever internals (forbidden per ADR-0009 §3 scope).
 // Phase B will pattern-match against this adapter.
 
-import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule } from '@c-suite/shared-types/playbook';
+import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, StubbedSource } from '@c-suite/shared-types/playbook';
+
+// B47 honest-stub declaration (audit Finding 4). cash-lever fabricates all four
+// data sources via stub*Query helpers below; STUB_MODE=live is refused by the guard
+// until these are wired to ctx.deps. Drop entries as each becomes real.
+export const STUBBED_SOURCES: readonly StubbedSource[] = ['salesforce', 'aws', 'netsuite', 'cash_model'];
 
 function adaptResult(r: CashLeverRunResult, degradedSources: DegradedSource[]): PlaybookResult {
   const stamps: string[] = degradedSources.length > 0 ? ['DEGRADED'] : ['CLEAN'];

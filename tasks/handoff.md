@@ -1,77 +1,55 @@
-# Session Handoff — Scaffold Session Closeout (2026-05-26)
+# Handoff — B47 Phase 1: live-mode stub guard (2026-05-28)
 
-> Written for the NEXT Claude Code session at `/Users/russellteter/Claude Code Projects/c-suite/`. This session is closing. The next session runs `/goal` with the prompt in `scripts/goal-prompt-v1.md`.
+## This session (Phase 1 — shipped)
+- **Live-mode stub guard landed.** Every playbook now exports `STUBBED_SOURCES: readonly StubbedSource[]` (single source of truth for what it fabricates). `apps/utility/src/orchestrator/stubGuard.ts` REFUSES any playbook with non-empty `STUBBED_SOURCES` under `STUB_MODE=live` (throws `StubbedSourceLiveError`); `ALLOW_STUBBED_LIVE=1` downgrades to a loud warn + merges into `degraded_sources` (honest-degradation pattern). replay/record unaffected.
+- Wired via `runPlaybookGuarded()` at all 3 call sites: run-loop early-return (line ~103), open_qa redirect (~130), and mondayTripwire's dynamic cash-lever import.
+- Current `STUBBED_SOURCES`: cash_lever=`['salesforce','aws','netsuite','cash_model']`; the 7 Phase A/B playbooks=`['verifier_rigor']`; quick_read=`[]` (Verifier bypass by design).
+- `synthesizer_writebacks` deliberately NOT in the guard vocab — empty writebacks = honest emptiness, not a fabrication (deferred Finding 3).
+- Test: `tests/unit/orchestrator/stub-guard.spec.ts` (25 cases) — guard behavior + registry integrity + anti-rot (a `[]` playbook must contain no `stub*Query` / hardcoded rigorScore) + dynamic-import path. 30/30 pass with mondayTripwire; 66/66 orchestrator+jobs no regressions; typecheck clean.
 
-## What this session did (in order)
+## CORRECTED facts (the prior recipe was stale)
+- **Verifier is ALREADY wired in the generic run-loop path** (run-loop.ts:218-231 via `modelClientFromEnv()`). The prior recipe's "wire real Verifier — replace stub in run-loop.ts:200-206" is a NO-OP — do not chase it.
+- The REAL remaining Verifier gap: the **Ch.7 early-return path (run-loop.ts ~84-146) does NOT run the Verifier** — it trusts `playbookResult.rigorScore`, where 8 playbooks live. Phase 2 wires the Verifier there (ONE site), then deletes the 7 hardcoded `rigorScore = NN` placeholders. Do NOT edit 7 playbooks to call runVerifier.
 
-1. **Ingested the ultraplan** (Russell pasted the remote /ultraplan output after it timed out without manual approval) — audited against PRD/CLAUDE.md, identified 6 gaps (notably: architecture-specs claimed-as-existing didn't exist; missing decide-and-log mode for Russell's "no review" directive; missing customer-dashboard-poc detail; missing brand-skill integration; missing handoff Ch.9 detail).
-2. **Authored the doc-set spine** — `PURPOSE.md`, `DOCTRINE.md`, `ROADMAP.md`, `BLOCKERS.md`, `RESEARCH.md`, plus project-level `CLAUDE.md` + `README.md` + `docs/build-log.md`. (Commit `6e2ed6c`.)
-3. **Authored 6 architecture specs** — `docs/architecture/{runtime,data,mcp,ui,prompts,delivery}.md`. Marked every uncertain claim with `🔍 R0/R1/R2 VERIFY:` rather than fabricating. (Commit `6e2ed6c`.)
-4. **Augmented PRD + CLAUDE.md mirrors** — additive `§11 Build Program` + `§10 Reference block` only; locked content untouched. (Commit `6e2ed6c`.)
-5. **Installed durable GitHub auto-push** — tracked `hooks/post-commit` + `scripts/install-hooks.sh` + `core.hooksPath=hooks`. Pushes every commit automatically. Survives re-clones via the install script. (Commit `ffd984e`.)
-6. **Tier 1 execution enhancements** — pre-flight script, NetSuite TBA request template, brand-voice rules extraction, ADR template + ADR-0000 recording the scaffold, sub-agent dispatch templates (9 roles), Ch.4 keystone test fixtures (`tests/fixtures/rigor-cases.json` + `canary-memo.md`), project-state JSON, BLOCKERS B17 missing-skill register, README orchestrator quickstart. (Commit `10559a9`.)
-7. **Downstream blocker remediation** — Russell installed pnpm; cloned `customer-dashboard` from `https://github.com/russellteter/customer-dashboard` (resolves the PowerBI integration project path). Discovered it's a 43K-LOC Python project with 2,654 tests, 3 data sources (PowerBI Class Usage / PowerBI Collaborate / Google Sheets Master Renewal Playbook), join key `Account ID 18 Digit`. Surfaced B18 (Python subprocess from Electron implications). Shipped the Cowork extraction prompt. (Commit `5b16baa`.)
-8. **Salesforce + NetSuite live verification** — sf CLI confirmed connected to Class production org (`sf.operations@classedu.com`, 103,749 Accounts). 325 Account custom fields + 358 Opportunity custom fields enumerated. NetSuite MCP confirmed working (4 subsidiaries, 6 cash + 9 renewal Saved Searches, live SuiteQL against transactions). Surfaced TWO major Connector Playbook corrections: **B19** (stage labels `S4/S5/Commit/BestCase` don't exist in the live org; real labels documented), **B20** (real renewal field is `Renewal_Anniversary_Date__c` not `Renewal_Date__c`). Phase R R1 partial deliverable: `docs/research/R1-connector-reality.md`. B7 verified live. B1 downgraded P1→P2. (Commit `1d83daa`.)
-9. **Skill extraction + install** — Russell ran the Cowork extraction prompt; Cowork wrote `_extracted_skills_for_c_suite.md` (2,369 lines, 8 skills full content). `scripts/install-extracted-skills.py` installed all 8 at `~/.claude/skills/<name>/`. All verified in skill registry. **B17 MITIGATED.** (Commit `670d29d`.)
-10. **/goal prompt + handoff** — researched `/goal` docs; wrote `scripts/goal-prompt-v1.md` with Phase R + Ch.0-5 scope (recommended first /goal); wrote this handoff. (Commit will be the final one of this session.)
+## Next step → Phase 2
+Read `tasks/b47-phase2-data-wire-brief.md` (architectural directives up front). In order: (1) Verifier in early-return path; (2) cash-lever → real `ctx.deps` with honest degradation. Defer Findings 3 (Synthesizer) + 5 (jobs). cash-lever live-verification is gated on Russell connecting NetSuite OAuth + AWS SSO.
 
-## Current state (verified at session close)
+---
 
-| Surface | Status |
-|---|---|
-| Repo | `/Users/russellteter/Claude Code Projects/c-suite/`, branch `main`, remote `https://github.com/russellteter/class-c-suite.git`, local HEAD == remote HEAD |
-| Auto-push hook | Installed (`hooks/post-commit` + `core.hooksPath=hooks`); 6 successful pushes logged in `.git/auto-push.log` |
-| Preflight | 0 fails, 2 warns (only the warns are MCP-plugin reachability checks — non-blocking) |
-| Salesforce | `sf` CLI auth as `class-prod` alias, persistent. MCP also available. |
-| NetSuite | Class Technologies MCP loaded; queries work; TBA tokens needed only for Ch.8 Electron runtime |
-| Skills | 8 op-logic skills + 4 brand skills installed in `~/.claude/skills/` |
-| Doc-set | Complete: PURPOSE + DOCTRINE + ROADMAP + BLOCKERS + RESEARCH + 6 architecture specs + build-log scaffold + ADRs + agents + fixtures + state |
-| customer-dashboard | Cloned at `/Users/russellteter/Claude Code Projects/customer-dashboard/` (Python 43K LOC) |
-| Extracted-skills mirror | At `business-planning/_extracted_skills_for_c_suite.md` (for reproducibility) |
+# Handoff — Finishing-touches multi-track session (2026-05-28)
 
-## What the NEXT session does
+## What was done
+- **Ch.7 assembly leg built** (was never done): `apps/renderer/vite.config.ts`, real `index.html` entry, dev/build scripts, `main.ts` dev/prod load, `electron-builder.yml` renderer-dist. App now bundles + renders.
+- **NetSuite migrated TBA → OAuth 2.0/PKCE** on hosted MCP (public client, scope `mcp`, redirect `localhost:8765`). 105 tests.
+- **Google Workspace output surfaces** (Docs/Sheets/Slides/Drive wrappers, `OutputSurface` type, ADR-0016).
+- **CCC "Editorial Sharp" redesign** of Home/RoundTable/MemoViewer (validated ~9/10; baseline in `docs/design-system/baseline/`).
+- **B47 keystone:** real `RealClaudeClient` on `@anthropic-ai/claude-agent-sdk` + Max subscription (`CLAUDE_CODE_OAUTH_TOKEN`); NO API key (`ANTHROPIC_API_KEY` stripped). `modelClientFromEnv()` factory.
+- **Pre-commit credential scanner** (`hooks/pre-commit`, not husky — preserves auto-push); history scan clean.
+- **Chapter ritual amended** to require INTEGRATION PROOF (populated-state demo + screenshot).
+- **Audit:** `docs/reviews/mock-reliance-audit-2026-05-28.md` (B47).
 
-1. **Confirm the prerequisites** in `scripts/goal-prompt-v1.md` §"Sanity checks before pasting."
-2. **Paste the /goal prompt** from `scripts/goal-prompt-v1.md` §"The prompt — copy from here" verbatim.
-3. **Let it run.** Auto-mode + /goal will iterate through Phase R → Ch.0-5 with no per-turn user input required. The orchestrator emits "[UNIT] COMPLETE" reports as it goes. Haiku evaluator judges from the transcript.
-4. **Watch for hard gates** (only 3 trigger): on-Mac verification (Ch.11 only; not in this scope), genuine product-shape forks (html-driven-codev mockup approval for UI screens), destructive/external actions.
+## Current state
+- Typecheck clean (9 workspaces). Full suite **1932 pass / 94 fail** — all 94 are the known `better-sqlite3` ABI mismatch under plain Node (pass under Electron). Zero new regressions.
+- Real inference wired but **playbook DATA is still stubbed** — cash-lever et al. fabricate tool-call data. Do NOT trust `STUB_MODE=live` playbook output as real yet.
+- All work committed + pushed to `origin/main` (commits 20b6eb7 → c522428, ~18 commits).
 
-## Open items the next session should know about
+## Files touched
+`git log --oneline c838a2a..HEAD`. `git status`: only scratch untracked (`.playwright-mcp/`, `tasks/*-brief.md`, `preview.html`, `vite.preview.config.ts`) + pre-existing `CLAUDE.md` mod.
 
-| ID | What | Action |
-|---|---|---|
-| B1 | NetSuite TBA tokens to Brian | Send via `scripts/send-tba-request.md` early in Phase R R1 (longest external lead; needed only at Ch.8). |
-| B19 | Real SF stage labels need Russell's "what's committed?" confirmation | Phase R adds as a Day-Zero form question; for now, the typed SOQL builder uses the recommended list in R1 report. |
-| B20 | `Renewal_Anniversary_Date__c` (not `Renewal_Date__c`) | mcp.md typed builder already corrected; just don't regress. |
-| B7 | `renewal-forecast` skill source still has `Owner.Name` bug | Fix on import or wrap with corrected query when invoking. |
-| B17 residual | Per-skill codify-vs-invoke decision at Ch.7/Ch.10 | R0 documents per-skill recommendation. |
-| Skill UUIDs | Several extracted skills reference Cowork MCP UUIDs | When codifying into C-Suite modules, map intent to C-Suite wrapper interfaces; don't paste UUIDs. |
-| Slack | Some extracted skills reference Slack tools | Slack is V1.5+ per PRD §6; flag and defer those code paths. |
+## Open threads (B47 follow-up = the real product work)
+Per audit Findings 2–5: wire real Verifier (delete hardcoded `rigorScore` placeholders), real Synthesizer write-back proposals, real playbook MCP data (`cash-lever/index.ts:37` fabricates AWS data), real scheduled-job sources. FIRST: add a runtime guard that refuses/warns when `STUB_MODE=live` runs a still-stubbed-data playbook.
 
-## Commit log this session (chronological)
+## Russell actions (none block code)
+1. NetSuite: create OAuth Integration Record → `NETSUITE_OAUTH_CLIENT_ID` in `apps/main/.env.local` → in-app Connect → revoke old TBA `2b80c7a9` + rm `~/mcp-servers/netsuite-mcp`.
+2. Google: re-consent 4 new scopes on first launch.
+3. Real inference: `claude setup-token` → `CLAUDE_CODE_OAUTH_TOKEN` in `.env.local`, ensure `ANTHROPIC_API_KEY` unset.
+4. Capture Electron Home screenshot (Ch.7 AC-4); run 8 Ch.11 on-Mac demos.
 
-```
-670d29d docs: B17 MITIGATED — install 8 skills extracted from Cowork
-1d83daa docs: verify Salesforce + NetSuite live access; correct major Connector Playbook assumptions
-5b16baa fix: downstream blocker remediation — customer-dashboard located, B17/B18 surfaced, Cowork extraction prompt
-10559a9 docs: Tier 1 execution enhancements — preflight, TBA, brand-voice, ADRs, agents, fixtures, state
-ffd984e chore: durable auto-push hook + orchestration-agnostic docs
-6e2ed6c docs: scaffold C-Suite build doc-set and architecture specs
-79bc9c6 chore: ignore local agentdb files
-```
+## Next step
+Start the **B47 data-wiring session**: real Verifier + Synthesizer + playbook MCP data + the live-mode stub-data guard.
 
-A final commit closes this handoff doc + /goal prompt + project-state update.
-
-## If the next session needs context this handoff doesn't cover
-
-Read in order:
-1. `PURPOSE.md` (the why)
-2. `DOCTRINE.md` (the rules)
-3. `ROADMAP.md` (the chapter sequence)
-4. `BLOCKERS.md` (everything that could go wrong)
-5. `RESEARCH.md` (Phase R protocol)
-6. `docs/architecture/*.md` (implementation contracts)
-7. `docs/build-log.md` (per-loop ledger — will be empty until /goal starts writing)
-8. `.claude/project-state.json` (machine-readable state)
-
-That's the contract. Everything `/goal` needs is in this repo, tracked, and auto-pushed.
+## Resume recipe
+1. `git pull` then `pnpm install`.
+2. Read `tasks/handoff.md` + `docs/reviews/mock-reliance-audit-2026-05-28.md` (Findings 2–5).
+3. Verify state: `pnpm typecheck` (clean) and `npx vitest run` (94 ABI fails expected).
+4. Begin in `apps/utility/src/orchestrator/run-loop.ts` (wire real Verifier — replace stub) and `apps/utility/src/playbooks/cash-lever/index.ts:37` (real `ctx.deps.aws` call).

@@ -1584,3 +1584,52 @@ http://localhost:8765/oauth/callback) and pastes NETSUITE_OAUTH_CLIENT_ID into a
 - `docs/decisions/0015-netsuite-oauth-migration.md` — ADR written
 - `docs/research/netsuite-current-state.md` — OAuth replaces TBA; pending live verification
 - `docs/external/brian-netsuite-role-perms-request.md` — marked SUPERSEDED
+
+---
+
+## B47 Phase 1 — live-mode stub-data guard (2026-05-28)
+
+### What shipped
+The mock-reliance audit (Finding 1, B47) wired a real Claude client but left
+findings 2-5 open: playbooks still fabricate data / hardcode rigor scores in the
+production code path. Phase 1 makes that dishonesty LOUD instead of silent.
+
+- New vocab `StubbedSource` + `PlaybookModule.STUBBED_SOURCES` in
+  `packages/shared-types/src/playbook.ts`. Every playbook declares what it
+  fabricates. Single source of truth.
+- `apps/utility/src/orchestrator/stubGuard.ts`: under `STUB_MODE=live`, a playbook
+  with non-empty `STUBBED_SOURCES` is REFUSED (`StubbedSourceLiveError`). Escape
+  hatch `ALLOW_STUBBED_LIVE=1` downgrades to a loud warn + merges the sources into
+  `degraded_sources` (honest-degradation pattern, audit Finding 6). replay/record
+  unaffected. Enforced once via `runPlaybookGuarded()` at all 3 call sites
+  (run-loop early-return, open_qa redirect, mondayTripwire dynamic import).
+- Current registry: cash_lever=[salesforce,aws,netsuite,cash_model];
+  7 Phase A/B playbooks=[verifier_rigor]; quick_read=[] (Verifier bypass by design).
+- `synthesizer_writebacks` deliberately excluded from the vocab — empty writebacks
+  are honest emptiness, not fabrication (deferred Finding 3).
+
+### Verification
+- `tests/unit/orchestrator/stub-guard.spec.ts` (25 cases): guard behavior +
+  registry integrity + anti-rot (a `[]` playbook must contain no `stub*Query` /
+  hardcoded rigorScore) + dynamic-import path. 30/30 with mondayTripwire; 66/66
+  orchestrator+jobs no regressions; `pnpm typecheck` clean (9 workspaces).
+
+### Corrected stale fact
+Verifier is ALREADY wired in the GENERIC run-loop path (run-loop.ts:218-231). The
+real gap is the Ch.7 EARLY-RETURN path (~84-146) where 8 playbooks live — it
+trusts `playbookResult.rigorScore` without running the Verifier. Phase 2 wires it
+there (ONE site), not in 7 playbooks.
+
+### Deferred to Phase 2 (brief: tasks/b47-phase2-data-wire-brief.md)
+Verifier in early-return path; cash-lever → real `ctx.deps`. cash-lever
+live-verification gated on Russell connecting NetSuite OAuth + AWS SSO. Findings
+3 (Synthesizer) + 5 (jobs) deferred further.
+
+### Files touched
+- `packages/shared-types/src/playbook.ts` — StubbedSource + PlaybookModule.STUBBED_SOURCES
+- `apps/utility/src/orchestrator/stubGuard.ts` — new; the guard + runPlaybookGuarded
+- `apps/utility/src/orchestrator/run-loop.ts` — 2 call sites routed through guard
+- `apps/utility/src/jobs/mondayTripwire.ts` — dynamic cash-lever import routed through guard
+- `apps/utility/src/playbooks/*/index.ts` (all 9) — STUBBED_SOURCES export
+- `tests/unit/orchestrator/stub-guard.spec.ts` — new; 25 cases
+- `tasks/b47-phase2-data-wire-brief.md` — new; Phase 2 directives

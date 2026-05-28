@@ -18,7 +18,10 @@
 
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule } from '@c-suite/shared-types/playbook';
+import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, StubbedSource } from '@c-suite/shared-types/playbook';
+
+// B47 honest-stub declaration (audit Finding 2): rigorScore is hardcoded, not from a real Verifier run.
+export const STUBBED_SOURCES: readonly StubbedSource[] = ['verifier_rigor'];
 import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
 import { createStakeholderSkeleton } from '../lib/stakeholderSkeleton.js';
 import { dispatchLens } from '../../orchestrator/dispatch.js';

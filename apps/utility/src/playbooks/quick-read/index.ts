@@ -18,7 +18,10 @@
 //
 // Token meter ribbon is the only quality signal shown in the UI (§13.5).
 
-import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule } from '@c-suite/shared-types/playbook';
+import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, StubbedSource } from '@c-suite/shared-types/playbook';
+
+// B47 honest-stub declaration: Verifier intentionally bypassed by design (ADR-0009 §3.5); no fabricated data.
+export const STUBBED_SOURCES: readonly StubbedSource[] = [];
 import type { LensRole } from '@c-suite/shared-types/agent-definition';
 import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
 import { dispatchLens } from '../../orchestrator/dispatch.js';
