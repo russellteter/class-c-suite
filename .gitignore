@@ -62,3 +62,7 @@ agentdb.rvf.lock
 tasks/scratch/
 claudedocs/local/
 .firecrawl/
+
+# E2E test artifacts
+tests/e2e/screenshots/
+tests/e2e/report.json

@@ -18,7 +18,7 @@ export function createRendererWindow(): BrowserWindow {
       contextIsolation: true,         // LOCKED — no override permitted
       nodeIntegration: false,         // LOCKED — no override permitted
       sandbox: true,                  // LOCKED — no override permitted
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   });
 
