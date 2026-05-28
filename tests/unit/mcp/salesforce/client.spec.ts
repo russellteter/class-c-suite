@@ -12,6 +12,14 @@ import {
 } from '../../../../apps/utility/src/mcp/salesforce/errors.js';
 import type { SafeStorageVault } from '../../../../apps/utility/src/credentials/safeStorageVault.js';
 
+// Mock SFDX fallback so vault-empty tests still exercise the no-auth-anywhere path
+// (the live SFDX session would otherwise satisfy isAuthenticated() per Russell-decision
+// 2026-05-28: SFDX is a valid fallback auth source).
+vi.mock('../../../../apps/utility/src/mcp/salesforce/sfdx-auth.js', () => ({
+  getSfdxAuth: vi.fn(async () => null),
+  hasSfdxAuth: vi.fn(async () => false),
+}));
+
 // Set Connected App env vars so token-refresh path doesn't throw
 // SalesforceConnectedAppMissingError during unit tests.
 const ORIGINAL_ENV = { ...process.env };

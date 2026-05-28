@@ -14,6 +14,7 @@ import type {
 import { SalesforceQueryResultSchema } from '@c-suite/shared-types/mcp';
 import type { SafeStorageVault } from '../../credentials/safeStorageVault.js';
 import { refreshAccessToken } from './oauth-flow.js';
+import { getSfdxAuth, hasSfdxAuth } from './sfdx-auth.js';
 import {
   SalesforceAuthExpiredError,
   SalesforceAuthRevokedError,
@@ -32,31 +33,49 @@ export class SalesforceClient implements ISalesforceClient {
   private instanceUrl: string | null = null;
   private lastSuccessAt: Date | undefined;
   private lastError: string | undefined;
+  private resolvedAuthMode: 'oauth' | 'sfdx' | null = null;
 
   constructor(private readonly vault: SafeStorageVault) {}
 
   // ── McpClient contract ──────────────────────────────────────────────────────
 
+  /**
+   * Authenticated if EITHER the vault has a Salesforce OAuth credential OR
+   * the SFDX CLI has an authenticated session against any Salesforce org.
+   * Vault path takes precedence (it's our own Connected App when configured);
+   * SFDX is the fallback per Russell-decision 2026-05-28.
+   */
   async isAuthenticated(): Promise<boolean> {
-    return this.vault.hasValidCredential('salesforce');
+    if (await this.vault.hasValidCredential('salesforce')) return true;
+    return hasSfdxAuth();
   }
 
   async reconnect(): Promise<void> {
-    // Triggers OAuth re-authentication via the oauth-flow module.
-    // Import lazily to avoid circular dep; oauth-flow imports vault types only.
+    // If SFDX is the active auth mode, surface clear instructions instead of
+    // running the C-Suite's own OAuth flow (we don't have the SFDX Connected
+    // App's client_secret, so we can't refresh via the OAuth code path).
+    if (this.resolvedAuthMode === 'sfdx') {
+      throw new SalesforceAuthExpiredError(
+        'SFDX session expired. Run: sf org login web --instance-url https://classedu.my.salesforce.com'
+      );
+    }
+    // Vault/OAuth path: run the normal browser flow.
     const { runOAuthFlow } = await import('./oauth-flow.js');
     const tokenSet = await runOAuthFlow(this.vault);
     this.accessToken = tokenSet.accessToken;
     this.instanceUrl = tokenSet.instanceUrl;
+    this.resolvedAuthMode = 'oauth';
   }
 
   async healthCheck(): Promise<McpHealth> {
     const ok = await this.isAuthenticated();
+    // Resolve auth mode lazily — vault wins when both are present.
+    const authMode: 'oauth' | 'sfdx' = (await this.vault.hasValidCredential('salesforce')) ? 'oauth' : 'sfdx';
     return {
       ok,
       lastSuccessAt: this.lastSuccessAt,
       lastError: this.lastError,
-      authMode: 'oauth',
+      authMode,
     };
   }
 
@@ -193,6 +212,7 @@ export class SalesforceClient implements ISalesforceClient {
   }
 
   private async refreshToken(): Promise<{ accessToken: string; instanceUrl: string }> {
+    // Try vault (own Connected App) first; fall back to SFDX CLI per Russell-decision 2026-05-28.
     let cred: { plaintext: string; metadata?: object } | null;
     try {
       cred = await this.vault.loadCredential('salesforce');
@@ -200,17 +220,28 @@ export class SalesforceClient implements ISalesforceClient {
       throw new SalesforceVaultError('Failed to load Salesforce credential from vault', err);
     }
 
-    if (!cred) {
-      throw new SalesforceAuthExpiredError(
-        'No Salesforce credential in vault — run reconnect() to authenticate'
-      );
+    if (cred) {
+      const tokens = await refreshAccessToken(cred.plaintext);
+      this.accessToken = tokens.accessToken;
+      this.instanceUrl =
+        (cred.metadata as { instanceUrl?: string } | undefined)?.instanceUrl ??
+        tokens.instanceUrl;
+      this.resolvedAuthMode = 'oauth';
+      return { accessToken: this.accessToken, instanceUrl: this.instanceUrl };
     }
 
-    const tokens = await refreshAccessToken(cred.plaintext);
-    this.accessToken = tokens.accessToken;
-    this.instanceUrl =
-      (cred.metadata as { instanceUrl?: string } | undefined)?.instanceUrl ??
-      tokens.instanceUrl;
-    return { accessToken: this.accessToken, instanceUrl: this.instanceUrl };
+    // SFDX fallback — read fresh access token from `sf org display`.
+    const sfdx = await getSfdxAuth();
+    if (sfdx) {
+      this.accessToken = sfdx.accessToken;
+      this.instanceUrl = sfdx.instanceUrl;
+      this.resolvedAuthMode = 'sfdx';
+      return { accessToken: this.accessToken, instanceUrl: this.instanceUrl };
+    }
+
+    throw new SalesforceAuthExpiredError(
+      'No Salesforce credential: vault is empty AND no SFDX session found. ' +
+        'Run: sf org login web --instance-url https://classedu.my.salesforce.com'
+    );
   }
 }

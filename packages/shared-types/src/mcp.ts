@@ -45,14 +45,14 @@ export interface McpHealth {
   ok: boolean;
   lastSuccessAt?: Date;
   lastError?: string;
-  authMode: 'oauth' | 'tba' | 'sso' | 'api_key' | 'subprocess';
+  authMode: 'oauth' | 'tba' | 'sso' | 'api_key' | 'subprocess' | 'sfdx';
 }
 
 export const McpHealthSchema = z.object({
   ok: z.boolean(),
   lastSuccessAt: z.date().optional(),
   lastError: z.string().optional(),
-  authMode: z.enum(['oauth', 'tba', 'sso', 'api_key', 'subprocess']),
+  authMode: z.enum(['oauth', 'tba', 'sso', 'api_key', 'subprocess', 'sfdx']),
 });
 
 // ── McpClient — base contract all service clients implement ──────────────────
