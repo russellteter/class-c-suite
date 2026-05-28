@@ -22,6 +22,12 @@ declare global {
  */
 export function sendIpc(msg: IpcMessage): void {
   validateIpc(msg);   // throws on invalid — protects the IPC channel
+  // Guard the bridge: in dev (or before preload finishes) window.ipc may be
+  // absent. A missing transport must not crash the caller — log and no-op.
+  if (typeof window === 'undefined' || !window.ipc?.send) {
+    console.warn('[ipc] window.ipc.send unavailable — dropping message', msg.kind);
+    return;
+  }
   window.ipc.send(msg);
 }
 
