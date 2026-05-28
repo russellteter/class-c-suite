@@ -27,3 +27,5 @@ export * from './playbook.js';
 export * from './mcp.js';
 // Ch.9: Cowork execution handoff types
 export * from './handoff.js';
+// Ch.10: Scheduled-jobs types
+export * from './scheduled-job.js';

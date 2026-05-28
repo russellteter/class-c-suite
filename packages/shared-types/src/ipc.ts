@@ -32,7 +32,7 @@ const JobName = z.enum([
   'monday-tripwire',       // 6am ET financial tripwire + weekly cash forecast
   'monday-stakeholder',    // 7am ET stakeholder activity refresh
   'sunday-renewal',        // 6pm ET renewal forecast + Chorus sweep
-  'sunday-dashboard',      // 8pm ET workstream dashboard regen + memory consolidation
+  'sunday-workstream',     // 8pm ET workstream dashboard regen + memory consolidation
   'daily-morning-brief',   // 6am ET six-lens compact read
 ]);
 
@@ -404,6 +404,48 @@ export const IpcMessage = z.discriminatedUnion('kind', [
       writebackId: z.string(),
       editedPath: z.string(),
       editedAt: z.number(),
+    }),
+  }),
+  // Ch.10: home-screen scheduled-jobs feed.
+  z.object({
+    kind: z.literal('home.scheduledJobs'),
+    payload: z.object({
+      jobs: z.array(z.unknown()),    // JobSummary[] — full type in scheduled-job.ts
+    }),
+  }),
+  // Ch.10: catch-up summary on scheduler init.
+  z.object({
+    kind: z.literal('scheduler.catchup.summary'),
+    payload: z.object({
+      caughtUp: z.array(z.object({
+        jobId: z.string(),
+        missedScheduledFor: z.number(),
+      })),
+    }),
+  }),
+  // Ch.10: tripwire state transition (GREEN→YELLOW→RED).
+  z.object({
+    kind: z.literal('scheduler.tripwire.flipped'),
+    payload: z.object({
+      tripwireId: z.string(),
+      oldState: z.string(),
+      newState: z.string(),
+    }),
+  }),
+  // Ch.10: notification permission denied — renderer shows in-app banner.
+  z.object({
+    kind: z.literal('scheduler.notification.permission_denied'),
+    payload: z.object({}),
+  }),
+  // Ch.10: native notification request from utility → main.
+  z.object({
+    kind: z.literal('main.show-notification'),
+    payload: z.object({
+      type: z.enum(['tripwire-flip', 'memo-ready', 'job-failure']),
+      title: z.string(),
+      body: z.string(),
+      clickAction: z.enum(['home', 'memo', 'job-status', 'settings-scheduler']),
+      clickPayload: z.string().optional(),    // memoPath or jobId depending on clickAction
     }),
   }),
 ]);

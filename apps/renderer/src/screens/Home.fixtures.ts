@@ -28,7 +28,7 @@ export const FIXTURE_JOBS: ScheduledJobStatus[] = [
   { id: 'monday-tripwire',    name: 'Daily cash snapshot',         pendingNote: 'Pending Ch.10' },
   { id: 'monday-stakeholder', name: 'Weekly GTM health digest',    pendingNote: 'Pending Ch.10' },
   { id: 'sunday-renewal',     name: 'Barclays AR aging monitor',   pendingNote: 'Pending Ch.10' },
-  { id: 'sunday-dashboard',   name: 'Board prep reminder (W38)',   pendingNote: 'Pending Ch.10' },
+  { id: 'sunday-workstream',  name: 'Board prep reminder (W38)',   pendingNote: 'Pending Ch.10' },
   { id: 'daily-morning-brief',name: 'Workstream stale check',      pendingNote: 'Pending Ch.10' },
 ];
 
