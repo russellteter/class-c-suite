@@ -24,6 +24,9 @@ import { buildDeps } from '../playbooks/lib/buildDeps.js';
 // Ch.9: handoff brief generation (explicit-trigger only — NOT auto on every accepted decision)
 import { generateHandoffBrief } from '../agents/handoff/index.js';
 import type { HandoffGeneratorInput } from '@c-suite/shared-types/handoff';
+// ADR-0016: Google Workspace output surface defaults (TRACK 5)
+import { getDefaultSurfaces } from '../playbooks/lib/outputSurfaceDefaults.js';
+import type { OutputSurface } from '@c-suite/shared-types/playbook';
 
 // Phase A + B playbooks that bypass the inherited Ch.5 state-machine and go through
 // routeToPlaybook. Derived from PlaybookIdSchema (ADR-0009 §3.2) minus 'cash_lever'
@@ -97,6 +100,20 @@ export async function startRun(
     };
 
     const playbookResult = await playbookModule.runPlaybook(playbookInput, playbookCtx);
+
+    // ADR-0016: append default OutputSurface metadata for playbooks that have configured surfaces.
+    // The 'memo' surface is always first; additional surfaces are listed per outputSurfaceDefaults.
+    // Actual artifact creation (Google API calls) is deferred to the caller / future chapter
+    // once credentials are confirmed — here we declare the intended surfaces so TRACK 6 can
+    // render the link placeholders and the Verifier can see the surface config.
+    if (!playbookResult.outputSurfaces || playbookResult.outputSurfaces.length === 0) {
+      const defaultSurfaces = getDefaultSurfaces(playbookId as PlaybookId);
+      const surfaces: OutputSurface[] = [
+        { kind: 'memo' },
+        ...defaultSurfaces.map((kind) => ({ kind })),
+      ];
+      (playbookResult as { outputSurfaces?: OutputSurface[] }).outputSurfaces = surfaces;
+    }
 
     // open_qa redirect: re-dispatch to the target playbook without re-decomposing.
     // ADR-0009 §12 + §5: bounded recursion — second call uses skipDecompose.
