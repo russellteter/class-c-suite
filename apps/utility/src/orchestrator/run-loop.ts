@@ -20,6 +20,7 @@ import { rigorScore, rigorThreshold, shipStatus as computeShipStatus } from '../
 import { StubClaudeClient } from '@c-suite/stub-harness/stub';
 import { draftWritebacks } from '@c-suite/writeback-engine';
 import { routeToPlaybook } from '../playbooks/lib/playbookRouter.js';
+import { buildDeps } from '../playbooks/lib/buildDeps.js';
 
 // Phase A + B playbooks that bypass the inherited Ch.5 state-machine and go through
 // routeToPlaybook. Derived from PlaybookIdSchema (ADR-0009 §3.2) minus 'cash_lever'
@@ -80,12 +81,16 @@ export async function startRun(
       prompt: question,
       context: {},
     };
+    // Ch.8 ADR-0010 §10: hydrate real MCP clients into PlaybookDeps.
+    // Each playbook's evaluatePrereqs() then decides block/degrade/proceed per
+    // ADR-0009 §3.6 + Phase R Decision 4.
+    const playbookDeps = await buildDeps(playbookId as PlaybookId, db);
     const playbookCtx: PlaybookContext = {
       runId,
       db,
       vaultPath: process.env.VAULT_PATH ?? `${process.env.HOME}/Documents/Claude/Projects/Business Planning`,
       emit: emit as (msg: import('@c-suite/shared-types/ipc').IpcMessage) => void,
-      deps: {},
+      deps: playbookDeps,
     };
 
     const playbookResult = await playbookModule.runPlaybook(playbookInput, playbookCtx);
