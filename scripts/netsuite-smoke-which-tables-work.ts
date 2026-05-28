@@ -23,8 +23,7 @@
 import { writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { runAuthorizationCodeFlow } from '../apps/utility/src/mcp/oauth/authCodeFlow.js';
-import { callNetSuiteTool } from '../apps/utility/src/mcp/netsuite/mcp-transport.js';
-import { TOOL_SUITEQL } from '../apps/utility/src/mcp/netsuite/client.js';
+import { callNetSuiteTool, TOOL_SUITEQL } from '../apps/utility/src/mcp/netsuite/mcp-transport.js';
 import {
   readNetSuiteOAuthEnv,
   buildNetSuiteOAuthConfig,
