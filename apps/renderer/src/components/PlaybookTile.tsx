@@ -6,49 +6,14 @@
 import React from 'react';
 import type { PlaybookId, FreshnessState } from './HomeTypes.js';
 
-// ── Styles (inline to avoid adding a separate CSS file; token vars from tokens.css) ──
-
-const TILE_STYLE: React.CSSProperties = {
-  background: 'var(--color-navy-700)',
-  border: '1px solid var(--color-border)',
-  borderRadius: 'var(--radius-md)',
-  padding: 'var(--space-3) var(--space-3) var(--space-2)',
-  cursor: 'pointer',
-  display: 'flex',
-  flexDirection: 'column',
-  minHeight: '110px',
-  width: '140px',
-  position: 'relative',
-  transition: 'border-color var(--motion-fast), background var(--motion-fast), transform var(--motion-fast), box-shadow var(--motion-fast)',
-  userSelect: 'none',
-};
-
-const TILE_HOVER_STYLE: React.CSSProperties = {
-  borderColor: 'rgba(106,92,240,0.5)',
-  background: 'rgba(71,57,231,0.06)',
-  transform: 'translateY(-2px)',
-  boxShadow: 'var(--shadow-base)',
-};
-
-const TILE_BLOCKED_STYLE: React.CSSProperties = {
-  opacity: 0.45,
-  cursor: 'not-allowed',
-  pointerEvents: 'none',
-};
-
-const FRESHNESS_DOT: React.CSSProperties = {
-  position: 'absolute',
-  top: '10px',
-  right: '10px',
-  width: '6px',
-  height: '6px',
-  borderRadius: '50%',
-};
+// TRACK 6 (ch6.3d): restyled to Editorial Sharp (.cs-pb in ccc-components.css).
+// White paper card, mono ordinal + keyboard hint, purple accent strip on hover.
+// All props, a11y, and keyboard behavior preserved.
 
 const FRESHNESS_COLOR: Record<FreshnessState, string> = {
-  green: 'var(--color-success)',
-  amber: 'var(--color-warning)',
-  gray: 'var(--color-text-muted)',
+  green: 'var(--success)',
+  amber: 'var(--gold)',
+  gray: 'var(--gray-300)',
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -94,14 +59,6 @@ export function PlaybookTile({
   blockedReason,
   onClick,
 }: PlaybookTileProps): React.ReactElement {
-  const [hovered, setHovered] = React.useState(false);
-
-  const mergedStyle: React.CSSProperties = {
-    ...TILE_STYLE,
-    ...(hovered && !blocked ? TILE_HOVER_STYLE : {}),
-    ...(blocked ? TILE_BLOCKED_STYLE : {}),
-  };
-
   const lastRunLabel = formatLastRun(lastRunAt);
   const ariaLabel = blocked
     ? `Playbook ${ordinal}: ${name} — blocked${blockedReason ? `: ${blockedReason}` : ''}`
@@ -114,9 +71,14 @@ export function PlaybookTile({
       aria-label={ariaLabel}
       aria-disabled={blocked}
       title={blocked && blockedReason ? blockedReason : undefined}
-      style={mergedStyle}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      className="cs-pb"
+      style={{
+        minHeight: '94px',
+        display: 'flex',
+        flexDirection: 'column',
+        userSelect: 'none',
+        ...(blocked ? { opacity: 0.45, cursor: 'not-allowed', pointerEvents: 'none' } : {}),
+      }}
       onClick={() => !blocked && onClick?.(id)}
       onKeyDown={(e) => {
         if (!blocked && (e.key === 'Enter' || e.key === ' ')) {
@@ -125,81 +87,23 @@ export function PlaybookTile({
         }
       }}
     >
-      {/* Freshness dot — top-right corner */}
-      <div
-        style={{ ...FRESHNESS_DOT, background: FRESHNESS_COLOR[freshness] }}
-        aria-hidden="true"
-        title={freshness === 'green' ? 'Run < 24h ago' : freshness === 'amber' ? 'Run < 7d ago' : 'Run 7+ days ago or never'}
-      />
-
-      {/* Top row: ordinal badge + icon */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+      {/* Top row: icon + freshness dot */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <span className="ico" aria-hidden="true" role="img">{icon}</span>
         <span
-          style={{
-            background: 'var(--color-surface-2)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-sm)',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'var(--text-xs)',
-            color: 'var(--color-text-muted)',
-            padding: '1px 5px',
-            flexShrink: 0,
-            lineHeight: '1.4',
-          }}
           aria-hidden="true"
-        >
-          {ordinal}
-        </span>
-        <span
-          style={{ fontSize: '18px', lineHeight: 1, flexShrink: 0 }}
-          aria-hidden="true"
-          role="img"
-        >
-          {icon}
-        </span>
+          title={freshness === 'green' ? 'Run < 24h ago' : freshness === 'amber' ? 'Run < 7d ago' : 'Run 7+ days ago or never'}
+          style={{ width: '6px', height: '6px', borderRadius: '50%', background: FRESHNESS_COLOR[freshness], marginTop: '4px', flexShrink: 0 }}
+        />
       </div>
 
       {/* Playbook name */}
-      <div
-        style={{
-          fontSize: 'var(--text-sm)',
-          fontWeight: 600,
-          color: 'var(--color-text-primary)',
-          lineHeight: 'var(--leading-snug)',
-          flex: 1,
-        }}
-      >
-        {name}
-      </div>
+      <div className="nm" style={{ flex: 1 }}>{name}</div>
 
       {/* Footer: last run + keyboard hint */}
-      <div
-        style={{
-          marginTop: 'auto',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-end',
-          paddingTop: 'var(--space-1)',
-          borderTop: '1px solid rgba(255,255,255,0.05)',
-        }}
-      >
-        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
-          {lastRunLabel}
-        </span>
-        <kbd
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'var(--text-xs)',
-            background: 'var(--color-surface-2)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-sm)',
-            padding: '2px 6px',
-            color: 'var(--color-text-muted)',
-          }}
-          aria-hidden="true"
-        >
-          {keyboardHint}
-        </kbd>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '6px' }}>
+        <span className="hint">{lastRunLabel}</span>
+        <kbd className="hint" aria-hidden="true">{keyboardHint}</kbd>
       </div>
     </div>
   );
