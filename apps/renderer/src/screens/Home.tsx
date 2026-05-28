@@ -12,6 +12,8 @@ import { WorkstreamRail } from '../components/WorkstreamRail.js';
 import { OpenDecisionsList } from '../components/OpenDecisionsList.js';
 import { WritebacksCounter } from '../components/WritebacksCounter.js';
 import { JobsStrip } from '../components/JobsStrip.js';
+import { CatchupToast } from '../components/CatchupToast.js';
+import { TripwireBanner } from '../components/TripwireBanner.js';
 import { useHomeData } from '../hooks/useHomeData.js';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts.js';
 import type { PlaybookTileData, PlaybookId } from '../components/HomeTypes.js';
@@ -91,11 +93,19 @@ export interface HomeProps {
   onOpenQASubmit?: (prompt: string) => void;
   /** Called when writebacks counter is clicked — nav to WritebackPane */
   onWritebacksClick?: () => void;
+  /** Called when a JobsStrip row is clicked — nav to SettingsScheduler with pre-selected job */
+  onJobClick?: (jobId: string) => void;
+  /** Called when "view memo" is activated from a job row or tripwire banner */
+  onViewMemo?: (memoPath: string) => void;
+  /** Called when Settings → Scheduler sidebar entry is clicked */
+  onSettingsScheduler?: () => void;
+  /** Called when Settings → Notifications sidebar entry is clicked */
+  onSettingsNotifications?: () => void;
 }
 
 // ── Home screen ───────────────────────────────────────────────────────────────
 
-export function Home({ onTileClick, onOpenQASubmit, onWritebacksClick }: HomeProps): React.ReactElement {
+export function Home({ onTileClick, onOpenQASubmit, onWritebacksClick, onJobClick, onViewMemo, onSettingsScheduler, onSettingsNotifications }: HomeProps): React.ReactElement {
   const [qaValue, setQaValue] = useState('');
   const homeData = useHomeData();
   useKeyboardShortcuts();
@@ -220,6 +230,10 @@ export function Home({ onTileClick, onOpenQASubmit, onWritebacksClick }: HomePro
         </div>
       </header>
 
+      {/* ── TRIPWIRE BANNER (top-of-home, above body) ──────────────────────── */}
+      {/* Subscribes to scheduler.tripwire.flipped IPC internally */}
+      <TripwireBanner onOpenMemo={onViewMemo} />
+
       {/* ── THREE-COLUMN BODY ─────────────────────────────────────────────── */}
       <div
         style={{
@@ -261,6 +275,52 @@ export function Home({ onTileClick, onOpenQASubmit, onWritebacksClick }: HomePro
             ) : (
               <WritebacksCounter count={homeData.writebackCount} onClick={() => {}} />
             )}
+          </div>
+
+          {/* Settings nav entries (Ch.10) */}
+          <div style={{ padding: '0 var(--space-3)' }}>
+            <RailSectionLabel>Settings</RailSectionLabel>
+            <nav aria-label="Settings navigation">
+              <button
+                type="button"
+                onClick={onSettingsScheduler}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  background: 'none',
+                  border: 'none',
+                  padding: '4px var(--space-2)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--color-text-secondary)',
+                  cursor: 'pointer',
+                  marginBottom: 'var(--space-1)',
+                }}
+                aria-label="Open Scheduler settings"
+              >
+                Scheduler
+              </button>
+              <button
+                type="button"
+                onClick={onSettingsNotifications}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  background: 'none',
+                  border: 'none',
+                  padding: '4px var(--space-2)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--color-text-secondary)',
+                  cursor: 'pointer',
+                }}
+                aria-label="Open Notifications settings"
+              >
+                Notifications
+              </button>
+            </nav>
           </div>
         </nav>
 
@@ -364,13 +424,19 @@ export function Home({ onTileClick, onOpenQASubmit, onWritebacksClick }: HomePro
             )}
           </div>
 
-          {/* Scheduled jobs strip */}
+          {/* Scheduled jobs strip — Ch.10: live IPC subscription inside JobsStrip */}
           <div>
             <RightLabel>Scheduled Jobs</RightLabel>
-            <JobsStrip jobs={[]} /> {/* TODO ch7-phase-b: wire home.scheduledJobs IPC variant */}
+            <JobsStrip
+              onJobClick={onJobClick}
+              onViewMemo={onViewMemo}
+            />
           </div>
         </aside>
       </div>
+
+      {/* ── CATCHUP TOAST (subscribes to scheduler.catchup.summary IPC internally) */}
+      <CatchupToast />
 
       {/* ── RESPONSIVE: single column under 900px ────────────────────────── */}
       <style>{`

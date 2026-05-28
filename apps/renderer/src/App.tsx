@@ -12,6 +12,8 @@ import { AcceptedHistory } from './screens/AcceptedHistory.js';
 import { Home } from './screens/Home.js';
 import { PlanApproval, type Ch5RunPlan } from './screens/PlanApproval.js';
 import { HandoffPreview } from './screens/HandoffPreview.js';
+import { SettingsScheduler } from './screens/SettingsScheduler.js';
+import { NotificationSettings } from './screens/NotificationSettings.js';
 import type { PlaybookId } from './components/HomeTypes.js';
 import { onHandoffPreviewReady, type HandoffBrief } from './ipc/handoff.js';
 
@@ -24,7 +26,10 @@ type Screen =
   | { name: 'history'; artifactId: string }
   | { name: 'plan-approval'; plan: Ch5RunPlan }
   // Ch.9 — HandoffPreview state machine: idle (any screen) → preview-open → (sent/cancelled) → idle
-  | { name: 'handoff-preview'; brief: HandoffBrief; returnScreen: Screen };
+  | { name: 'handoff-preview'; brief: HandoffBrief; returnScreen: Screen }
+  // Ch.10 — Settings sub-screens
+  | { name: 'settings-scheduler'; selectedJobId?: string }
+  | { name: 'settings-notifications' };
 
 function initialScreen(): Screen {
   // Allow test navigation via URL query params (brief §Wiring: "openable via a test route")
@@ -99,6 +104,21 @@ export function App(): React.ReactElement {
   }, []);
 
   switch (screen.name) {
+    case 'settings-scheduler':
+      return (
+        <SettingsScheduler
+          selectedJobId={screen.selectedJobId}
+          onBack={() => navigateTo({ name: 'home' })}
+        />
+      );
+
+    case 'settings-notifications':
+      return (
+        <NotificationSettings
+          onBack={() => navigateTo({ name: 'home' })}
+        />
+      );
+
     case 'handoff-preview':
       return (
         <HandoffPreview
@@ -155,6 +175,18 @@ export function App(): React.ReactElement {
               navigateTo({ name: 'plan-approval', plan: stubPlanFromPrompt(prompt) })
             }
             onWritebacksClick={() => navigateTo({ name: 'writeback' })}
+            onJobClick={(jobId) => navigateTo({ name: 'settings-scheduler', selectedJobId: jobId })}
+            onViewMemo={(memoPath) => {
+              // Ch.10: open MemoViewer with the path — MemoViewer already exists from Ch.7.
+              // Navigate to the memo path; MemoViewer handles rendering from vault path.
+              // For now, send via IPC since MemoViewer routing is not yet in Screen union.
+              // TODO ch10-renderer-extend: add 'memo-viewer' Screen variant; navigate directly.
+              if (typeof window !== 'undefined' && window.ipc) {
+                window.ipc.send({ kind: 'vault.openFile', payload: { path: memoPath } });
+              }
+            }}
+            onSettingsScheduler={() => navigateTo({ name: 'settings-scheduler' })}
+            onSettingsNotifications={() => navigateTo({ name: 'settings-notifications' })}
           />
           {/* Dev nav — visible only in non-production for screen testing */}
           {process.env.NODE_ENV !== 'production' && (
