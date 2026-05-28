@@ -2,7 +2,7 @@
 // Source: docs/decisions/0002-ch1-process-architecture.md §1
 // Electron main process: app lifecycle, tray, window, DB, IPC, supervisor.
 
-import { app, Tray, Menu, nativeImage, ipcMain } from 'electron';
+import { app, Tray, Menu, nativeImage } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -54,18 +54,17 @@ app.whenReady().then(() => {
 
     // Start supervision (utility process + scheduler) without a renderer window.
     const state: import('./supervisor.js').SupervisionState = { restarts: [], proc: null, port: null };
-    startSupervision(state, db, null as never);
-
-    // Register notification IPC handler (utility → main).
-    ipcMain.on('ipc:message', (_event, raw) => {
-      if (raw && typeof raw === 'object' && (raw as { kind?: string }).kind === 'main.show-notification') {
-        fireNotification(
-          (raw as { payload: ShowNotificationPayload }).payload,
-          null,
-          () => { /* no renderer in scheduler-only mode */ },
-        );
-      }
-    });
+    // scheduler-only: no renderer. Notifications still fire; renderer-bound msgs are dropped.
+    startSupervision(
+      state,
+      db,
+      { send: () => { /* no renderer in scheduler-only mode */ } },
+      (msg) => {
+        if (msg.kind === 'main.show-notification') {
+          fireNotification(msg.payload as ShowNotificationPayload, null, () => { /* no renderer */ });
+        }
+      },
+    );
 
     app.on('before-quit', () => {
       if (fs.existsSync(LOCK_FILE)) fs.unlinkSync(LOCK_FILE);
@@ -107,14 +106,14 @@ app.whenReady().then(() => {
   }
 
   // Start utility process supervision AFTER app.whenReady().
+  // mainBoundHandler routes utility's 'main.show-notification' → native notification.
+  // All other utility IPC variants are forwarded to the renderer by the supervisor's
+  // port.on('message') bridge (Ch.10 audit-fix).
   const state: SupervisionState = { restarts: [], proc: null, port: null };
-  startSupervision(state, db, win.webContents);
-
-  // Notification IPC: utility → main → native macOS notification.
-  ipcMain.on('ipc:message', (_event, raw) => {
-    if (raw && typeof raw === 'object' && (raw as { kind?: string }).kind === 'main.show-notification') {
+  startSupervision(state, db, win.webContents, (msg) => {
+    if (msg.kind === 'main.show-notification') {
       fireNotification(
-        (raw as { payload: ShowNotificationPayload }).payload,
+        msg.payload as ShowNotificationPayload,
         win.webContents,
         (kind, data) => win.webContents.send('ipc:message', { kind, payload: data }),
       );

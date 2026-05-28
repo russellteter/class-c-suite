@@ -27,6 +27,9 @@ export interface IpcSender {
   send: (channel: string, data: unknown) => void;
 }
 
+/** Handler for utility-emitted 'main.show-notification' (main-bound, NOT for renderer). */
+export type MainBoundHandler = (msg: { kind: string; payload?: unknown }) => void;
+
 export interface SupervisionState {
   restarts: number[];   // timestamps of recent crashes (ms epoch)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -84,12 +87,36 @@ export function startSupervision(
   state: SupervisionState,
   db: Database.Database,
   webContents: IpcSender,
+  mainBoundHandler?: MainBoundHandler,
 ): void {
   const proc = forkUtility();
   state.proc = proc;
 
   const port = setupUtilityChannel(proc);
   state.port = port;
+
+  // Ch.10 audit-fix (AC-2 REOPEN): wire the utility → main MessagePort.
+  // Without this bridge, every IPC variant the utility emits via ipcPort.postMessage
+  // (home.scheduledJobs, scheduler.catchup.summary, scheduler.tripwire.flipped,
+  // scheduler.notification.permission_denied, writeback.proposed, handoff.preview.ready,
+  // etc.) is silently dropped. main.show-notification goes to mainBoundHandler
+  // (fireNotification in main.ts); everything else forwards to the renderer.
+  port.on('message', (event: { data: unknown }) => {
+    const msg = event.data;
+    if (!msg || typeof msg !== 'object') return;
+    const kind = (msg as { kind?: string }).kind;
+    if (!kind) return;
+
+    if (kind === 'main.show-notification') {
+      mainBoundHandler?.(msg as { kind: string; payload?: unknown });
+      return;
+    }
+
+    // Default — forward all other variants to the renderer (or no-op in scheduler-only).
+    try {
+      webContents.send('ipc:message', msg);
+    } catch { /* scheduler-only mode: no renderer attached */ }
+  });
 
   logCrashToSQLite(db, 'start', {});
   log.info({ message: 'utility process started' });

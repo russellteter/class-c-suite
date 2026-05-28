@@ -38,15 +38,24 @@ function createMockUtilityProcess(): MockUtilityProcess {
 
 // Mock electron before importing production module.
 // Provides: utilityProcess.fork → MockUtilityProcess, MessageChannelMain → mock channel.
+// Holds the most-recent port1 so tests can drive port.on('message') handlers.
+const portListeners: Array<(event: { data: unknown }) => void> = [];
+
 vi.mock('electron', () => {
   const mockFork = vi.fn(() => createMockUtilityProcess());
-  const mockChannel = {
-    port1: { start: vi.fn(), postMessage: vi.fn() },
+  const makeChannel = () => ({
+    port1: {
+      start: vi.fn(),
+      postMessage: vi.fn(),
+      on: vi.fn((event: string, handler: (e: { data: unknown }) => void) => {
+        if (event === 'message') portListeners.push(handler);
+      }),
+    },
     port2: {},
-  };
+  });
   return {
     utilityProcess: { fork: mockFork },
-    MessageChannelMain: vi.fn(() => mockChannel),
+    MessageChannelMain: vi.fn(makeChannel),
   };
 });
 
@@ -214,5 +223,79 @@ describe('startSupervision — halt after 5 crashes in 60s (§9 row 2)', () => {
       `SELECT COUNT(*) AS n FROM process_events WHERE event_type = 'halt'`
     ).get() as { n: number };
     expect(forkRowAfterHalt.n).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ── Ch.10 audit-fix — utility → main → renderer MessagePort bridge ────────────
+
+describe('startSupervision — IPC bridge forwards utility messages to renderer', () => {
+  // Mock DB — avoids the better-sqlite3 native-ABI load (pre-existing test-env issue).
+  // The bridge logic under test never reads the DB; logCrashToSQLite just needs a
+  // prepare().run() stub to no-op.
+  let db: Database.Database;
+  let ipcEvents: Array<{ channel: string; data: unknown }>;
+  let mainBound: Array<{ kind: string; payload?: unknown }>;
+  let send: IpcSender;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    db = { prepare: () => ({ run: () => ({}) }) } as unknown as Database.Database;
+    ipcEvents = [];
+    mainBound = [];
+    portListeners.length = 0;
+    send = { send: (channel, data) => ipcEvents.push({ channel, data }) };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  function fireUtilityMessage(msg: unknown): void {
+    for (const handler of portListeners) handler({ data: msg });
+  }
+
+  it('forwards scheduler IPC variants to the renderer via webContents', () => {
+    const state: SupervisionState = { restarts: [], proc: null, port: null };
+    startSupervision(state, db, send, (m) => mainBound.push(m));
+
+    fireUtilityMessage({ kind: 'home.scheduledJobs', payload: { jobs: [] } });
+    fireUtilityMessage({ kind: 'scheduler.tripwire.flipped', payload: { tripwireId: 'TW-FIN-001', oldState: 'GREEN', newState: 'YELLOW' } });
+
+    const kinds = ipcEvents.filter(e => e.channel === 'ipc:message').map(e => (e.data as { kind: string }).kind);
+    expect(kinds).toContain('home.scheduledJobs');
+    expect(kinds).toContain('scheduler.tripwire.flipped');
+  });
+
+  it('routes main.show-notification to the mainBoundHandler, NOT the renderer', () => {
+    const state: SupervisionState = { restarts: [], proc: null, port: null };
+    startSupervision(state, db, send, (m) => mainBound.push(m));
+
+    fireUtilityMessage({ kind: 'main.show-notification', payload: { type: 'memo-ready', title: 'X', body: 'Y' } });
+
+    expect(mainBound.map(m => m.kind)).toContain('main.show-notification');
+    // Must NOT also leak onto the renderer channel.
+    const rendererKinds = ipcEvents.filter(e => e.channel === 'ipc:message').map(e => (e.data as { kind: string }).kind);
+    expect(rendererKinds).not.toContain('main.show-notification');
+  });
+
+  it('ignores malformed messages (no kind / non-object)', () => {
+    const state: SupervisionState = { restarts: [], proc: null, port: null };
+    startSupervision(state, db, send, (m) => mainBound.push(m));
+
+    fireUtilityMessage(null);
+    fireUtilityMessage('string-message');
+    fireUtilityMessage({ payload: { no: 'kind' } });
+
+    expect(ipcEvents.filter(e => e.channel === 'ipc:message')).toHaveLength(0);
+    expect(mainBound).toHaveLength(0);
+  });
+
+  it('does not throw when webContents.send fails (scheduler-only mode)', () => {
+    const throwingSend: IpcSender = { send: () => { throw new Error('no renderer'); } };
+    const state: SupervisionState = { restarts: [], proc: null, port: null };
+    startSupervision(state, db, throwingSend, (m) => mainBound.push(m));
+
+    expect(() => fireUtilityMessage({ kind: 'home.scheduledJobs', payload: { jobs: [] } })).not.toThrow();
   });
 });
