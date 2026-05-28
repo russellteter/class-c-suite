@@ -79,7 +79,7 @@ export function PlanApproval({ plan, onApprove, onEdit, onCancel }: PlanApproval
     // IPC is fire-and-forget — never let it block navigation (the bridge may
     // be absent in dev, or validation may reject the shape). Navigate regardless.
     try {
-      sendIpc({ kind: 'run.plan.approved', payload: { runId: crypto.randomUUID(), plan } } as never);
+      sendIpc({ kind: 'run.plan.approved', payload: { runId: crypto.randomUUID() } });
     } catch (err) {
       console.error('[PlanApproval] run.plan.approved IPC failed (continuing):', err);
     }
@@ -101,7 +101,7 @@ export function PlanApproval({ plan, onApprove, onEdit, onCancel }: PlanApproval
     // AC-10: Cancel aborts cleanly — no MCP calls, RunState → idle.
     // IPC is fire-and-forget — never let it block the back-navigation.
     try {
-      sendIpc({ kind: 'run.cancelled', payload: {} } as never);
+      sendIpc({ kind: 'run.cancelled', payload: {} });
     } catch (err) {
       console.error('[PlanApproval] run.cancelled IPC failed (continuing):', err);
     }

@@ -535,6 +535,75 @@ describe('IpcMessage — vault.init.error (ADR-0003 §10 G-1)', () => {
   });
 });
 
+// ── Ch.7 renderer→main UI-action kinds ───────────────────────────────────────
+//
+// Added 2026-05-28: these kinds are emitted by renderer interactions
+// (PlanApproval cancel, Home memo open, OpenDecisionsList click, Cmd+1..8,
+// Cmd+R, scheduler reconnect) but were absent from the union, so main-side
+// validateIpc threw ZodError and dropped them (run.cancelled also threw
+// renderer-side via sendIpc). Payloads mirror the exact emit sites.
+
+describe('IpcMessage — run.cancelled (Ch.7 UI-action)', () => {
+  it('parses run.cancelled with empty payload', () => {
+    const msg = validateIpc({ kind: 'run.cancelled', payload: {} });
+    expect(msg.kind).toBe('run.cancelled');
+  });
+});
+
+describe('IpcMessage — vault.openFile (Ch.7 UI-action)', () => {
+  it('parses vault.openFile with path (App.tsx onViewMemo)', () => {
+    const msg = validateIpc({ kind: 'vault.openFile', payload: { path: 'memos/2026/memo.md' } });
+    expect(msg.kind).toBe('vault.openFile');
+  });
+
+  it('parses vault.openFile with decisionId (OpenDecisionsList click)', () => {
+    const msg = validateIpc({ kind: 'vault.openFile', payload: { decisionId: 'dec-001' } });
+    expect(msg.kind).toBe('vault.openFile');
+  });
+
+  it('parses vault.openFile with empty payload (both fields optional)', () => {
+    const msg = validateIpc({ kind: 'vault.openFile', payload: {} });
+    expect(msg.kind).toBe('vault.openFile');
+  });
+});
+
+describe('IpcMessage — playbook.invoke (Ch.7 UI-action)', () => {
+  it('parses playbook.invoke with a valid PlaybookId', () => {
+    const msg = validateIpc({ kind: 'playbook.invoke', payload: { playbookId: PLAYBOOK } });
+    expect(msg.kind).toBe('playbook.invoke');
+  });
+
+  it('throws when playbookId is not a valid PlaybookId', () => {
+    expect(() => validateIpc({
+      kind: 'playbook.invoke',
+      payload: { playbookId: 'not_a_playbook' },
+    })).toThrow();
+  });
+});
+
+describe('IpcMessage — home.refresh (Ch.7 UI-action)', () => {
+  it('parses home.refresh with empty payload', () => {
+    const msg = validateIpc({ kind: 'home.refresh', payload: {} });
+    expect(msg.kind).toBe('home.refresh');
+  });
+});
+
+describe('IpcMessage — auth.reconnect (Ch.7 UI-action)', () => {
+  it('parses auth.reconnect with a service string', () => {
+    const msg = validateIpc({ kind: 'auth.reconnect', payload: { service: SERVICE } });
+    expect(msg.kind).toBe('auth.reconnect');
+  });
+
+  it('accepts any service string (HomeTypes.authExpiredService is string, not the McpService enum)', () => {
+    const msg = validateIpc({ kind: 'auth.reconnect', payload: { service: 'some-future-service' } });
+    expect(msg.kind).toBe('auth.reconnect');
+  });
+
+  it('throws when service is missing', () => {
+    expect(() => validateIpc({ kind: 'auth.reconnect', payload: {} })).toThrow();
+  });
+});
+
 // ── Unknown kind rejection ───────────────────────────────────────────────────
 
 describe('validateIpc — unknown kind rejection', () => {

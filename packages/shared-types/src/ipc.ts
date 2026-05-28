@@ -46,7 +46,9 @@ const JobPayload = z.object({
   errorMessage: z.string().optional(),
 });
 
-// --- Discriminated union (21 variants — all kinds from ADR §3) ---
+// --- Discriminated union: ADR §3 core kinds + Ch.10 scheduler/notification
+// kinds + Ch.7 renderer→main UI-action kinds. (The historical "21 variants"
+// note is stale; the union has grown well past it — count is not load-bearing.) ---
 
 export const IpcMessage = z.discriminatedUnion('kind', [
   z.object({
@@ -446,6 +448,39 @@ export const IpcMessage = z.discriminatedUnion('kind', [
       body: z.string(),
       clickAction: z.enum(['home', 'memo', 'job-status', 'settings-scheduler']),
       clickPayload: z.string().optional(),    // memoPath or jobId depending on clickAction
+    }),
+  }),
+  // --- Ch.7 renderer→main UI-action kinds ---
+  // Emitted by renderer interactions (PlanApproval, Home, keyboard shortcuts,
+  // scheduler). Previously absent from the union → main-side validateIpc threw
+  // ZodError and dropped them (run.cancelled also threw renderer-side via sendIpc).
+  // Raw window.ipc.send → sendIpc() conversion of the non-PlanApproval sites
+  // remains ch7-phase-b; adding the members here makes all of them validate.
+  z.object({
+    kind: z.literal('run.cancelled'),
+    payload: z.object({}),
+  }),
+  z.object({
+    kind: z.literal('vault.openFile'),
+    payload: z.object({
+      path: z.string().optional(),          // App.tsx onViewMemo
+      decisionId: z.string().optional(),    // OpenDecisionsList click
+    }),
+  }),
+  z.object({
+    kind: z.literal('playbook.invoke'),
+    payload: z.object({
+      playbookId: PlaybookId,
+    }),
+  }),
+  z.object({
+    kind: z.literal('home.refresh'),
+    payload: z.object({}),
+  }),
+  z.object({
+    kind: z.literal('auth.reconnect'),
+    payload: z.object({
+      service: z.string(),                  // HomeTypes.authExpiredService is string, not the McpService enum
     }),
   }),
 ]);
