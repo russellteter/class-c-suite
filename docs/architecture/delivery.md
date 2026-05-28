@@ -54,6 +54,20 @@ Every chapter (Ch.0 through Ch.11) runs the same nine-step ritual:
    SafeWrite invariant check). Reproduces ≥1 acceptance criterion BY HAND
    (no automation) — proves the criterion describes real-world behavior.
 
+   INTEGRATION PROOF (mandatory for any chapter that produces a UI surface,
+   an MCP wiring, or an end-user-visible flow): the Audit/QA sub-agent must
+   run the assembled artifact end-to-end and capture evidence in the
+   build-log before the chapter can close. For a UI chapter that means a
+   runnable `pnpm dev` Electron window with the chapter's screen(s)
+   RENDERED + screenshotted (capture via webContents.capturePage()), not
+   merely screens passing in jsdom. For an MCP chapter that means a live
+   (or LIVE_CONNECTORS-gated) smoke call against the real client with the
+   result logged, not merely a mocked unit spec. jsdom-only unit specs and
+   mock-only MCP specs are NECESSARY BUT NOT SUFFICIENT. This requirement
+   exists because the Ch.7 assembly leg shipped "complete" on +372 green
+   jsdom specs while the screens were never bundled into a runnable app
+   (B46, 2026-05-28).
+
 7. DOCS
    Orchestrator updates docs/build-log.md (Ch.N entry per the build-log
    template). Updates docs/architecture/ if discoveries warrant. Updates
@@ -68,7 +82,7 @@ Every chapter (Ch.0 through Ch.11) runs the same nine-step ritual:
    Marks chapter complete in build-log. Reads next chapter's gates.
 ```
 
-**No chapter is closed before Audit/QA independently verifies every acceptance criterion.** Self-attested PASS by the builder does not close a chapter.
+**No chapter is closed before Audit/QA independently verifies every acceptance criterion.** Self-attested PASS by the builder does not close a chapter. **"Tests green" is not "chapter done"** — a chapter producing a UI/MCP/end-user-visible surface stays open until the INTEGRATION PROOF in step 6 is captured in the build-log.
 
 ## Repo tree
 

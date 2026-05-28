@@ -237,6 +237,25 @@ All other gates from the ultraplan ("billing path confirmation," "Cowork concurr
 
 ---
 
+## INTEGRATION PROOF retrofit (added 2026-05-28 per B46)
+
+Every chapter that produces a UI surface, an MCP wiring, or an end-user-visible flow carries an **INTEGRATION PROOF** acceptance criterion in addition to its existing exit criteria: a runnable end-to-end demo with evidence in `docs/build-log.md` (a `pnpm dev` Electron window with the screen RENDERED + screenshotted for UI; a live or `LIVE_CONNECTORS`-gated smoke call with logged result for MCP). jsdom-only unit specs and mock-only MCP specs do not satisfy it. See `docs/architecture/delivery.md` per-chapter ritual step 6.
+
+This was added because Ch.7's assembly leg shipped "complete" on green jsdom specs while the screens were never bundled into a runnable app. Retroactive audit status of the Phase 2 chapters against the new criterion:
+
+| Chapter | INTEGRATION PROOF status |
+|---|---|
+| Ch.5 (cash-lever slice) | PASS post-polish — end-to-end slice exercised; reconfirm under assembled app at Ch.11 |
+| Ch.6 (write-backs) | PENDING — write-back review pane never rendered in a running app |
+| Ch.7 (8 playbooks + home) | ASSEMBLY PENDING — closed in TRACK 1 (2026-05-28); screenshot lands in build-log |
+| Ch.8 (5 MCPs + PowerBI) | PENDING — live/gated smoke per connector required (TRACK 3 + TRACK 4 harden) |
+| Ch.9 (Cowork handoff) | PENDING — handoff preview never rendered in a running app |
+| Ch.10 (scheduler autonomy) | PENDING — IPC bridge fix verified in dev; full scheduled-run demo is Ch.11 on-Mac |
+
+All PENDING items resolve at the Ch.11 on-Mac demo gate or in this finishing-touches session. They are NOT re-opened as separate chapter audits; the assembled-app verification at Ch.11 is the consolidated integration proof for Ch.5-Ch.10.
+
+---
+
 ## Totals
 
 **~90-135 agent-days of parallelized work** across Phases R + 11 chapters (Ch.12 optional).
