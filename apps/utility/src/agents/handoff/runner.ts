@@ -5,12 +5,12 @@
 
 import * as path from 'path';
 import * as os from 'os';
-import * as fs from 'fs/promises';
 import { StubClaudeClient } from '@c-suite/stub-harness/stub';
 import type { HandoffGeneratorInput, HandoffBrief } from '@c-suite/shared-types/handoff';
 import { HandoffFrontmatter } from '@c-suite/shared-types/handoff';
 import { slugify, existingSlugsFromDir } from './slug.js';
 import { pickAllBrandSkills } from './skill-selector.js';
+import { HANDOFF_SYSTEM_PROMPT } from './prompt.js';
 import { createLogger } from '../../logger.js';
 
 const log = createLogger();
@@ -55,17 +55,6 @@ function buildPromptContext(input: HandoffGeneratorInput): Record<string, unknow
 }
 
 /**
- * Load the Chief of Staff prompt from handoff.prompt.md.
- * Uses fileURLToPath to handle URL-encoded spaces in paths.
- */
-async function loadSystemPrompt(): Promise<string> {
-  // fileURLToPath decodes percent-encoding (e.g., %20 → space)
-  const { fileURLToPath } = await import('url');
-  const promptPath = fileURLToPath(new URL('./handoff.prompt.md', import.meta.url));
-  return await fs.readFile(promptPath, 'utf8');
-}
-
-/**
  * Extract a checklist from body markdown to guess deliverables for skill selection.
  * Parses `- [ ] ...` items.
  */
@@ -90,7 +79,7 @@ export async function generateHandoffBrief(
 ): Promise<HandoffBrief> {
   log.info({ message: 'handoff.runner: generating brief', originId: input.origin.id, runId: input.runContext.runId });
 
-  const systemPrompt = await loadSystemPrompt();
+  const systemPrompt = HANDOFF_SYSTEM_PROMPT;
   const promptContext = buildPromptContext(input);
 
   // Use provided client or fall back to stub from env

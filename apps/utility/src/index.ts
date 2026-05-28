@@ -15,8 +15,10 @@ declare const process: NodeJS.Process & {
 import { createLogger } from './logger.js';
 import { initSqlProxy, type IpcPort } from './sql/proxy.js';
 import { checkAndResumeInProgressRun } from './orchestrator/index.js';
+import { handleHandoffPreviewRequested } from './orchestrator/run-loop.js';
 import { initScheduler, getScheduler } from './scheduler/index.js';
 import { initSafeWrite } from './safewrite/index.js';
+import type { HandoffGeneratorInput } from '@c-suite/shared-types/handoff';
 
 // B45 diagnostic: emit runtime identity on startup so supervisor can log ABI + Node version.
 // This runs before any async work; if a later import crashes we get the env first.
@@ -69,12 +71,49 @@ process.parentPort.once('message', (e) => {
       log.error({ message: 'checkAndResumeInProgressRun failed', err: String(err) });
     });
 
-    // Listen for scheduler reset signal from main (5-hr window).
+    // Listen for IPC messages from main.
     // Use .on() — MessagePortMain (Electron utility process) is NodeEventEmitter, not EventTarget.
     ipcPort.on('message', (event: { data: unknown }) => {
-      const msg = event.data as { kind?: string } | null;
+      const msg = event.data as { kind?: string; payload?: unknown } | null;
+
       if (msg?.kind === 'scheduler:reset') {
         getScheduler()?.reset();
+        return;
+      }
+
+      // Ch.9 — explicit "Draw up for Cowork" trigger.
+      // ONLY fires when renderer sends handoff.preview.requested; never auto.
+      // Source: docs/decisions/0011-ch9-cowork-handoff.md §5.1 + §7.
+      if (msg?.kind === 'handoff.preview.requested') {
+        const payload = msg.payload as { runId: string; originType: string; originId: string } | undefined;
+        if (!payload?.runId || !payload.originType || !payload.originId) {
+          log.error({ message: 'handoff.preview.requested: missing payload fields', payload });
+          return;
+        }
+        // Build a minimal HandoffGeneratorInput from the IPC payload.
+        // The renderer provides only the trigger fields; runner.ts enriches from vault.
+        // playbookId defaults to 'open_qa' (sentinel — caller didn't supply one).
+        const input: HandoffGeneratorInput = {
+          origin: {
+            type: payload.originType as HandoffGeneratorInput['origin']['type'],
+            id: payload.originId,
+            path: `${payload.originType}s/${payload.originId}.md`,
+            title: payload.originId,
+            bodyMarkdown: '',
+            frontmatter: {},
+          },
+          runContext: {
+            runId: payload.runId,
+            playbookId: 'open_qa',
+            stakeholdersOfInterest: [],
+            workstreamsOfInterest: [],
+            // memoMarkdown intentionally omitted — not available from IPC trigger
+          },
+        };
+        handleHandoffPreviewRequested(payload.runId, input, (m) => ipcPort!.postMessage(m)).catch(
+          (err: unknown) => log.error({ message: 'handleHandoffPreviewRequested failed', err: String(err) }),
+        );
+        return;
       }
     });
   }
