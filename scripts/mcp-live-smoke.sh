@@ -364,16 +364,160 @@ JSEOF
   fi
 }
 
+# ── §AWS ─────────────────────────────────────────────────────────────────────
+smoke_aws() {
+  section "AWS (class + collab sum)"
+
+  # 1. Check both SSO profiles exist in ~/.aws/config.
+  if ! grep -q '\[profile class\]' "${HOME}/.aws/config" 2>/dev/null; then
+    blocked "AWS profile 'class' not found in ~/.aws/config — run: aws configure sso --profile class"
+    return 0
+  fi
+
+  if ! grep -q '\[profile collab\]' "${HOME}/.aws/config" 2>/dev/null; then
+    blocked "AWS profile 'collab' not found in ~/.aws/config — run: aws configure sso --profile collab"
+    return 0
+  fi
+
+  green "config: both 'class' and 'collab' profiles found in ~/.aws/config"
+
+  # 2. Test class SSO token.
+  CLASS_ID=$(aws --profile class sts get-caller-identity --query 'Account' --output text 2>/tmp/aws-class-smoke.err)
+  if [ $? -ne 0 ]; then
+    CLASS_ERR=$(cat /tmp/aws-class-smoke.err 2>/dev/null || echo "unknown error")
+    if echo "$CLASS_ERR" | grep -qi "expired\|not authorized\|token"; then
+      blocked "AWS SSO token expired for 'class' — run: aws sso login --profile class"
+    else
+      fail "AWS profile 'class' STS check failed: $CLASS_ERR"
+    fi
+    CLASS_ID="BLOCKED"
+  else
+    green "profile class: account=$CLASS_ID"
+  fi
+
+  # 3. Test collab SSO token.
+  COLLAB_ID=$(aws --profile collab sts get-caller-identity --query 'Account' --output text 2>/tmp/aws-collab-smoke.err)
+  if [ $? -ne 0 ]; then
+    COLLAB_ERR=$(cat /tmp/aws-collab-smoke.err 2>/dev/null || echo "unknown error")
+    if echo "$COLLAB_ERR" | grep -qi "expired\|not authorized\|token"; then
+      blocked "AWS SSO token expired for 'collab' — run: aws sso login --profile collab"
+    else
+      fail "AWS profile 'collab' STS check failed: $COLLAB_ERR"
+    fi
+    COLLAB_ID="BLOCKED"
+  else
+    green "profile collab: account=$COLLAB_ID"
+  fi
+
+  # 4. If either blocked, note degraded state but exit 0 (BLOCKED, not FAIL).
+  if [ "$CLASS_ID" = "BLOCKED" ] || [ "$COLLAB_ID" = "BLOCKED" ]; then
+    blocked "One or both AWS profiles blocked — cost sum will run in degraded mode until SSO is refreshed"
+    return 0
+  fi
+
+  green "smoke: PASS — both profiles authenticated; class+collab sum available"
+}
+
+# ── §Chorus ───────────────────────────────────────────────────────────────────
+smoke_chorus() {
+  section "Chorus"
+
+  # 1. Check for API key (env var or vault).
+  RUNTIME_DB="${HOME}/Library/Application Support/c-suite/runtime.db"
+
+  CHORUS_KEY_SOURCE="MISSING"
+
+  if [ -n "${CHORUS_API_KEY:-}" ]; then
+    CHORUS_KEY_SOURCE="ENV"
+    green "credential: CHORUS_API_KEY present in env"
+  elif [ -f "$RUNTIME_DB" ]; then
+    CRED_CHECK=$(node -e "
+const Database = require('better-sqlite3');
+const db = new Database('${RUNTIME_DB}', { readonly: true });
+const row = db.prepare(\"SELECT service_id FROM credentials WHERE service_id = 'chorus'\").get();
+db.close();
+process.stdout.write(row ? 'FOUND' : 'MISSING');
+" 2>/dev/null || echo "ERROR")
+
+    if [ "$CRED_CHECK" = "FOUND" ]; then
+      CHORUS_KEY_SOURCE="VAULT"
+      green "credential: chorus API key present in safeStorage vault"
+    elif [ "$CRED_CHECK" = "ERROR" ]; then
+      blocked "Could not query runtime.db — better-sqlite3 may not be available via node"
+      return 0
+    fi
+  fi
+
+  if [ "$CHORUS_KEY_SOURCE" = "MISSING" ]; then
+    blocked "awaiting Russell — Chorus API key not configured. Set CHORUS_API_KEY env var or launch C-Suite and paste key in onboarding"
+    return 0
+  fi
+
+  # 2. Live call: listEngagements(since=yesterday) — requires env key for smoke.
+  if [ "$CHORUS_KEY_SOURCE" = "VAULT" ]; then
+    blocked "Chorus key in vault only — live smoke requires CHORUS_API_KEY env var. Set it and re-run"
+    return 0
+  fi
+
+  YESTERDAY=$(date -v-1d '+%Y-%m-%dT00:00:00Z' 2>/dev/null || date -d 'yesterday' '+%Y-%m-%dT00:00:00Z' 2>/dev/null || echo "")
+
+  if [ -z "$YESTERDAY" ]; then
+    blocked "Could not compute yesterday date — skipping live API check"
+    return 0
+  fi
+
+  SMOKE_RESULT=$(node -e "
+const https = require('https');
+const since = '${YESTERDAY}';
+const apiKey = process.env.CHORUS_API_KEY || '';
+if (!apiKey) { process.stdout.write(JSON.stringify({ error: 'No CHORUS_API_KEY in env' })); process.exit(0); }
+const url = 'https://chorus.ai/api/v1/engagements?since=' + encodeURIComponent(since);
+const req = https.get(url, { headers: { Authorization: 'Bearer ' + apiKey } }, (res) => {
+  let data = '';
+  res.on('data', c => data += c);
+  res.on('end', () => {
+    if (res.statusCode === 401 || res.statusCode === 403) {
+      process.stdout.write(JSON.stringify({ error: 'Auth rejected: ' + res.statusCode })); return;
+    }
+    if (res.statusCode === 429) {
+      process.stdout.write(JSON.stringify({ blocked: 'Rate limited' })); return;
+    }
+    try {
+      const parsed = JSON.parse(data);
+      const arr = Array.isArray(parsed) ? parsed : (parsed.engagements || []);
+      process.stdout.write(JSON.stringify({ count: arr.length }));
+    } catch (e) {
+      process.stdout.write(JSON.stringify({ error: 'Parse error: ' + e.message }));
+    }
+  });
+});
+req.on('error', (e) => { process.stdout.write(JSON.stringify({ error: e.message })); });
+" 2>/dev/null || echo '{"error":"node execution failed"}')
+
+  if echo "$SMOKE_RESULT" | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const p=JSON.parse(d);process.exit(p.error?1:0)}catch{process.exit(1)}})" 2>/dev/null; then
+    ENG_COUNT=$(echo "$SMOKE_RESULT" | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const p=JSON.parse(d);process.stdout.write(String(p.count))}catch{process.stdout.write('UNKNOWN')}})" 2>/dev/null || echo "UNKNOWN")
+    green "listEngagements(since=yesterday): returned $ENG_COUNT engagement(s)"
+    green "smoke: PASS"
+  elif echo "$SMOKE_RESULT" | grep -q '"blocked"'; then
+    blocked "Chorus rate limited — retry after backoff"
+  else
+    SMOKE_ERR=$(echo "$SMOKE_RESULT" | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const p=JSON.parse(d);process.stdout.write(p.error||'')}catch{process.stdout.write(d)}})" 2>/dev/null || echo "$SMOKE_RESULT")
+    fail "Chorus listEngagements failed: $SMOKE_ERR"
+  fi
+}
+
 # ── dispatch ──────────────────────────────────────────────────────────────────
 case "$SERVICE" in
   salesforce) smoke_salesforce ;;
   powerbi)    smoke_powerbi ;;
   gmail)      smoke_gmail ;;
   netsuite)   smoke_netsuite ;;
-  all)        smoke_salesforce; smoke_powerbi; smoke_gmail; smoke_netsuite ;;
+  aws)        smoke_aws ;;
+  chorus)     smoke_chorus ;;
+  all)        smoke_salesforce; smoke_powerbi; smoke_gmail; smoke_netsuite; smoke_aws; smoke_chorus ;;
   *)
     echo "Unknown service: $SERVICE"
-    echo "Available: salesforce, powerbi, gmail, netsuite, all"
+    echo "Available: salesforce, powerbi, gmail, netsuite, aws, chorus, all"
     exit 1
     ;;
 esac

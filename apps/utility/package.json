@@ -13,6 +13,9 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
+    "@aws-sdk/client-cost-explorer": "^3.1055.0",
+    "@aws-sdk/client-organizations": "^3.1055.0",
+    "@aws-sdk/credential-providers": "^3.1055.0",
     "@c-suite/shared-types": "workspace:*",
     "@c-suite/stub-harness": "workspace:*",
     "@c-suite/writeback-engine": "workspace:*",
