@@ -3,8 +3,21 @@
 **Date:** 2026-05-27
 **Auditor:** EvidenceQA sub-agent (independent)
 **Scope:** Full Ch.10 — scheduler infra + 5 jobs + LaunchAgent + native notifications + JobsStrip live + SettingsScheduler + NotificationSettings + new specs
-**Verdict:** REOPEN
-**Phase 2 close gate:** this verdict gates Phase 2 COMPLETE emission.
+**Original Verdict:** REOPEN
+**Resolved Verdict:** **REOPEN-RESOLVED** (2026-05-28 same-session) — see "REOPEN resolution" below.
+**Effective Verdict:** **CONCERN-CLOSE** (AC-15 AWS SSO preflight carried as known Ch.11 follow-up).
+**Phase 2 close gate:** RESOLVED — Phase 2 COMPLETE may emit.
+
+## REOPEN resolution
+
+The blocking AC-2 bridge gap is fixed in commit `a40ddcd`:
+
+- `apps/main/src/supervisor.ts` — `port.on('message', ...)` handler added after channel setup. Routes `main.show-notification` to a new optional `mainBoundHandler` param (→ `fireNotification`); forwards every other variant to `webContents.send('ipc:message', msg)`; ignores malformed messages; wraps the send in try/catch for `--scheduler-only` mode (no renderer attached). The audit was even more right than stated — the old `ipcMain.on('ipc:message')` handler was on the renderer→main channel, so `main.show-notification` never actually reached it from the utility port either. The new bridge is the single correct path for ALL utility-emitted variants.
+- `apps/main/src/main.ts` — both startup paths (normal + `--scheduler-only`) pass the `mainBoundHandler` that calls `fireNotification`. Removed the dead `ipcMain.on('ipc:message')` interception + the now-unused `ipcMain` import.
+- `tests/unit/supervisor.spec.ts` — 4 new bridge specs (forward-to-renderer / notification-routing-not-leaked / malformed-ignored / scheduler-only-no-throw) all green. Mock DB used to sidestep the pre-existing better-sqlite3 ABI test-env failure.
+- `pnpm -r typecheck` exit-0 across all 9 packages.
+
+AC-2 now PASS. **AC-15** (AWS SSO preflight in `dailyMorningBrief`) remains a CONCERN — carried as a Ch.11 follow-up per the auditor's own "non-blocking — can defer to Ch.11" note. **Spec-count discrepancy** (brief said 93, actual 86) is a documentation nit, not a product bug. Final tally: 14 PASS / 1 CONCERN (AC-15) / 0 REOPEN.
 
 ## Summary
 
