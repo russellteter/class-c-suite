@@ -62,7 +62,7 @@ On-Mac steps the cloud cannot self-certify (OAuth browser consent, native notifi
 
 ### Phase 1 — Data integrity (zero fabrication, real schema)
 **Goal:** no fabricated data can reach a memo; persistence matches the real schema.
-- Fix P0 #1 (gtm_realloc fabrication) — wire real clients or declare+guard the stubs so no CLEAN-stamped fabrication is possible. Sweep ALL playbooks for the same pattern.
+- Fix P0 #1 (gtm_realloc fabrication) — wire real clients or declare+guard the stubs so no CLEAN-stamped fabrication is possible. Sweep ALL playbooks for the same pattern. **Per the PowerBI kit analysis (`docs/research/powerbi-integration-kit-analysis.md`): the stub conflated metric sources — NRR/churn/expansion are FINANCIAL (NetSuite/Salesforce), NOT in the PowerBI per-account usage data. Fix is: PowerBI yields real health-score + at-risk-count (build `aggregatePbiMetrics()`); financial metrics come from the financial source or are marked UNKNOWN — never fabricated onto `source: 'powerbi'`.**
 - Fix P0 #2–#5 (tool_calls schema, resumeRun column, Home.tsx table, runtime.db persistence — replace the in-memory slice with shared-DB writes so runs persist + resume works).
 - Audit every data path for stub/hardcoded values; enforce: stubbed source ⇒ degraded stamp, never CLEAN.
 **Close gate:** a live-mode run writes real rows to `runtime.db`; the runs-list + home render real data; grep proves no unguarded stub in any live path.
@@ -71,7 +71,7 @@ On-Mac steps the cloud cannot self-certify (OAuth browser consent, native notifi
 **Goal:** all 6 sources return real, validated, cited data. (Fan-out: one agent per connector.)
 - NetSuite: complete OAuth2 in-app consent (HARD GATE — Russell); validate all 9 tables under his role; confirm SuiteQL schema live.
 - Gmail: first-launch OAuth consent (HARD GATE); prove real thread reads.
-- PowerBI: customer-dashboard `credentials.json` + Google OAuth (HARD GATE); prove real product-usage data with `source_id`.
+- PowerBI: track spec'd in `docs/research/powerbi-integration-kit-analysis.md`. Architecture confirmed correct (PowerBI→Power Automate→OneDrive CSVs→Python subprocess; no live PowerBI API). venv bootstrapped + OneDrive synced (both verified). **Single HARD GATE: drop `credentials.json` (Google Sheets account-master creds) into the customer-dashboard project + complete first-run OAuth — blocking, non-automatable.** Then 4 code changes: expand `schema.ts` Zod fields, build `aggregatePbiMetrics()` (replaces the gtm_realloc stub), add a CSV-presence check to `preflight.ts`, add the primary-OneDrive-path env check. Verify: `mcp-live-smoke.sh powerbi` + Python spot-check (~330 records, real account names, non-null health_score_method).
 - Salesforce/AWS/Chorus: re-confirm live; add schema-drift detection (empty result ⇒ flag, not silent).
 - Build the cash-model xlsx reader (removes the last guarded stub).
 **Close gate:** `scripts/mcp-live-smoke.sh all` returns real data (not BLOCKED) for all 6; each query validated against live schema.
