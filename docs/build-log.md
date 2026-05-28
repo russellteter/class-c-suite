@@ -1756,3 +1756,43 @@ clicking Cash Lever invokes nothing. The remaining work is a **capability build*
 This crosses renderer + main + utility + orchestrator and pairs with the open Ch.7 Vite-assembly
 leg (frontend-assembly-gap handoff, same day). It is a genuine product-shape build, scoped OUT of
 the resume recipe and surfaced to Russell for sequencing (likely the substance of Ch.11).
+
+---
+
+## 2026-05-28 (cont.) — Run path WIRED + proven end-to-end (the slice)
+
+Built the run path Russell greenlit. Approach chosen (3-way fork surfaced): **staged
+in-memory slice** — defer the orchestrator's shared-DB persistence decision; each run
+opens its own in-memory DB seeded from the real migrations. Commits 06b839f → bcacc48.
+
+### Proven (two harnesses, both under Electron 33 ABI — plain-node vitest can't load better-sqlite3)
+- `tests/e2e/spine-proof.mjs` (headless): openRunScopedDb → startRun('cash_lever') →
+  bootstrap…handoff, all 12 agents, memo SafeWritten to a temp vault. 7/7 checks, real
+  production migration schema.
+- `tests/e2e/run-path-proof.mjs` (assembled app): click Cash Lever → Approve → renderer
+  receives agent.start/agent.complete back → memo lands at <vault>/memos/<date>-cash_lever-<id>.md.
+  This answers Russell's "nothing works — try to do anything": the app now does the thing.
+
+### What was actually broken (beyond "no wiring")
+- `startRun` had zero production callers; renderer never emitted run.start; utility had no
+  run.start handler; main never relayed renderer IPC to the utility. All four wired.
+- The generic run-loop path recorded 'Synthesizer' as invoked but never dispatched it →
+  no memo was ever produced. Now dispatches it (dispatch.ts dispatchSynthesizer) and
+  SafeWrites the result.
+- **Orchestrator persistence was coded against the hand-rolled test schema, never the real
+  migrations** — `hooks.ts` wrote agent_invocations(role, output_json) with no invocation_id;
+  `verifier-assembler.ts` read the same. Both reconciled to production columns
+  (invocation_id PK, agent_role, structured_output_json). The plain-node better-sqlite3 ABI
+  mismatch is WHY the DB-backed unit tests never executed and never caught this.
+
+### Deferred (named, not silent)
+- Shared-DB persistence: crash-resume + the run appearing in main's runs-list need the
+  real DB (a later async-proxy-refactor vs second-connection decision).
+- `tool_calls` write path: unexercised in replay (tool hooks don't fire); not yet
+  reconciled to prod schema. Do it when live MCP tool calls land.
+- Migrate the 6 DB unit tests (run-loop-e2e, checkpoint-resume, verifier-contract, etc.) to
+  seed-from-migrations AND run under Electron ABI in CI, so schema-drift is caught next time.
+- "Cash Lever" routes to the GENERIC 6-lens template, not the bespoke CFO+COS MCP playbook
+  (cash_lever is excluded from KNOWN_CH7_PLAYBOOK_IDS). Live data + the bespoke path is later.
+- Playbook tiles open with a default framing question (editable); real plan-building
+  (run.plan.ready IPC) is still ch7-phase-b.

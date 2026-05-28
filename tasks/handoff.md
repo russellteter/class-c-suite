@@ -54,13 +54,22 @@ IPC contract hygiene + E2E proof remain.
   `apps/main/src/orchestrator/index.js`. The real entry is `startRun` in `apps/utility/src/orchestrator/run-loop.ts`.
 - A standalone vite (:5273) may still be running from `tests/e2e/run.sh` — harmless; `pkill -f "electron@33.4.11"; lsof -tiTCP:5273 | xargs kill` to clean.
 
-## Next step (product-shape build — surface to Russell for sequencing)
-Wire the run path end-to-end (likely the substance of Ch.11). Four legs, crossing renderer + main + utility + orchestrator:
-1. Renderer: emit `run.start` (playbook + question + runId) on plan approval — today it emits only `run.plan.approved`.
-2. Main: forward `run.start` to the utility port (add the relay; only `scheduler:reset` is forwarded today).
-3. Utility: add a `run.start` handler in `apps/utility/src/index.ts` that calls `startRun(runId, playbookId, question, db, emit)`.
-4. Memo surface: assemble the Synthesizer memo and SafeWrite it to the vault (the run-loop computes only a `memoPath` string today), emitting progress/result IPC back to the renderer.
-Pairs with the open Ch.7 Vite-assembly leg (`thoughts/.../2026-05-28_05-34_netsuite-wiring-and-frontend-assembly-gap.yaml`).
+## Run path — WIRED + PROVEN end-to-end (2026-05-28, commits 06b839f→bcacc48)
+All four legs landed (staged in-memory slice — Russell's pick). Click Cash Lever → Approve
+in the assembled app → real memo lands in the vault. Verified by `tests/e2e/run-path-proof.mjs`
+(assembled app) + `tests/e2e/spine-proof.mjs` (headless), both under Electron 33 ABI. See
+build-log 2026-05-28 (cont.). To re-run the proof: ensure vite :5273 up (`bash tests/e2e/run.sh`
+starts it), then `node tests/e2e/run-path-proof.mjs`.
+
+## Next step (deferred follow-ups, in rough priority)
+1. Shared-DB persistence so runs survive restart + show in main's runs-list (async-proxy
+   refactor vs second utility DB connection — decide then). This retires the in-memory slice.
+2. Migrate the 6 DB unit tests to seed-from-migrations AND run under Electron ABI in CI, so
+   schema drift (the hooks.ts/verifier-assembler.ts class of bug) is caught automatically.
+3. Reconcile the `tool_calls` write path to prod schema (unexercised in replay; needed for live MCP).
+4. Route cash_lever to the bespoke CFO+COS MCP playbook (today it uses the generic 6-lens template).
+5. Real plan-building via run.plan.ready IPC (tiles currently open with a default editable question).
+Still pairs with the open Ch.7 Vite-assembly leg (`thoughts/.../2026-05-28_05-34_*frontend-assembly-gap.yaml`).
 
 ## Resume recipe
 1. `cd "/Users/russellteter/Claude Code Projects/c-suite"` (branch `main`).
