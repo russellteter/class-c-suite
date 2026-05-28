@@ -9,7 +9,7 @@ import type { JobId } from '@c-suite/shared-types/scheduled-job';
 import type { TripwireState } from '@c-suite/shared-types/scheduled-job';
 import { createLogger } from '../logger.js';
 
-const log = createLogger('macNotify');
+const log = createLogger();
 
 export type EmitIpcFn = (msg: IpcMessage) => void;
 

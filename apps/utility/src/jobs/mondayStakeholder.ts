@@ -6,13 +6,13 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { randomUUID } from 'node:crypto';
-import type { DegradedSource } from '@c-suite/shared-types/scheduled-job';
+import type { JobDegradedSource } from '@c-suite/shared-types/scheduled-job';
 import type { JobRunContext } from '../scheduler/cron.js';
 import { createLogger } from '../logger.js';
 
 const STAKEHOLDER_MODULE = '../playbooks/stakeholder-1-1/index.js';
 
-const log = createLogger('mondayStakeholder');
+const log = createLogger();
 
 const SKIP_IF_UPDATED_WITHIN_DAYS = 7;
 
@@ -22,9 +22,9 @@ function daysSince(mtime: Date): number {
 
 export async function runMondayStakeholder(
   ctx: JobRunContext,
-): Promise<{ outputMemoPath?: string; degradedSources?: DegradedSource[] }> {
+): Promise<{ outputMemoPath?: string; degradedSources?: JobDegradedSource[] }> {
   const today = new Date().toISOString().slice(0, 10);
-  const degradedSources: DegradedSource[] = [];
+  const degradedSources: JobDegradedSource[] = [];
   const processedSlugs: string[] = [];
   const skippedSlugs: string[] = [];
 
@@ -77,7 +77,7 @@ export async function runMondayStakeholder(
         },
       );
 
-      for (const s of result.degradedSources) degradedSources.push(s as DegradedSource);
+      for (const s of result.degradedSources) degradedSources.push(s as JobDegradedSource);
       processedSlugs.push(slug);
     } catch (err) {
       log.error({ message: 'stakeholder invocation failed', slug, err: String(err) });

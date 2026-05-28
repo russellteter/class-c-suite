@@ -5,7 +5,7 @@
 import cron from 'node-cron';
 import type Database from 'better-sqlite3';
 import type { IpcMessage } from '@c-suite/shared-types/ipc';
-import type { JobId, JobSummary, DegradedSource } from '@c-suite/shared-types/scheduled-job';
+import type { JobId, JobSummary, JobDegradedSource } from '@c-suite/shared-types/scheduled-job';
 import { JOB_REGISTRY, ALL_JOB_IDS } from './jobRegistry.js';
 import { runCatchUp } from './catchUp.js';
 import { executeWithRetry } from './retry.js';
@@ -16,7 +16,7 @@ import { runSundayWorkstream } from '../jobs/sundayWorkstream.js';
 import { runDailyMorningBrief } from '../jobs/dailyMorningBrief.js';
 import { createLogger } from '../logger.js';
 
-const log = createLogger('cron');
+const log = createLogger();
 
 export type EmitIpcFn = (msg: IpcMessage) => void;
 
@@ -32,7 +32,7 @@ export interface JobRunContext {
 /**
  * Map each job ID to its runner function.
  */
-function getRunner(jobId: JobId): (ctx: JobRunContext) => Promise<{ outputMemoPath?: string; degradedSources?: DegradedSource[] }> {
+function getRunner(jobId: JobId): (ctx: JobRunContext) => Promise<{ outputMemoPath?: string; degradedSources?: JobDegradedSource[] }> {
   switch (jobId) {
     case 'monday-tripwire':    return runMondayTripwire;
     case 'monday-stakeholder': return runMondayStakeholder;
@@ -51,7 +51,7 @@ function insertJobRun(
   scheduledFor: Date,
   actuallyRanAt: Date | null,
   status: string,
-  degradedSources: DegradedSource[],
+  degradedSources: JobDegradedSource[],
   opts: { outputMemoPath?: string; failureReason?: string; runId?: string; durationMs?: number } = {},
 ): void {
   db.prepare(`
@@ -98,7 +98,7 @@ function emitJobSummaries(db: Database.Database, emitIpc: EmitIpcFn): void {
       lastStatus: (row?.status ?? null) as JobSummary['lastStatus'],
       lastRanAt: row?.actually_ran_at ?? null,
       outputMemoPath: row?.output_memo_path ?? undefined,
-      degradedSources: row?.degraded_sources ? (JSON.parse(row.degraded_sources) as DegradedSource[]) : [],
+      degradedSources: row?.degraded_sources ? (JSON.parse(row.degraded_sources) as JobDegradedSource[]) : [],
     };
   });
 
@@ -129,7 +129,7 @@ export async function runJob(
   const consecutiveBefore = consecutiveFailures.get(jobId) ?? 0;
 
   let outputMemoPath: string | undefined;
-  let degradedSources: DegradedSource[] = [];
+  let degradedSources: JobDegradedSource[] = [];
 
   const result = await executeWithRetry(
     def,

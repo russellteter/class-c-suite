@@ -36,7 +36,9 @@ export const DEFAULT_RETRY_POLICY: RetryPolicy = {
 
 // ---- Job definition ----
 
-export type PlaybookId =
+// PlaybookId is defined in playbook.ts — re-exported from there via index.ts.
+// Local alias for clarity in job definitions (same union).
+export type JobPlaybookId =
   | 'cash_lever'
   | 'stakeholder_1_1'
   | 'quick_read'
@@ -58,16 +60,16 @@ export interface JobDefinition {
   id: JobId;
   cronExpression: string;
   description: string;
-  invokePlaybook?: PlaybookId;
+  invokePlaybook?: JobPlaybookId;
   customRunner?: CustomRunner;
   notifyOnSuccess: boolean;
   notifyOnFailure: boolean;
   retryPolicy: RetryPolicy;
 }
 
-// ---- Degraded source ----
-
-export type DegradedSource =
+// DegradedSource is defined in playbook.ts — re-exported from there via index.ts.
+// Extended locally for vault (not in playbook.ts DegradedSource union).
+export type JobDegradedSource =
   | 'salesforce'
   | 'netsuite'
   | 'aws'
@@ -91,7 +93,7 @@ export interface JobRunRecord {
   scheduledFor: Date;
   actuallyRanAt: Date | null;
   status: JobRunStatus;
-  degradedSources: DegradedSource[];
+  degradedSources: JobDegradedSource[];
   outputMemoPath?: string;
   failureReason?: string;
   runId?: string;
@@ -107,7 +109,7 @@ export interface JobSummary {
   lastStatus: JobRunStatus | null;
   lastRanAt: number | null;     // epoch ms
   outputMemoPath?: string;
-  degradedSources: DegradedSource[];
+  degradedSources: JobDegradedSource[];
 }
 
 // ---- Zod schemas for wire-crossing (IPC) ----

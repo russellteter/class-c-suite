@@ -70,6 +70,9 @@ export default defineConfig({
       '@c-suite/shared-types/run-critique': resolve(__dirname, 'packages/shared-types/src/run-critique.ts'),
       '@c-suite/shared-types': resolve(__dirname, 'packages/shared-types/src'),
       '@c-suite/shared-types/mcp': resolve(__dirname, 'packages/shared-types/src/mcp.ts'),
+      '@c-suite/shared-types/scheduled-job': resolve(__dirname, 'packages/shared-types/src/scheduled-job.ts'),
+      '@c-suite/shared-types/handoff': resolve(__dirname, 'packages/shared-types/src/handoff.ts'),
+      '@c-suite/shared-types/playbook': resolve(__dirname, 'packages/shared-types/src/playbook.ts'),
       '@c-suite/stub-harness/stub': resolve(__dirname, 'packages/stub-harness/src/stub.ts'),
       '@c-suite/stub-harness': resolve(__dirname, 'packages/stub-harness/src'),
       // Ch.2 packages (vault-writer, vault-watcher) — source-direct for tests.

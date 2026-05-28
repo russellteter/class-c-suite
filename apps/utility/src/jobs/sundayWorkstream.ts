@@ -7,12 +7,12 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import type Database from 'better-sqlite3';
-import type { DegradedSource } from '@c-suite/shared-types/scheduled-job';
+import type { JobDegradedSource } from '@c-suite/shared-types/scheduled-job';
 import type { JobRunContext } from '../scheduler/cron.js';
 import { VaultUnreachableError } from '../scheduler/retry.js';
 import { createLogger } from '../logger.js';
 
-const log = createLogger('sundayWorkstream');
+const log = createLogger();
 
 // Memory consolidation TTLs (ADR §7).
 const PRUNE_PROCESS_EVENTS_OLDER_THAN_DAYS = 30;
@@ -163,7 +163,7 @@ function runMemoryConsolidation(db: Database.Database): void {
 
 export async function runSundayWorkstream(
   ctx: JobRunContext,
-): Promise<{ outputMemoPath?: string; degradedSources?: DegradedSource[] }> {
+): Promise<{ outputMemoPath?: string; degradedSources?: JobDegradedSource[] }> {
   log.info({ message: 'sunday workstream starting' });
 
   const workstreamsDir = path.join(ctx.vaultRoot, 'workstreams');

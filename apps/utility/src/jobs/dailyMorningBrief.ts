@@ -6,18 +6,18 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { randomUUID } from 'node:crypto';
-import type { DegradedSource } from '@c-suite/shared-types/scheduled-job';
+import type { JobDegradedSource } from '@c-suite/shared-types/scheduled-job';
 import type { JobRunContext } from '../scheduler/cron.js';
 import { createLogger } from '../logger.js';
 
 // Dynamically import quick-read playbook at runtime.
 const QUICK_READ_MODULE = '../playbooks/quick-read/index.js';
 
-const log = createLogger('dailyMorningBrief');
+const log = createLogger();
 
 export async function runDailyMorningBrief(
   ctx: JobRunContext,
-): Promise<{ outputMemoPath?: string; degradedSources?: DegradedSource[] }> {
+): Promise<{ outputMemoPath?: string; degradedSources?: JobDegradedSource[] }> {
   const today = new Date().toISOString().slice(0, 10);
   const runId = randomUUID();
 
@@ -50,6 +50,6 @@ export async function runDailyMorningBrief(
 
   return {
     outputMemoPath: outputPath,
-    degradedSources: result.degradedSources as DegradedSource[],
+    degradedSources: result.degradedSources as JobDegradedSource[],
   };
 }

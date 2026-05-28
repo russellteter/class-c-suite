@@ -8,7 +8,7 @@ import type { JobId } from '@c-suite/shared-types/scheduled-job';
 import { JOB_REGISTRY, ALL_JOB_IDS } from './jobRegistry.js';
 import { createLogger } from '../logger.js';
 
-const log = createLogger('catchUp');
+const log = createLogger();
 
 export type EmitIpcFn = (msg: IpcMessage) => void;
 

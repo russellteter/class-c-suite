@@ -5,14 +5,14 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { randomUUID } from 'node:crypto';
-import type { DegradedSource, TripwireState } from '@c-suite/shared-types/scheduled-job';
+import type { JobDegradedSource, TripwireState } from '@c-suite/shared-types/scheduled-job';
 import type { JobRunContext } from '../scheduler/cron.js';
 import { notifyTripwireFlip } from '../notifications/macNotify.js';
 import { createLogger } from '../logger.js';
 
 const CASH_LEVER_MODULE = '../playbooks/cash-lever/index.js';
 
-const log = createLogger('mondayTripwire');
+const log = createLogger();
 
 export interface TripwireCheckResult {
   tripwireId: string;
@@ -112,10 +112,10 @@ function computeState(id: string, value: number): { state: TripwireState; thresh
 
 export async function runMondayTripwire(
   ctx: JobRunContext,
-): Promise<{ outputMemoPath?: string; degradedSources?: DegradedSource[] }> {
+): Promise<{ outputMemoPath?: string; degradedSources?: JobDegradedSource[] }> {
   const today = new Date().toISOString().slice(0, 10);
   const runId = randomUUID();
-  const degradedSources: DegradedSource[] = [];
+  const degradedSources: JobDegradedSource[] = [];
 
   log.info({ message: 'monday tripwire starting', date: today, runId });
 
@@ -182,7 +182,7 @@ export async function runMondayTripwire(
       await fs.mkdir(memosDir, { recursive: true });
       cashLeverMemoPath = path.join(memosDir, `${runId}.md`);
       await fs.writeFile(cashLeverMemoPath, cashResult.memoMarkdown, 'utf-8');
-      for (const s of cashResult.degradedSources) degradedSources.push(s as DegradedSource);
+      for (const s of cashResult.degradedSources) degradedSources.push(s as JobDegradedSource);
     } catch (err) {
       log.error({ message: 'cash_lever playbook failed', err: String(err) });
       degradedSources.push('netsuite');

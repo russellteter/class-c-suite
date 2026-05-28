@@ -89,6 +89,10 @@
     "./handoff": {
       "import": "./dist/handoff.js",
       "types": "./dist/handoff.d.ts"
+    },
+    "./scheduled-job": {
+      "import": "./dist/scheduled-job.js",
+      "types": "./dist/scheduled-job.d.ts"
     }
   },
   "scripts": {

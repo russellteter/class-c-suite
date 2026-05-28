@@ -7,12 +7,12 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { randomUUID } from 'node:crypto';
-import type { DegradedSource } from '@c-suite/shared-types/scheduled-job';
+import type { JobDegradedSource } from '@c-suite/shared-types/scheduled-job';
 import type { JobRunContext } from '../scheduler/cron.js';
 import { AuthExpiredError } from '../scheduler/retry.js';
 import { createLogger } from '../logger.js';
 
-const log = createLogger('sundayRenewal');
+const log = createLogger();
 
 const CRITICAL_HEALTH_THRESHOLD = 0.4; // score below this triggers notification
 
@@ -33,7 +33,7 @@ export interface RenewalAccount {
  * In production: calls Salesforce MCP via ctx.deps.salesforce.
  * Stub here degrades gracefully when SF not connected.
  */
-async function fetchAtRiskAccounts(ctx: JobRunContext, degradedSources: DegradedSource[]): Promise<RenewalAccount[]> {
+async function fetchAtRiskAccounts(ctx: JobRunContext, degradedSources: JobDegradedSource[]): Promise<RenewalAccount[]> {
   // Preflight: check Salesforce credential availability.
   // Real implementation: ctx.deps.salesforce.query(...)
   // Auth-expired check — throw AuthExpiredError to trigger no-retry path.
@@ -60,7 +60,7 @@ async function fetchAtRiskAccounts(ctx: JobRunContext, degradedSources: Degraded
 async function fetchChorusSignals(
   accounts: RenewalAccount[],
   ctx: JobRunContext,
-  degradedSources: DegradedSource[],
+  degradedSources: JobDegradedSource[],
 ): Promise<void> {
   if (accounts.length === 0) return;
 
@@ -78,10 +78,10 @@ async function fetchChorusSignals(
 
 export async function runSundayRenewal(
   ctx: JobRunContext,
-): Promise<{ outputMemoPath?: string; degradedSources?: DegradedSource[] }> {
+): Promise<{ outputMemoPath?: string; degradedSources?: JobDegradedSource[] }> {
   const today = new Date().toISOString().slice(0, 10);
   const runId = randomUUID();
-  const degradedSources: DegradedSource[] = [];
+  const degradedSources: JobDegradedSource[] = [];
 
   log.info({ message: 'sunday renewal starting', date: today, runId });
 

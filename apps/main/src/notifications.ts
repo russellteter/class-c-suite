@@ -7,7 +7,7 @@ import { Notification, BrowserWindow } from 'electron';
 import type { WebContents } from 'electron';
 import { createLogger } from './logger.js';
 
-const log = createLogger('notifications');
+const log = createLogger('main');
 
 export type ClickAction = 'home' | 'memo' | 'job-status' | 'settings-scheduler';
 

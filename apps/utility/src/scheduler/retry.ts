@@ -6,7 +6,7 @@ import type { JobDefinition } from '@c-suite/shared-types/scheduled-job';
 import type { IpcMessage } from '@c-suite/shared-types/ipc';
 import { createLogger } from '../logger.js';
 
-const log = createLogger('retry');
+const log = createLogger();
 
 export type EmitIpcFn = (msg: IpcMessage) => void;
 
