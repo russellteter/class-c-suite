@@ -21,6 +21,20 @@ import * as os from 'node:os';
 const execAsync = promisify(exec);
 const SF_DISPLAY_TIMEOUT_MS = 15_000;
 
+// ── Typed SFDX probe result ───────────────────────────────────────────────────
+
+/**
+ * Explicit three-state result for SFDX auth checks.
+ * Callers must not collapse these into a boolean — each maps to a distinct
+ * health-probe state.
+ */
+export type SfdxProbeResult =
+  | { state: 'ok'; session: SfdxAuthSession }
+  | { state: 'no_cli'; reason: 'sf binary not on PATH' }
+  | { state: 'no_org'; reason: string }
+  | { state: 'session_expired'; reason: string; username?: string }
+  | { state: 'error'; reason: string };
+
 export interface SfdxAuthSession {
   accessToken: string;
   instanceUrl: string;
@@ -81,22 +95,36 @@ async function readSfdxAuthFile(username: string): Promise<{ accessToken: string
 /**
  * Shell to `sf org display --target-org <user> --json` to get a freshly-refreshed
  * access token. The sf CLI handles refresh internally via its built-in Connected App.
+ * Returns a typed result distinguishing CLI-missing from session-expired.
  */
-async function refreshViaSfCli(username: string): Promise<{ accessToken: string; instanceUrl: string } | null> {
+async function refreshViaSfCli(username: string): Promise<
+  | { ok: true; accessToken: string; instanceUrl: string }
+  | { ok: false; reason: string; noCliFound?: boolean }
+> {
   try {
     const cmd = `sf org display --target-org ${JSON.stringify(username)} --json`;
     const { stdout } = await execAsync(cmd, { timeout: SF_DISPLAY_TIMEOUT_MS });
     const parsed = JSON.parse(stdout) as {
       status?: number;
       result?: { accessToken?: string; instanceUrl?: string };
+      message?: string;
     };
     if (parsed.status === 0 && parsed.result?.accessToken && parsed.result?.instanceUrl) {
-      return { accessToken: parsed.result.accessToken, instanceUrl: parsed.result.instanceUrl };
+      return { ok: true, accessToken: parsed.result.accessToken, instanceUrl: parsed.result.instanceUrl };
     }
-  } catch {
-    // sf not installed, command failed, timed out, or auth expired
+    // sf returned non-zero or missing fields — session likely expired
+    return { ok: false, reason: parsed.message ?? 'sf org display returned non-zero or incomplete result' };
+  } catch (err: unknown) {
+    const msg = String(err);
+    // Distinguish "sf not found" from other failures
+    if (msg.includes('not found') || msg.includes('ENOENT') || msg.includes('command not found')) {
+      return { ok: false, reason: 'sf CLI binary not found on PATH', noCliFound: true };
+    }
+    if (msg.includes('expired') || msg.includes('invalid') || msg.includes('NoOrgFound') || msg.includes('AuthInfo')) {
+      return { ok: false, reason: `SFDX session expired or invalid: ${msg}` };
+    }
+    return { ok: false, reason: `sf org display failed: ${msg}` };
   }
-  return null;
 }
 
 /**
@@ -109,8 +137,8 @@ export async function getSfdxAuth(): Promise<SfdxAuthSession | null> {
   if (!username) return null;
 
   // Prefer the CLI — guarantees a fresh token.
-  const fresh = await refreshViaSfCli(username);
-  if (fresh) return { ...fresh, username };
+  const cliResult = await refreshViaSfCli(username);
+  if (cliResult.ok) return { ...cliResult, username };
 
   // Fall back to the stored file (may have a usable access token).
   const stored = await readSfdxAuthFile(username);
@@ -122,6 +150,8 @@ export async function getSfdxAuth(): Promise<SfdxAuthSession | null> {
 /**
  * Quick boolean check: is SFDX authenticated against any org?
  * Used by isAuthenticated() — avoids the full token round-trip.
+ * NOTE: only checks file presence, not token validity. Use probeSfdxAuth()
+ * for health-check purposes where state distinction matters.
  */
 export async function hasSfdxAuth(): Promise<boolean> {
   const username = await getDefaultTargetOrg();
@@ -133,4 +163,48 @@ export async function hasSfdxAuth(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Full typed SFDX health probe distinguishing:
+ *   ok              — sf CLI present, session valid, fresh access token obtained
+ *   no_cli          — sf binary not found on PATH
+ *   no_org          — sf installed but no default target-org configured
+ *   session_expired — target-org configured but token refresh failed
+ *   error           — unexpected failure
+ *
+ * This is the probe used by SalesforceClient.healthCheck() and smoke tests.
+ * hasSfdxAuth() is kept for the isAuthenticated() fast-path only.
+ */
+export async function probeSfdxAuth(): Promise<SfdxProbeResult> {
+  // Check if sf CLI is on PATH first
+  try {
+    await execAsync('sf version --json', { timeout: 5_000 });
+  } catch (err: unknown) {
+    const msg = String(err);
+    if (msg.includes('not found') || msg.includes('ENOENT') || msg.includes('command not found')) {
+      return { state: 'no_cli', reason: 'sf binary not on PATH' };
+    }
+    // Might still work despite non-zero exit from version check — fall through
+  }
+
+  const username = await getDefaultTargetOrg();
+  if (!username) {
+    return {
+      state: 'no_org',
+      reason: 'No default target-org in ~/.sf/config.json or ~/.sfdx/sfdx-config.json. Run: sf org login web',
+    };
+  }
+
+  const cliResult = await refreshViaSfCli(username);
+  if (cliResult.ok) {
+    return { state: 'ok', session: { accessToken: cliResult.accessToken, instanceUrl: cliResult.instanceUrl, username } };
+  }
+
+  if (cliResult.noCliFound) {
+    return { state: 'no_cli', reason: 'sf binary not on PATH' };
+  }
+
+  // CLI found but token refresh failed — session expired
+  return { state: 'session_expired', reason: cliResult.reason, username };
 }
