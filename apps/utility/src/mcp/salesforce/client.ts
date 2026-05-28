@@ -14,7 +14,7 @@ import type {
 import { SalesforceQueryResultSchema } from '@c-suite/shared-types/mcp';
 import type { SafeStorageVault } from '../../credentials/safeStorageVault.js';
 import { refreshAccessToken } from './oauth-flow.js';
-import { getSfdxAuth, hasSfdxAuth } from './sfdx-auth.js';
+import { getSfdxAuth, hasSfdxAuth, probeSfdxAuth } from './sfdx-auth.js';
 import {
   SalesforceAuthExpiredError,
   SalesforceAuthRevokedError,
@@ -25,6 +25,26 @@ import {
 
 const SALESFORCE_API_VERSION = 'v59.0';
 const REQUEST_TIMEOUT_MS = 30_000;
+
+// ── Three-state auth probe ─────────────────────────────────────────────────────
+
+/**
+ * Three-state result for Salesforce auth health probes.
+ *
+ * connected_app_ok — vault has a valid OAuth refresh token (Connected App path).
+ *   Runtime can call query() without any external dependency.
+ *
+ * sfdx_ok — no Connected App credential but SFDX CLI has a live session.
+ *   Runtime works but depends on `sf` binary remaining on PATH + session not
+ *   expiring. Renewal requires: sf org login web --instance-url https://classedu.my.salesforce.com
+ *
+ * neither — neither vault credential nor live SFDX session found.
+ *   Authentication required before any query can run.
+ */
+export type SalesforceAuthProbe =
+  | { state: 'connected_app_ok'; reason: string }
+  | { state: 'sfdx_ok'; reason: string; sfdxUsername: string }
+  | { state: 'neither'; reason: string; sfdxDetail: string };
 
 export class SalesforceClient implements ISalesforceClient {
   readonly serviceId = 'salesforce' as const;
@@ -68,14 +88,56 @@ export class SalesforceClient implements ISalesforceClient {
   }
 
   async healthCheck(): Promise<McpHealth> {
-    const ok = await this.isAuthenticated();
-    // Resolve auth mode lazily — vault wins when both are present.
-    const authMode: 'oauth' | 'sfdx' = (await this.vault.hasValidCredential('salesforce')) ? 'oauth' : 'sfdx';
+    const probe = await this.probeAuth();
+    const ok = probe.state === 'connected_app_ok' || probe.state === 'sfdx_ok';
+    const authMode: 'oauth' | 'sfdx' = probe.state === 'connected_app_ok' ? 'oauth' : 'sfdx';
     return {
       ok,
       lastSuccessAt: this.lastSuccessAt,
-      lastError: this.lastError,
+      lastError: ok ? this.lastError : probe.reason,
       authMode,
+    };
+  }
+
+  /**
+   * Explicit three-state auth probe used by health-check tooling and smoke tests.
+   * Does not modify client state. Safe to call from outside without side effects.
+   *
+   * Priority: Connected App vault credential > SFDX CLI session > neither.
+   */
+  async probeAuth(): Promise<SalesforceAuthProbe> {
+    // 1. Connected App path (vault)
+    const hasVaultCred = await this.vault.hasValidCredential('salesforce');
+    if (hasVaultCred) {
+      return {
+        state: 'connected_app_ok',
+        reason: 'Connected App refresh token present in safeStorage vault',
+      };
+    }
+
+    // 2. SFDX CLI path
+    const sfdxProbe = await probeSfdxAuth();
+    if (sfdxProbe.state === 'ok') {
+      return {
+        state: 'sfdx_ok',
+        reason: `SFDX session valid for ${sfdxProbe.session.username}`,
+        sfdxUsername: sfdxProbe.session.username,
+      };
+    }
+
+    // 3. Neither
+    const sfdxDetail = sfdxProbe.state === 'no_cli'
+      ? 'sf CLI not on PATH'
+      : sfdxProbe.state === 'no_org'
+        ? 'sf CLI installed but no default target-org'
+        : sfdxProbe.state === 'session_expired'
+          ? `SFDX session expired (${sfdxProbe.reason})`
+          : `SFDX probe error: ${sfdxProbe.reason}`;
+
+    return {
+      state: 'neither',
+      reason: 'No Connected App credential in vault and no valid SFDX session',
+      sfdxDetail,
     };
   }
 

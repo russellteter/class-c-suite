@@ -83,10 +83,13 @@ export function committedPipelineQuery(args: CommittedPipelineArgs): string {
     ? `AND CloseDate <= ${args.asOfDate.toISOString().split('T')[0]} `
     : '';
 
+  // Note: Account_Manager__r.IsActive is used in WHERE for security (B7) but not
+  // selected here — it's not accessible via relationship traversal in SELECT in
+  // all org configurations, and it is not needed in the display payload.
   return (
     'SELECT Id, Name, Amount, StageName, CloseDate, Type, ' +
     'Account.Name, Account.Id, ' +
-    'Account_Manager__r.Name, Account_Manager__r.IsActive ' +
+    'Account_Manager__r.Name ' +
     'FROM Opportunity ' +
     `WHERE ${typeFilter} ` +
     `AND StageName IN (${stageList(stages)}) ` +
