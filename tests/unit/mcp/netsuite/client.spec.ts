@@ -166,6 +166,49 @@ describe('NetSuiteClient — token-present mode', () => {
     expect(client.degraded).toBe(false);
   });
 
+  it('reconnect seeds the vault from NETSUITE_* env vars when present', async () => {
+    const ENV_KEYS = [
+      'NETSUITE_ACCOUNT_ID',
+      'NETSUITE_CONSUMER_KEY',
+      'NETSUITE_CONSUMER_SECRET',
+      'NETSUITE_TBA_TOKEN_ID',
+      'NETSUITE_TBA_TOKEN_SECRET',
+    ];
+    const saved = Object.fromEntries(ENV_KEYS.map(k => [k, process.env[k]]));
+    process.env['NETSUITE_ACCOUNT_ID'] = '603734';
+    process.env['NETSUITE_CONSUMER_KEY'] = 'env-consumer-key';
+    process.env['NETSUITE_CONSUMER_SECRET'] = 'env-consumer-secret';
+    process.env['NETSUITE_TBA_TOKEN_ID'] = 'env-token-id';
+    process.env['NETSUITE_TBA_TOKEN_SECRET'] = 'env-token-secret';
+
+    try {
+      // Vault has no credential yet — env is the only source.
+      const vault = makeVault({ hasCredential: false });
+      const client = new NetSuiteClient(vault);
+      (client as unknown as { degraded: boolean }).degraded = true;
+
+      await client.reconnect();
+
+      expect(vault.storeCredential).toHaveBeenCalledWith(
+        'netsuite',
+        JSON.stringify({
+          accountId: '603734',
+          consumerKey: 'env-consumer-key',
+          consumerSecret: 'env-consumer-secret',
+          tokenId: 'env-token-id',
+          tokenSecret: 'env-token-secret',
+        }),
+        'tba_token',
+      );
+      expect(client.degraded).toBe(false);
+    } finally {
+      for (const k of ENV_KEYS) {
+        if (saved[k] === undefined) delete process.env[k];
+        else process.env[k] = saved[k];
+      }
+    }
+  });
+
   it('runSavedSearch returns parsed result on success', async () => {
     const client = new NetSuiteClient(makeVault());
     vi.stubGlobal('fetch', makeFetch([{ status: 200, body: GOOD_SUITEQL_RESPONSE }]));

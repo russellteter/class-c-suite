@@ -1445,3 +1445,30 @@ The gap between "architecture proven" and "first usable product" is the 3 NW ite
 - better-sqlite3 ABI: confirm production Electron build loads the native module (B45 validated dev; Ch.11 confirms packaged).
 
 **/goal halts here per the Phase 2 hard-stop. Ch.11 awaits Russell.**
+
+---
+
+# NetSuite wiring + connector verification — 2026-05-27
+
+Russell shipped a standalone NetSuite MCP (`~/mcp-servers/netsuite-mcp`, TBA/OAuth 1.0a) and asked to wire + test all connectors.
+
+## Done
+- **Standalone NetSuite MCP** — registered (`claude mcp`, user scope) and live-verified: `whoami` (server_time 5/27/2026, acct 603734), `get_subsidiaries` ("Class Technologies, Inc."), `transaction` count 8148. Auth is good against production.
+- **C-Suite env→vault seeding gap closed.** `NetSuiteClient.reconnect()` only *checked* the vault; nothing seeded it, so the app stayed in degraded mode even with creds present. Patched to read `NETSUITE_*` env → `storeCredential('netsuite', json, 'tba_token')`, falling back to an existing vault entry, throwing `NetSuiteAuthMissingError` only when neither source is complete. Mirrors the chorus precedent. +1 unit test; 102/102 netsuite specs green; `tsc` clean.
+- **`apps/main/.env.local`** populated with the 4 previously-blank TBA values (from the MCP `.env`; gitignored, not committed). Var-name asymmetry handled: MCP `NETSUITE_TOKEN_ID/SECRET` → app `NETSUITE_TBA_TOKEN_ID/SECRET`.
+- **`scripts/mcp-live-smoke.sh` made trustworthy on macOS:** portable `timeout`/`gtimeout` shim (was hard-failing `command not found`); PowerBI subprocess now runs from the project dir (was resolving `src/main.py` against the wrong cwd) and classifies the customer-dashboard's own missing Google OAuth as BLOCKED, not FAIL; NetSuite section now surfaces the real SuiteQL error body instead of a misleading "0 rows".
+
+## Full 6-connector smoke (2026-05-27)
+| Connector | Result | Note |
+|---|---|---|
+| AWS | PASS | class 783411846536 + collab 421879804649 authenticated |
+| Chorus | PASS | live `listEngagements` OK (0 yesterday) |
+| NetSuite | FAIL | auth OK; **token role lacks list permissions** (see below) |
+| PowerBI | BLOCKED | C-Suite spawn path works; customer-dashboard needs its own `credentials.json` |
+| Gmail | BLOCKED | runtime.db absent — app not yet launched (Ch.11) |
+| Salesforce | BLOCKED | smoke checks env Connected App; runtime uses the SFDX-CLI fallback |
+
+## NetSuite action item (external operator gate, NOT a code defect)
+The TBA token's role can read `transaction` + `subsidiary` but is denied `account`, `department`, `classification`, `employee`, `accountingperiod` — NetSuite returns HTTP 400 `Record 'x' was not found` (INVALID_PARAMETER), which is how SuiteQL reports insufficient role permission (confirmed via context7: default `metaDataProvider=SUITE_QL` fails on missing permission). The C-Suite's cash/payroll queries (`cashGLBalanceQuery`, `payrollByDeptQuery`, covenant tracking, weekly cash forecast) all join `account`/`department`, so they return nothing until fixed.
+
+**Fix (NetSuite UI → Setup → Users/Roles → Manage Roles → the role on the TBA token → Permissions):** add View-level — Lists>Accounts, Lists>Departments, Lists>Classes, Lists>Employees, Setup>Manage Accounting Periods. Re-run `./scripts/mcp-live-smoke.sh netsuite` to confirm.

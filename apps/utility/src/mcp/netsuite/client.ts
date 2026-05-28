@@ -20,6 +20,7 @@ import type {
 import { NetSuiteQueryResultSchema } from '@c-suite/shared-types/mcp';
 import type { SafeStorageVault } from '../../credentials/safeStorageVault.js';
 import { buildTBAAuthHeader, parseTBACredentials } from './tba-auth.js';
+import type { TBACredentials } from './tba-auth.js';
 import {
   NetSuiteAuthMissingError,
   NetSuiteTBAExpiredError,
@@ -49,9 +50,17 @@ export class NetSuiteClient implements INetSuiteClient {
   }
 
   async reconnect(): Promise<void> {
-    // TBA credentials cannot be re-fetched programmatically — they are issued by Brian.
-    // reconnect() checks whether credentials now exist; if not, throws so callers can
-    // surface the BLOCKERS B1 prompt to Russell.
+    // TBA credentials are issued out-of-band (NetSuite Setup → Access Tokens).
+    // Seeding priority: env vars first (fresh tokens), then an existing vault entry.
+    // Throws NetSuiteAuthMissingError only when neither source has all five fields.
+    const envCred = readEnvTBACredentials();
+    if (envCred) {
+      await this.vault.storeCredential('netsuite', JSON.stringify(envCred), 'tba_token');
+      this.degraded = false;
+      this.lastError = undefined;
+      return;
+    }
+
     const hasCred = await this.vault.hasValidCredential('netsuite');
     if (!hasCred) {
       throw new NetSuiteAuthMissingError();
@@ -224,4 +233,23 @@ export class NetSuiteClient implements INetSuiteClient {
 
     return response;
   }
+}
+
+/**
+ * Read the five TBA fields from the environment. Returns null unless all are present
+ * and non-empty. The token-id/token-secret use the NETSUITE_TBA_ prefix to disambiguate
+ * from the consumer key/secret (matches scripts/mcp-live-smoke.sh and .env.local).
+ */
+function readEnvTBACredentials(): TBACredentials | null {
+  const accountId = process.env['NETSUITE_ACCOUNT_ID'];
+  const consumerKey = process.env['NETSUITE_CONSUMER_KEY'];
+  const consumerSecret = process.env['NETSUITE_CONSUMER_SECRET'];
+  const tokenId = process.env['NETSUITE_TBA_TOKEN_ID'];
+  const tokenSecret = process.env['NETSUITE_TBA_TOKEN_SECRET'];
+
+  if (!accountId || !consumerKey || !consumerSecret || !tokenId || !tokenSecret) {
+    return null;
+  }
+
+  return { accountId, consumerKey, consumerSecret, tokenId, tokenSecret };
 }

@@ -15,6 +15,15 @@ set -uo pipefail
 
 SERVICE="${1:-all}"
 
+# Portable bounded-run command. macOS ships no `timeout`; coreutils provides `gtimeout`.
+if command -v timeout >/dev/null 2>&1; then
+  TIMEOUT="timeout 120"
+elif command -v gtimeout >/dev/null 2>&1; then
+  TIMEOUT="gtimeout 120"
+else
+  TIMEOUT=""
+fi
+
 FAILS=0
 green()   { printf '  \033[32m[PASS]\033[0m %s\n' "$1"; }
 blocked() { printf '  \033[33m[BLOCKED]\033[0m %s\n' "$1"; }
@@ -148,7 +157,7 @@ smoke_powerbi() {
   echo "  Spawning customer-dashboard pipeline... (may take up to 120s)"
   rm -f "$JSON_OUT"
 
-  if timeout 120 "$VENV_PYTHON" src/main.py -j "$JSON_OUT" --no-am-dashboards \
+  if ( cd "$PBI_PROJECT" && $TIMEOUT "$VENV_PYTHON" src/main.py -j "$JSON_OUT" --no-am-dashboards ) \
       >/tmp/cdash-smoke-stdout.log 2>/tmp/cdash-smoke-stderr.log; then
     SPAWN_EXIT=0
   else
@@ -156,6 +165,12 @@ smoke_powerbi() {
   fi
 
   if [ "$SPAWN_EXIT" -ne 0 ]; then
+    # The customer-dashboard project owns its own auth (Google Sheets OAuth + Microsoft).
+    # A missing credentials.json there is an external operator gate, not a C-Suite spawn failure.
+    if grep -qiE "credentials\.json|DataLoadError|OAuth credentials" /tmp/cdash-smoke-stderr.log 2>/dev/null; then
+      blocked "C-Suite spawn path OK — customer-dashboard project needs its own Google Sheets OAuth (credentials.json). See that project's setup."
+      return 0
+    fi
     fail "subprocess exited with code $SPAWN_EXIT. stderr tail:"
     tail -20 /tmp/cdash-smoke-stderr.log >&2
     return 0
@@ -346,9 +361,16 @@ fetch(url, {
 })
   .then(r => r.json())
   .then(data => {
+    // SuiteQL enforces record-level role permissions: a role lacking e.g. Lists>Accounts
+    // gets HTTP 400 "Record 'account' was not found" rather than rows. Surface it plainly.
+    if (data['o:errorDetails']) {
+      console.error('NetSuite error: ' + JSON.stringify(data['o:errorDetails']));
+      console.error('Hint: cashGLBalanceQuery joins the `account` table — the token role likely lacks the Lists>Accounts permission.');
+      process.exit(1);
+    }
     const count = data.count ?? data.items?.length ?? 0;
     if (count === 0) {
-      console.error('cashGLBalanceQuery returned 0 rows — unexpected for Class production');
+      console.error('cashGLBalanceQuery returned 0 rows — unexpected for Class production. Raw: ' + JSON.stringify(data).slice(0, 300));
       process.exit(1);
     }
     console.log('cashGLBalanceQuery: ' + count + ' row(s) — PASS');
