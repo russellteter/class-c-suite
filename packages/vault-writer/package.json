@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./src/safeWrite.ts",
+  "main": "./dist/safeWrite.js",
   "scripts": {
+    "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'lint: no linter configured in Ch.2'",
     "test:unit": "echo 'no unit tests in vault-writer at Ch.2'",

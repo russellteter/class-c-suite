@@ -71,6 +71,9 @@ importers:
       '@c-suite/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
+      '@c-suite/vault-watcher':
+        specifier: workspace:*
+        version: link:../../packages/vault-watcher
       better-sqlite3:
         specifier: ^12.10.0
         version: 12.10.0
