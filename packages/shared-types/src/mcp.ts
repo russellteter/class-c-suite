@@ -76,8 +76,10 @@ export interface SalesforceClient extends McpClient {
 
 export interface NetSuiteClient extends McpClient {
   serviceId: 'netsuite';
-  runSuiteQL(query: string): Promise<NetSuiteQueryResult>;
-  runSavedSearch(id: string): Promise<NetSuiteQueryResult>;
+  /** Returns null + sets degraded=true when TBA credentials are absent (token-absent mode). */
+  runSuiteQL(query: string): Promise<NetSuiteQueryResult | null>;
+  /** Returns null + sets degraded=true when TBA credentials are absent (token-absent mode). */
+  runSavedSearch(id: string): Promise<NetSuiteQueryResult | null>;
   degraded: boolean;
 }
 
