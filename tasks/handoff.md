@@ -17,32 +17,30 @@ not fully achievable in one session because three connectors + inference are gat
 on Russell. What's real now: all code paths call real clients with honest
 degradation, unit-proven. What's unverified-live: see the unblock list.
 
-## Russell unblock list (each enables a real verification)
-1. **AWS (closest — only blocker is a fresh token):** run
-   `aws sso login --profile class && aws sso login --profile collab`. Then I re-run
-   the live `getCombinedCost` check (class+collab real spend). SSO expired
-   mid-session — that's the ONLY thing between us and a verified live AWS path.
-2. **Inference token:** `claude setup-token` → put `CLAUDE_CODE_OAUTH_TOKEN` in
-   `apps/main/.env.local`, ensure `ANTHROPIC_API_KEY` unset. Enables a live
-   integration-proof memo (real Verifier rigor score, real citations).
-3. **NetSuite credential TYPE (you're checking):** confirm in NS Setup whether the
-   integration record you created is the **AI Connector Service** (scope `mcp` —
-   current code path works; the Consumer Secret threads into token exchange via the
-   already-present optional `clientSecret`) OR a **standard Integration Record**
-   (scope `rest_webservices` — needs a NEW REST SuiteQL data path the repo doesn't
-   have). DO NOT store the Consumer Secret in `.env.local` until this is confirmed.
-4. **NetSuite cash query:** after NS connects, validate a cash-position SuiteQL
-   against Class's GL/account schema, then set `NETSUITE_SUITEQL_CASH_POSITION` in
-   env. Until set, cash-lever degrades NetSuite honestly (no guessed query runs —
-   deliberate DOCTRINE #1 choice).
-5. **Salesforce:** creds located at
-   `/Users/russellteter/projects/class-budget-tracker-main/salesforce-mass-delete-tool/config.mjs`
-   (the storage-reduction project). Copy `clientId`/`clientSecret` into
-   `apps/main/.env.local` as `SALESFORCE_CLIENT_ID`/`SALESFORCE_CLIENT_SECRET` (the
-   auto-mode classifier blocked me from reading that file).
-6. **To run cash-lever live before cash_model lands:** `STUB_MODE=live
-   ALLOW_STUBBED_LIVE=1` (the escape hatch downgrades cash_model to a degraded_source;
-   SF/AWS/NS run real).
+## Connector status (updated after Russell supplied creds 2026-05-28)
+- **Salesforce — LIVE VERIFIED.** No Connected App needed; rides the `sf` CLI session
+  (class-prod). 612 real Opportunities returned. buildDeps gap fixed (`ebccafc`).
+- **AWS — LIVE VERIFIED (partial).** class = $493,848.41 real; collab degrades
+  honestly. Remaining: fix collab SSO login (see below) for the summed view.
+- **NetSuite — creds active, Connect pending.** AI Connector / `mcp`, confidential
+  client; secret threaded. Russell must: (a) in-app Connect (browser consent) to mint
+  the refresh token + revoke old TBA `2b80c7a9`; (b) validate a cash-position SuiteQL
+  vs Class's schema and set `NETSUITE_SUITEQL_CASH_POSITION` (until set, NetSuite
+  degrades honestly — no guessed query runs, DOCTRINE #1).
+- **Inference token — set** in `.env.local`. Enables STUB_MODE=live in the app.
+
+## Remaining Russell actions
+1. **AWS collab SSO:** `aws sso login --profile collab` failing. collab uses a
+   separate sso-session (start URL `https://d-9067b2215a.awsapps.com/start`, role
+   `Billing`, acct 421879804649). Diagnose: `aws sso login --profile collab` and
+   capture the exact error; if the portal URL or role changed, re-run
+   `aws configure sso --profile collab`. Until fixed, AWS data is class-only (flagged).
+2. **NetSuite Connect** (browser consent) + validate/set `NETSUITE_SUITEQL_CASH_POSITION`.
+3. **Full end-to-end live memo:** run the Electron app with `STUB_MODE=live`
+   (+ `ALLOW_STUBBED_LIVE=1` while cash_model is still stubbed). buildDeps needs the
+   Electron safeStorage to construct the SF/NS clients, so the full cash-lever live
+   run happens in the app, not a headless script. Client-level data paths already
+   proven live this session.
 
 ## Known calibration caveat (not a bug — flag for first live run)
 Verifier scores for adversarial-only / lens-light playbooks (pre-mortem etc., which

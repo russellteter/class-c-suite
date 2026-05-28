@@ -1686,3 +1686,23 @@ real; no wrong query can execute. Same pattern reserved for cash_model
   positionMetadata) is unvalidated until the first live run — the score will be
   REAL (not stubbed), but whether it calibrates sensibly needs eyes on a live memo.
 - Findings 3 (Synthesizer writebacks) + 5 (scheduled jobs) — still deferred.
+
+### Live verification addendum (same day, after Russell supplied creds)
+Connectors activated + verified at the client level with REAL data (commit `ebccafc`):
+- **Salesforce — LIVE VERIFIED.** No Connected App needed: the SF client rides the
+  existing `sf` CLI session (Russell-decision). Fixed a buildDeps gap (only built the
+  client when a vault cred existed → SFDX fallback unreachable; now builds when a
+  vault cred OR live SFDX session is present). Committed-pipeline SOQL ran against
+  classedu.my.salesforce.com via the session: HTTP 200, **612 real Opportunities**.
+- **AWS — LIVE VERIFIED (partial, honest).** `getCombinedCost`: class = **$493,848.41**
+  over 4 months (real Cost Explorer); collab → `degraded_sources:['aws-collab']`
+  (collab SSO login not yet working — honest degradation, not fabricated, not blocking).
+- **NetSuite — wired, Connect pending.** Confirmed AI Connector / scope `mcp`,
+  CONFIDENTIAL client. Consumer Key/Secret active in `.env.local`; secret threaded
+  through `buildNetSuiteOAuthConfig.clientSecret`. Russell must run in-app Connect
+  (browser consent) to mint the refresh token, then validate + set
+  `NETSUITE_SUITEQL_CASH_POSITION`.
+- **Inference token — set.** `CLAUDE_CODE_OAUTH_TOKEN` now in `.env.local`
+  (gitignored); enables STUB_MODE=live real-inference runs in the Electron app.
+- Still needs the Electron runtime for a full end-to-end cash-lever live memo
+  (buildDeps needs safeStorage to construct the SF/NS clients) — that's the Ch.11 demo.
