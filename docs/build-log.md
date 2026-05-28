@@ -1633,3 +1633,56 @@ live-verification gated on Russell connecting NetSuite OAuth + AWS SSO. Findings
 - `apps/utility/src/playbooks/*/index.ts` (all 9) — STUBBED_SOURCES export
 - `tests/unit/orchestrator/stub-guard.spec.ts` — new; 25 cases
 - `tasks/b47-phase2-data-wire-brief.md` — new; Phase 2 directives
+
+## B47 Phase 2 — real Verifier + real cash-lever data (2026-05-28)
+
+### What shipped
+Phase 1 made the lie loud; Phase 2 makes it true for two of the audit findings.
+
+**Finding 2 — real Verifier (commit f12d185).** The 8 Ch.7 early-return playbooks
+trusted a hardcoded `rigorScore = NN`; the anti-sycophancy rigor gate never ran.
+New `apps/utility/src/orchestrator/playbookVerifier.ts` adapts the in-memory
+`PlaybookResult` into a `VerifierInput` (`buildPlaybookVerifierInput`) — needed
+because the playbooks produce heterogeneous shapes (pre-mortem has 0 lenses) that
+the strict `buildVerifierInput` cannot assemble, and `runVerifier` does NOT re-run
+the strict schema. run-loop early-return now calls `scorePlaybookRigor` at ONE
+site. Live-vs-replay asymmetry is the guarantee: `STUB_MODE=live` MUST produce a
+real score (Verifier failure RETHROWS — never fabricate in prod); replay falls
+back to a labelled `REPLAY_FALLBACK_RIGOR` constant (honest test artifact). The 7
+playbooks now return `rigorScore: null`, emit no CLEAN/DRAFT (run-loop recomputes
+via `applyShipStamp`, applying the open_qa 85 cap), and dropped `'verifier_rigor'`
+from STUBBED_SOURCES. quick_read stays Verifier-bypassed.
+
+**Finding 4 — real cash-lever data (commit aaa6999).** Threaded `ctx.deps` into
+`runCashLeverPlaybook`; replaced 3 stub*Query helpers with real client calls that
+record REAL tool_calls (real result_json → citations click through to genuine
+results): Salesforce `query()` (B19-verified pipeline SOQL), AWS concrete
+`getCombinedCost()` (sums class+collab), NetSuite `runSuiteQL()`. Absent/unauth
+deps degrade honestly (removed the NetSuite hard-block). STUBBED_SOURCES: 4 → `['cash_model']`.
+
+### DOCTRINE #1 decision — NetSuite query is env-gated, not guessed
+A guessed cash-position SuiteQL would emit real-but-wrong cited data once NS
+connects. The query is therefore NOT hardcoded — it is supplied post-validation
+via `NETSUITE_SUITEQL_CASH_POSITION`. Absent env → degrade. The wiring shape is
+real; no wrong query can execute. Same pattern reserved for cash_model
+(`CASH_MODEL_XLSX_PATH`) when its reader lands.
+
+### Verification
+- 376 orchestrator+playbook+jobs tests pass; `pnpm typecheck` clean (9 workspaces).
+- New `tests/unit/orchestrator/playbook-verifier.spec.ts` (adapter, replay fallback,
+  live-fails-loud, cap, stamp recompute). 6 playbook specs migrated to the
+  deferral contract; stub-guard dynamic-import test now asserts `['cash_model']`.
+- **AWS live end-to-end: NOT yet verified.** SSO session expired mid-session;
+  re-login + re-run pending (the one connector verifiable this session).
+
+### Honestly NOT done this session (truth over appearance — DOCTRINE #1)
+- Live integration-proof memo: needs `CLAUDE_CODE_OAUTH_TOKEN` (was absent).
+- AWS live cash-lever run: needs fresh `aws sso login` (tokens expired mid-session).
+- NetSuite: credential TYPE unconfirmed (Russell checking scope: AI-Connector `mcp`
+  vs standard `rest_webservices`), no validated SuiteQL, no OAuth consent.
+- Salesforce: Connected App creds located (storage-reduction project config.mjs)
+  but not yet copied into env.
+- Verifier score CALIBRATION for adversarial-only / lens-light playbooks (empty
+  positionMetadata) is unvalidated until the first live run — the score will be
+  REAL (not stubbed), but whether it calibrates sensibly needs eyes on a live memo.
+- Findings 3 (Synthesizer writebacks) + 5 (scheduled jobs) — still deferred.
