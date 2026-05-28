@@ -80,6 +80,16 @@ Maintain `docs/build-log.md`. When reality contradicts the plan, **update the pl
 
 ---
 
+## APP-PROOF gate (amendment 2026-05-28 — codified after the drift audit)
+
+The build drifted from "almost production ready" to broken-on-first-real-use because every chapter closed on jsdom unit tests + typecheck + green vitest, while the assembled app was never launched as a close criterion. Four keystone failures accumulated silently for ten chapters. Codified law:
+
+- **A phase/chapter closes only when the assembled app performs the real action with real data, observed directly** — a vault file written, a screenshot of the rendered screen, a real connector result, a log line. jsdom render, a passing mock, or a green test is necessary, never sufficient.
+- **Tests seed from the real migrations, never inline DDL.** A test that builds its own schema proves nothing about production. `drift-fails-a-test`: if renaming a real column does not turn a test red, the test is theater.
+- **Zero-caller grep** before closing any phase that adds a callable, IPC kind, or MCP method: `grep -rn "<symbol>" apps` must show a production call site. (Caught `startRun` shipping with zero callers.)
+- **No false greens.** `expect(true).toBe(true)` and DB tests that can't load their native module (ABI quarantine) are banned — use `it.todo` for honest pending; make the enforcing suite actually execute.
+- **ABI note (this repo):** the enforcing unit run is Node ABI (`pnpm rebuild better-sqlite3`); the app + e2e proofs run under Electron ABI (`pnpm rebuild:electron`). Same migrations seed both. Switch ABI per activity; never run the app while the binary is Node-ABI.
+
 ## Anti-slop bar (for all written output — docs, memos, commits, comments)
 
 These are Russell's documented preferences from `~/.claude/CLAUDE.md`. They apply to every artifact this build produces.

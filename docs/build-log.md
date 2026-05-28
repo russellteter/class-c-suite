@@ -1802,3 +1802,24 @@ opens its own in-memory DB seeded from the real migrations. Commits 06b839f → 
   (cash_lever is excluded from KNOWN_CH7_PLAYBOOK_IDS). Live data + the bespoke path is later.
 - Playbook tiles open with a default framing question (editable); real plan-building
   (run.plan.ready IPC) is still ch7-phase-b.
+
+---
+
+## 2026-05-28 — Phase 0 (anti-drift foundation): test-truthfulness core DONE
+
+Executed via a background workflow (13 agents) + an adversarial verify + a remediation pass, then independently re-verified.
+
+**Done + verified:**
+- `tests/helpers/seedFromMigrations.ts` — single source of test schema (delegates to production `runMigrations`). 10 DB-backed test files converted from inline DDL; 4 carried active `role`/`output_json` drift (now fixed).
+- `tool_calls` P0 reconciled to prod schema (`hooks.ts` onPostToolUse + `db/tool-calls.ts` + cash-lever consumers): call_id/invocation_id/agent_role/args_json/called_at. Was the bug that throws on first live tool call.
+- 3 new real-coverage specs (hooks agent_invocations + tool_calls + verifier-assembler reads), seeded from migrations.
+- 8 `expect(true).toBe(true)` theater bodies → `it.todo` (honest pending).
+- **Verified (writer != grader):** renaming `agent_role` turns 3 tests RED, reverted clean — drift is now caught. Full DB suite **2068 pass / 0 fail / 17 skip / 8 todo, ZERO ABI**. Typecheck green (9 workspaces, after fixing the cash-lever consumer the agent missed — caught by typecheck, not the suite).
+- Correction: `resumeRun` was a FALSE alarm in the code-reality audit — `orchestrator/index.ts:76` uses `inv.role ?? inv.agent_role` + `SELECT *`, resolves against prod schema.
+- DOCTRINE amended with the **APP-PROOF gate** (assembled-app close criterion, seed-from-migrations, zero-caller grep, no false greens, the ABI per-activity rule).
+
+**Phase 0 TAIL (not done, tracked):** wire the Electron e2e proofs into CI (needs headless Electron / xvfb + Electron-ABI rebuild in CI — a real infra chunk, not a config one-liner); replace the `test:integration` no-op; standing integration-smoke script. The whole-tree theater (~9 non-converted files: verifier-canary, named-entity-registry, rigor-score-table, etc.) is RED-test debt tied to later Runtime phases.
+
+**ABI STATE NOW: binary is Node ABI** (Phase 0 rebuilt it for the unit suite). Before any app/e2e/live run: `pnpm rebuild:electron`. The new CLAUDE_CODE_OAUTH_TOKEN is live-validated (HTTP 200) and stored gitignored.
+
+**Concurrent:** a background agent is deep-analyzing Russell's PowerBI integration kit (`~/Desktop/powerbi_usage_data_transfer_kit`) → `docs/research/powerbi-integration-kit-analysis.md` to drive Phase 2's PowerBI track.
