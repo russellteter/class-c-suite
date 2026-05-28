@@ -12,7 +12,7 @@ import { LENS_ROLES } from '@c-suite/shared-types/agent-definition';
 import type { PlaybookId, PlaybookInput, PlaybookContext } from '@c-suite/shared-types/playbook';
 import { PlaybookIdSchema } from '@c-suite/shared-types/playbook';
 import { transition, type RunEvent } from './state-machine.js';
-import { dispatchLens } from './dispatch.js';
+import { dispatchLens, dispatchSynthesizer } from './dispatch.js';
 import type { IpcEmit } from './hooks.js';
 import { buildVerifierInput, VerifierInputContractViolation } from '../verifier-assembler.js';
 import { runVerifier, StubVerifierInvoker } from '../agents/verifier-runner.js';
@@ -43,6 +43,23 @@ export interface FinalRunState {
   finalState: RunState;
   visitedStates: string[];
   agentRolesInvoked: string[];
+  /** Synthesizer memo markdown (generic state-machine path). Undefined for early-return playbooks. */
+  memoMarkdown?: string;
+  /** Vault-relative memo path the caller SafeWrites to (e.g. memos/2026-05-28-cash_lever-ab12cd34.md). */
+  memoPath?: string;
+}
+
+/**
+ * Vault-relative memo path for a run. Date-stamped + playbook + short runId so
+ * concurrent/repeat runs never collide. Caller joins with vaultPath for SafeWrite.
+ * Draft (rigor < threshold) appends .draft.md per transitions.ts convention.
+ */
+function buildMemoPath(playbookId: string, runId: string, isDraft: boolean): string {
+  const date = new Date().toISOString().slice(0, 10);
+  const safePlaybook = playbookId.replace(/[^a-z0-9_]+/gi, '-');
+  const shortId = runId.replace(/[^a-z0-9]+/gi, '').slice(0, 8) || 'run';
+  const suffix = isDraft ? '.draft.md' : '.md';
+  return `memos/${date}-${safePlaybook}-${shortId}${suffix}`;
 }
 
 function makeFailedReturn(runId: string, visitedStates: string[], agentRolesInvoked: string[], error: { code: string; message: string }): FinalRunState {
@@ -197,10 +214,11 @@ export async function startRun(
   state = afterApprove;
   visitedStates.push(state.kind);
 
-  // fan-out: dispatch all 6 lens agents
+  // fan-out: dispatch all 6 lens agents, capturing their outputs for the Synthesizer.
+  const lensOutputs: Record<string, unknown> = {};
   for (const role of LENS_ROLES) {
     const bundle = buildLensBundle(role, runId, question, playbookId);
-    await dispatchLens(role, bundle, db, emit);
+    lensOutputs[role] = await dispatchLens(role, bundle, db, emit);
     agentRolesInvoked.push(role);
 
     const lensEvent: RunEvent = { kind: 'lens.complete', role, output: {} };
@@ -225,6 +243,12 @@ export async function startRun(
   visitedStates.push(state.kind);
   agentRolesInvoked.push('Synthesizer');
 
+  // Synthesizer dispatch — produces the memo markdown (ADR-0006 §7 step 8).
+  // The generic path previously only recorded 'Synthesizer' as invoked without
+  // running it, so no memo was ever produced. Capture memoMarkdown for SafeWrite.
+  const synthOutput = await dispatchSynthesizer(runId, question, playbookId, lensOutputs, db, emit);
+  const memoMarkdown = synthOutput.memoMarkdown;
+
   // synthesizer → verifier
   const memoEvent: RunEvent = { kind: 'memo.ready' };
   const afterSynth = transition(state, memoEvent, db);
@@ -237,7 +261,7 @@ export async function startRun(
   // ADR-0005 §4 + §6. B35 fix: replaced hardcoded rigorScore:85.
   let computedRigorScore = 85; // fallback if VerifierInputContractViolation (DB not fully seeded)
   let computedPassed = true;
-  let computedMemoPath = `/vault/memos/${runId}.md`;
+  let computedMemoPath = buildMemoPath(playbookId, runId, false);
 
   try {
     // Cast state to synthesizer shape for buildVerifierInput.
@@ -263,9 +287,7 @@ export async function startRun(
     computedRigorScore = rigorScore(verifierOutput);
     const playbookKey = playbookId.replace(/-/g, '_') as Parameters<typeof rigorThreshold>[0];
     computedPassed = computedRigorScore >= rigorThreshold(playbookKey);
-    computedMemoPath = computedPassed
-      ? `/vault/memos/${runId}.md`
-      : `/vault/memos/${runId}.draft.md`;
+    computedMemoPath = buildMemoPath(playbookId, runId, !computedPassed);
   } catch (err) {
     if (err instanceof VerifierInputContractViolation) {
       // DB not fully seeded (expected in stub runs without real synthesizer data).
@@ -345,7 +367,7 @@ export async function startRun(
   visitedStates.push(state.kind);
   agentRolesInvoked.push('Handoff');
 
-  return { finalState: state, visitedStates, agentRolesInvoked };
+  return { finalState: state, visitedStates, agentRolesInvoked, memoMarkdown, memoPath: computedMemoPath };
 }
 
 // ── Ch.9 Handoff preview hook ─────────────────────────────────────────────────

@@ -12,12 +12,16 @@ declare const process: NodeJS.Process & {
   };
 };
 
+import { join } from 'node:path';
+import type DatabaseType from 'better-sqlite3';
 import { createLogger } from './logger.js';
 import { initSqlProxy, type IpcPort } from './sql/proxy.js';
 import { checkAndResumeInProgressRun } from './orchestrator/index.js';
-import { handleHandoffPreviewRequested } from './orchestrator/run-loop.js';
+import { handleHandoffPreviewRequested, startRun } from './orchestrator/run-loop.js';
+import type { IpcEmit } from './orchestrator/hooks.js';
+import { openRunScopedDb } from './orchestrator/inMemoryDb.js';
 import { initScheduler, getScheduler } from './scheduler/index.js';
-import { initSafeWrite } from './safewrite/index.js';
+import { initSafeWrite, safeWrite, getVaultPath } from './safewrite/index.js';
 import type { HandoffGeneratorInput } from '@c-suite/shared-types/handoff';
 
 // B45 diagnostic: emit runtime identity on startup so supervisor can log ABI + Node version.
@@ -78,6 +82,51 @@ process.parentPort.once('message', (e) => {
 
       if (msg?.kind === 'scheduler:reset') {
         getScheduler()?.reset();
+        return;
+      }
+
+      // run.start — drive a playbook through the orchestrator and SafeWrite its memo.
+      // Staged slice (2026-05-28): each run uses its own in-memory DB seeded from
+      // migrations (the orchestrator needs a sync better-sqlite3 handle; the utility
+      // only has the async SQL proxy). Crash-resume + persistent runs-list are
+      // DEFERRED to a later shared-DB decision — see build-log 2026-05-28.
+      if (msg?.kind === 'run.start') {
+        const payload = msg.payload as { runId?: string; playbook?: string; question?: string } | undefined;
+        if (!payload?.runId || !payload.playbook || !payload.question) {
+          log.error({ message: 'run.start: missing payload fields', payload });
+          return;
+        }
+        const { runId, playbook, question } = payload;
+        const emit: IpcEmit = (m) => ipcPort!.postMessage(m);
+        let runDb: DatabaseType.Database | null = null;
+        try {
+          runDb = openRunScopedDb();
+          const result = await startRun(runId, playbook, question, runDb, emit);
+          if (result.memoMarkdown && result.memoPath) {
+            const absPath = join(getVaultPath(), result.memoPath);
+            const writeResult = await safeWrite({
+              absPath,
+              content: result.memoMarkdown,
+              agent: 'Synthesizer',
+              playbook,
+              runId,
+            });
+            log.info({
+              runId,
+              message: 'run.start: memo SafeWrite',
+              memoPath: result.memoPath,
+              ok: 'ok' in writeResult ? writeResult.ok : false,
+            });
+          } else {
+            log.warn({ runId, message: 'run.start: no memo produced (no memoMarkdown/memoPath)' });
+          }
+          log.info({ runId, message: `run.start complete — final state ${result.finalState.kind}` });
+        } catch (err) {
+          log.error({ runId, message: 'run.start failed', err: String(err) });
+          ipcPort!.postMessage({ kind: 'run.failed', payload: { runId, reason: String(err), stage: 'run-loop' } });
+        } finally {
+          runDb?.close();
+        }
         return;
       }
 

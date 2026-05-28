@@ -23,6 +23,12 @@ const vaultPath =
   process.env.VAULT_PATH ??
   path.join(os.homedir(), 'Documents', 'Claude', 'Projects', 'Business Planning');
 
+/** The resolved vault root SafeWrite enforces. Callers building an absPath for
+ *  safeWrite() must root it here so the preflight (absPath inside vaultPath) passes. */
+export function getVaultPath(): string {
+  return vaultPath;
+}
+
 // ---------------------------------------------------------------------------
 // Per-path write lock (Promise serializer)
 // Source: ADR §1.3 — VERBATIM

@@ -53,9 +53,11 @@ export function buildVerifierInput(
   const missing: string[] = [];
 
   // 1. Synthesizer draft memo
+  // Production schema (migration 001): column agent_role + structured_output_json.
+  // Aliased back to output_json so the rest of this assembler is unchanged.
   const synthRow = db.prepare(
-    `SELECT output_json FROM agent_invocations
-     WHERE run_id = ? AND role = 'Synthesizer' AND status = 'completed'`
+    `SELECT structured_output_json AS output_json FROM agent_invocations
+     WHERE run_id = ? AND agent_role = 'Synthesizer' AND status = 'completed'`
   ).get(runId) as OutputRow | undefined;
 
   if (!synthRow) missing.push('synthesizer.output');
@@ -66,8 +68,8 @@ export function buildVerifierInput(
 
   // 2. Lens structured outputs (all 6)
   const lensRows = db.prepare(
-    `SELECT role, output_json FROM agent_invocations
-     WHERE run_id = ? AND role IN ('CEO','CFO','CRO','CMO','CPO','COS') AND status = 'completed'`
+    `SELECT agent_role AS role, structured_output_json AS output_json FROM agent_invocations
+     WHERE run_id = ? AND agent_role IN ('CEO','CFO','CRO','CMO','CPO','COS') AND status = 'completed'`
   ).all(runId) as Array<{ role: string; output_json: string }>;
 
   if (lensRows.length < 6) {
@@ -79,9 +81,9 @@ export function buildVerifierInput(
 
   // 3. Tool-call audit trail (empty list is valid)
   const toolCallRows = db.prepare(
-    `SELECT id as toolCallId, role, tool_name as toolName,
-            input_json as inputJson, result_json as resultJson, ts
-     FROM tool_calls WHERE run_id = ? ORDER BY ts ASC`
+    `SELECT call_id as toolCallId, agent_role as role, tool_name as toolName,
+            args_json as inputJson, result_json as resultJson, called_at as ts
+     FROM tool_calls WHERE run_id = ? ORDER BY called_at ASC`
   ).all(runId) as Array<{
     toolCallId: number;
     role: string;
@@ -100,13 +102,13 @@ export function buildVerifierInput(
 
   // 5. RedTeam + Steelman
   const redTeamRow = db.prepare(
-    `SELECT output_json FROM agent_invocations
-     WHERE run_id = ? AND role = 'RedTeam' AND status = 'completed'`
+    `SELECT structured_output_json AS output_json FROM agent_invocations
+     WHERE run_id = ? AND agent_role = 'RedTeam' AND status = 'completed'`
   ).get(runId) as OutputRow | undefined;
 
   const steelmanRow = db.prepare(
-    `SELECT output_json FROM agent_invocations
-     WHERE run_id = ? AND role = 'Steelman' AND status = 'completed'`
+    `SELECT structured_output_json AS output_json FROM agent_invocations
+     WHERE run_id = ? AND agent_role = 'Steelman' AND status = 'completed'`
   ).get(runId) as OutputRow | undefined;
 
   if (!redTeamRow) missing.push('redTeam.output');

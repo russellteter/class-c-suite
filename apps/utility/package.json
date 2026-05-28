@@ -21,6 +21,7 @@
     "@c-suite/stub-harness": "workspace:*",
     "@c-suite/writeback-engine": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "better-sqlite3": "^12.10.0",
     "chokidar": "^3.6.0",
     "electron": "^33.4.11",
     "googleapis": "^172.0.0",
@@ -31,6 +32,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "typescript": "^5.8.0"
   }
 }

@@ -90,10 +90,12 @@ export function createHooks(ctx: HookContext): {
       payload: { runId, agentId, role },
     });
 
+    // Production schema (migration 001): invocation_id PK NOT NULL, column agent_role.
+    // Deterministic id (runId-role) so the deferred tool_calls FK can reference it.
     db.prepare(
-      `INSERT OR IGNORE INTO agent_invocations (run_id, role, started_at, status)
-       VALUES (?, ?, unixepoch(), 'in_progress')`
-    ).run(runId, role);
+      `INSERT OR IGNORE INTO agent_invocations (invocation_id, run_id, agent_role, started_at, status)
+       VALUES (?, ?, ?, unixepoch(), 'in_progress')`
+    ).run(`${runId}-${role}`, runId, role);
 
     return {};
   };
@@ -169,8 +171,8 @@ export function createHooks(ctx: HookContext): {
     // Write to agent_invocations BEFORE transitioning state (checkpoint ordering ADR §7.1)
     db.prepare(
       `UPDATE agent_invocations
-       SET status = 'completed', output_json = json(?), completed_at = unixepoch()
-       WHERE run_id = ? AND role = ?`
+       SET status = 'completed', structured_output_json = json(?), completed_at = unixepoch()
+       WHERE run_id = ? AND agent_role = ?`
     ).run(JSON.stringify(parseResult.data), runId, role);
 
     ipcEmit({

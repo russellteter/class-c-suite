@@ -113,3 +113,96 @@ export async function dispatchLens<R extends LensRole>(
   const output = await onSubagentStop(rawOutput);
   return output as LensOutput;
 }
+
+// ── dispatchSynthesizer — memo production ───────────────────────────────────────
+//
+// The Synthesizer is NOT a lens: it receives every lens output (no lens-isolation
+// guard applies). It produces the memo markdown with [^source-id] citations
+// (ADR-0006 §7 step 8). Mirrors dispatchLens's STUB_MODE branching:
+//   replay → read the Synthesizer fixture's output.memoMarkdown
+//   record/live → modelClientFromEnv().invoke(SynthesizerDefinition, context)
+
+export interface SynthesizerOutput {
+  role: 'Synthesizer';
+  runId: string;
+  memoMarkdown: string;
+  executiveSummary?: string;
+  keyDecisions?: unknown[];
+  citations?: unknown[];
+  positionMetadata?: unknown;
+}
+
+export async function dispatchSynthesizer(
+  runId: string,
+  question: string,
+  playbookId: string,
+  lensOutputs: Record<string, unknown>,
+  db: Database.Database,
+  ipcEmit?: IpcEmit,
+): Promise<SynthesizerOutput> {
+  const emit: IpcEmit = ipcEmit ?? (() => void 0);
+  const { onSubagentStart, onSubagentStop } = createHooks({
+    runId,
+    role: 'Synthesizer',
+    db,
+    ipcEmit: emit,
+  });
+
+  const mode = getStubMode();
+
+  if (mode === 'replay') {
+    const { join } = await import('path');
+    const { existsSync, readFileSync } = await import('fs');
+
+    const fixturePaths = [
+      join(process.cwd(), 'tests', 'fixtures', 'lens-outputs', 'seed-run-001', 'Synthesizer.json'),
+      join(process.cwd(), 'tests', 'fixtures', 'lens-outputs', runId, 'Synthesizer.json'),
+    ];
+
+    for (const fixturePath of fixturePaths) {
+      if (existsSync(fixturePath)) {
+        const raw = JSON.parse(readFileSync(fixturePath, 'utf8')) as { output: SynthesizerOutput };
+        await onSubagentStart(
+          { hook_event_name: 'SubagentStart', agent_id: 'Synthesizer-stub', agent_type: 'synthesizer' },
+          'stub',
+          {},
+        );
+        const output = (await onSubagentStop(raw.output)) as SynthesizerOutput;
+        return { ...output, role: 'Synthesizer', runId };
+      }
+    }
+
+    // No fixture — minimal honest stub (no fabricated analysis).
+    const stub: SynthesizerOutput = {
+      role: 'Synthesizer',
+      runId,
+      memoMarkdown: `# ${playbookId} memo (stub)\n\nNo Synthesizer fixture found for run ${runId}.\n\nQuestion: ${question}`,
+      citations: [],
+    };
+    await onSubagentStart(
+      { hook_event_name: 'SubagentStart', agent_id: 'Synthesizer-stub', agent_type: 'synthesizer' },
+      'stub',
+      {},
+    );
+    await onSubagentStop(stub);
+    return stub;
+  }
+
+  // record / live: route through the model-client factory with the assembled context.
+  const def = AGENT_REGISTRY['Synthesizer'];
+  const client = modelClientFromEnv();
+
+  await onSubagentStart(
+    { hook_event_name: 'SubagentStart', agent_id: 'Synthesizer-live', agent_type: 'synthesizer' },
+    'live',
+    {},
+  );
+
+  const rawOutput = await client.invoke(
+    { role: def.role, systemPrompt: def.systemPrompt },
+    { runId, question, playbook: playbookId, lensOutputs },
+  );
+
+  const output = (await onSubagentStop(rawOutput)) as SynthesizerOutput;
+  return { ...output, role: 'Synthesizer', runId };
+}
