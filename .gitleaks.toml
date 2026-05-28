@@ -1,0 +1,32 @@
+title = "c-suite gitleaks config"
+
+[extend]
+# Extend the default ruleset
+useDefault = true
+
+[allowlist]
+description = "Allowlist for test fixtures, lockfiles, and known safe patterns"
+
+# Entire paths that are always safe to skip
+paths = [
+  '''fixtures/''',
+  '''\.env\.local''',
+  '''\.env\.example''',
+  '''package-lock\.json''',
+  '''pnpm-lock\.yaml''',
+  '''yarn\.lock''',
+]
+
+# Known test fixture commits
+commits = [
+  "7f29b737d79975f49b84ae7cd4521a53bdff1ecb",
+]
+
+# Regexes for known safe patterns
+regexes = [
+  # Explicit test/fake/example labels in the same line
+  '''(?i)(test|fake|example|placeholder|dummy|sample)[-_]?(key|secret|token|cred)''',
+  # NetSuite TBA test fixture constants (tba-auth.spec.ts)
+  '''test-consumer-(key|secret)-[a-z0-9]+''',
+  '''test-token-(id|secret)-[a-z0-9]+''',
+]

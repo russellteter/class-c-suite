@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+# .husky/pre-commit — credential leak prevention
+# Runs scan-staged-secrets.sh before every commit.
+# Exit non-zero from the script blocks the commit.
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+"$REPO_ROOT/scripts/scan-staged-secrets.sh"
