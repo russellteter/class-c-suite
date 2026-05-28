@@ -14,6 +14,7 @@ import { PlanApproval, type Ch5RunPlan } from './screens/PlanApproval.js';
 import { HandoffPreview } from './screens/HandoffPreview.js';
 import { SettingsScheduler } from './screens/SettingsScheduler.js';
 import { NotificationSettings } from './screens/NotificationSettings.js';
+import { Connectors } from './screens/Connectors.js';
 import type { PlaybookId } from './components/HomeTypes.js';
 import { onHandoffPreviewReady, type HandoffBrief } from './ipc/handoff.js';
 
@@ -29,7 +30,8 @@ type Screen =
   | { name: 'handoff-preview'; brief: HandoffBrief; returnScreen: Screen }
   // Ch.10 — Settings sub-screens
   | { name: 'settings-scheduler'; selectedJobId?: string }
-  | { name: 'settings-notifications' };
+  | { name: 'settings-notifications' }
+  | { name: 'settings-connectors' };
 
 function initialScreen(): Screen {
   // Allow test navigation via URL query params (brief §Wiring: "openable via a test route")
@@ -119,6 +121,13 @@ export function App(): React.ReactElement {
         />
       );
 
+    case 'settings-connectors':
+      return (
+        <Connectors
+          onBack={() => navigateTo({ name: 'home' })}
+        />
+      );
+
     case 'handoff-preview':
       return (
         <HandoffPreview
@@ -202,6 +211,12 @@ export function App(): React.ReactElement {
                 style={{ fontSize: 11, padding: '2px 8px', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155', borderRadius: 4, cursor: 'pointer' }}
               >
                 AcceptedHistory
+              </button>
+              <button
+                onClick={() => navigateTo({ name: 'settings-connectors' })}
+                style={{ fontSize: 11, padding: '2px 8px', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Connectors
               </button>
             </div>
           )}

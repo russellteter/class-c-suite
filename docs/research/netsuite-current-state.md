@@ -1,83 +1,48 @@
 # NetSuite Current Table Accessibility State
 
-> Last verified: 2026-05-28
+> Last updated: 2026-05-28 (ADR-0015 OAuth migration)
 > Account: 603734
-> Source: context7 + handoff findings (2026-05-28_05-34) + prior session live probes
+> Auth: OAuth 2.0 public client + PKCE via the NetSuite AI Connector Service (MCP), scope `mcp`
 > Live probe script: `scripts/netsuite-smoke-which-tables-work.ts`
 
-## Accessible Tables (PASS)
+## Auth model (replaces TBA)
 
-| Table | Status | Evidence | Action |
-|---|---|---|---|
-| `transaction` | PASS | Prior session: 8,148 transactions returned via live MCP probe | — |
-| `subsidiary` | PASS | Prior session: subsidiaries returned via whoami + subsidiary query | — |
+The integration moved off Token-Based Authentication (TBA / OAuth 1.0a + REST SuiteQL) onto
+OAuth 2.0 against the hosted NetSuite AI Connector Service (remote MCP server, streamable HTTP).
+Queries run via the MCP Standard Tools (`ns_runCustomSuiteQL`, `ns_runSavedSearch`) under
+Russell's user (custom MCP) role, **not** the limited TBA integration role.
 
-## Blocked Tables (role permission denied)
+Canonical role requirement (already granted ~2 months ago):
+- **MCP Server Connection** (Full)
+- **Log in using OAuth 2.0 Access Tokens** (Full)
+- **REST Web Services** (Full) — required for the SuiteQL tool to be visible
+- Record/list View permissions for the data the tools should read
+- A dedicated custom role (the Administrator role is blocked by design)
 
-| Table | Status | Evidence | Action Required |
-|---|---|---|---|
-| `account` | BLOCKED | HTTP 400 "Record 'account' not found" — NS permission-denied signal | Grant View in Lists tab |
-| `department` | BLOCKED | HTTP 400 "Record 'department' not found" | Grant View in Lists tab |
-| `classification` | BLOCKED | HTTP 400 "Record 'classification' not found" | Grant View in Lists tab |
-| `employee` | BLOCKED | HTTP 400 "Record 'employee' not found" | Grant View in Lists tab |
-| `accountingperiod` | BLOCKED | HTTP 400 "Record 'accountingperiod' not found" | Grant View in Lists tab |
+## Table accessibility (VERIFY-PENDING-CREDS)
 
-## Unknown / Not Yet Probed
+Under the TBA integration role, `account`, `department`, `classification`, `employee`, and
+`accountingperiod` returned HTTP 400 permission-denied; `transaction` and `subsidiary` read.
 
-Tables below require live credentials to probe. Run the smoke script after sourcing `.env.local`:
+Under OAuth + the user's MCP role these five are **expected to read clean**. This has NOT yet
+been verified live — `NETSUITE_OAUTH_CLIENT_ID` is not yet set in `apps/main/.env.local` and
+the Integration Record creation is a Russell action. The deny-list cold-start seed was removed
+from the client; `isNetSuiteTableReadable` now probes each table live (no pre-poisoned cache).
+
+To verify once creds land:
 
 ```
 source apps/main/.env.local && npx tsx scripts/netsuite-smoke-which-tables-work.ts
 ```
 
-Tables to probe: `vendor`, `customer`, `item`, `currency`, `location`, `budgetcategory`,
-`billingaccount`, `rolepermissions`, and transaction sub-types via `type` filter.
+Expected: 9 PASS (transaction, subsidiary, account, department, classification, employee,
+accountingperiod, customer, vendor), 0 BLOCKED. The script rewrites this file with live results.
 
-## metaDataProvider Research Finding
+## Sources
 
-**Context7 confirmed (2026-05-28):** The `metaDataProvider` option is a SuiteScript N/query module
-parameter only — not available as an HTTP header on the REST `/services/rest/query/v1/suiteql`
-endpoint.
-
-Sources:
-- https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/section_157960586441.html
-- https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/section_1510780212.html
-
-Behavior:
-- `SUITE_QL` (default): query fails with HTTP 400 if role lacks permission on any referenced table.
-- `STATIC`: query proceeds but silently omits data for unauthorized fields/records.
-
-**Critical finding:** `STATIC` is only settable from SuiteScript server-side code (N/query module).
-It is **not** settable via HTTP header on the REST API. The C-Suite app uses REST + TBA — there is
-no technical workaround. The `metaDataProvider=STATIC` path is inaccessible from the integration.
-
-**Conclusion:** No alternate metaDataProvider bypasses role permission via REST. Brian must grant
-View on the 5 blocked tables. See `docs/external/brian-netsuite-role-perms-request.md`.
-
-## Degraded-mode client hardening (Ch.8)
-
-`isNetSuiteTableReadable(table)` added to `apps/utility/src/mcp/netsuite/client.ts`:
-- Seeds known-blocked 5 tables as `false` on construction (no round-trip on cold start).
-- Lazy-probes unknown tables on first call; caches result for client instance lifetime.
-- Playbooks call this before any gated SuiteQL query; if `false`, include a `DegradationWarning`
-  in `PlaybookResult.degradationWarnings` instead of crashing.
-- `buildDegradationWarning(table, attemptedQuery?)` produces the structured warning.
-
-`DegradationWarning` type added to `packages/shared-types/src/playbook.ts`:
-```ts
-interface DegradationWarning {
-  table: string;
-  reason: string;
-  remediation: string;
-  attemptedQuery?: string;
-}
-```
-
-`PlaybookResult.degradationWarnings?: DegradationWarning[]` added to the result schema.
-
-## Next steps
-
-1. Send `docs/external/brian-netsuite-role-perms-request.md` to Brian.
-2. After perms granted, run `scripts/netsuite-smoke-which-tables-work.ts` — all 5 should flip PASS.
-3. Remove those 5 from `KNOWN_BLOCKED_TABLES` in `client.ts` once confirmed PASS.
-4. Wire real SuiteQL cash/payroll queries into playbooks (currently stubs) in Ch.8 full wiring.
+- Oracle — NetSuite AI Connector Service FAQ (Auth Code + PKCE, non-Admin role):
+  https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/article_4160616848.html
+- Oracle — Available Tools in the MCP Standard Tools SuiteApp (SuiteQL / Saved Search tools):
+  https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/article_0902023508.html
+- Dust — NetSuite connector config (scope `mcp`, authorize + token URLs):
+  https://docs.dust.tt/docs/netsuite

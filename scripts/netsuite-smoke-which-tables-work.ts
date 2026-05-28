@@ -1,230 +1,126 @@
 #!/usr/bin/env npx tsx
 // scripts/netsuite-smoke-which-tables-work.ts
-// Probes SuiteQL accessibility for a set of common tables against prod account 603734.
-// Reads TBA credentials from NETSUITE_* env vars (same as apps/main/.env.local).
+// Probes SuiteQL table accessibility against prod account 603734 via the hosted
+// NetSuite AI Connector Service (remote MCP server) using OAuth 2.0 PUBLIC-CLIENT +
+// PKCE. Replaces the prior TBA/OAuth1.0a REST probe.
+//
+// Auth: runs the shared OAuth authorization-code flow once (opens the browser to the
+//   NetSuite authorize URL, captures the loopback redirect on
+//   http://localhost:8765/oauth/callback), then opens an MCP session and invokes the
+//   ns_runCustomSuiteQL tool for each table.
+//
+// Preconditions (RUSSELL-CREDS-GATED — exits 1 if absent):
+//   NETSUITE_ACCOUNT_ID, NETSUITE_OAUTH_CLIENT_ID
+//   (optional overrides: NETSUITE_OAUTH_REDIRECT_URI, NETSUITE_MCP_SERVER_URL)
 //
 // Usage:
 //   source apps/main/.env.local && npx tsx scripts/netsuite-smoke-which-tables-work.ts
 //
-// Output: table-by-table PASS/BLOCKED/ERROR with HTTP status + error detail.
-// Results written to docs/research/netsuite-current-state.md.
+// EXPECTED under OAuth (Russell's user role): all 9 of transaction, subsidiary, account,
+//   department, classification, employee, accountingperiod, customer, vendor PASS;
+//   BLOCKED list empty. (TBA's integration role could not read the middle five.)
 
-import crypto from 'crypto';
 import { writeFileSync } from 'fs';
 import { resolve } from 'path';
+import { runAuthorizationCodeFlow } from '../apps/utility/src/mcp/oauth/authCodeFlow.js';
+import { callNetSuiteTool } from '../apps/utility/src/mcp/netsuite/mcp-transport.js';
+import { TOOL_SUITEQL } from '../apps/utility/src/mcp/netsuite/client.js';
+import {
+  readNetSuiteOAuthEnv,
+  buildNetSuiteOAuthConfig,
+} from '../apps/utility/src/mcp/netsuite/oauth-config.js';
 
-// ── TBA credential read ───────────────────────────────────────────────────────
-
-const accountId = process.env['NETSUITE_ACCOUNT_ID'];
-const consumerKey = process.env['NETSUITE_CONSUMER_KEY'];
-const consumerSecret = process.env['NETSUITE_CONSUMER_SECRET'];
-const tokenId = process.env['NETSUITE_TBA_TOKEN_ID'];
-const tokenSecret = process.env['NETSUITE_TBA_TOKEN_SECRET'];
-
-if (!accountId || !consumerKey || !consumerSecret || !tokenId || !tokenSecret) {
-  console.error('ERROR: Missing NETSUITE_* env vars. Run: source apps/main/.env.local');
+const env = readNetSuiteOAuthEnv();
+if (!env) {
+  console.error(
+    'ERROR: Missing NETSUITE_OAUTH_CLIENT_ID / NETSUITE_ACCOUNT_ID. ' +
+      'Register a NetSuite OAuth 2.0 Public Client Integration Record (redirect URI ' +
+      'http://localhost:8765/oauth/callback) and run: source apps/main/.env.local',
+  );
   process.exit(1);
 }
 
-// ── HMAC-SHA256 OAuth 1.0a (same logic as tba-auth.ts) ───────────────────────
+const accountId = env.accountId;
+const config = buildNetSuiteOAuthConfig(env);
 
-function buildAuthHeader(method: string, url: string): string {
-  const nonce = crypto.randomBytes(16).toString('hex');
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const realm = accountId!;
-
-  const params: Record<string, string> = {
-    oauth_consumer_key: consumerKey!,
-    oauth_nonce: nonce,
-    oauth_signature_method: 'HMAC-SHA256',
-    oauth_timestamp: timestamp,
-    oauth_token: tokenId!,
-    oauth_version: '1.0',
-  };
-
-  // Build signature base string
-  const sortedParams = Object.keys(params)
-    .sort()
-    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k]!)}`)
-    .join('&');
-
-  const signingKey = `${encodeURIComponent(consumerSecret!)}&${encodeURIComponent(tokenSecret!)}`;
-  const baseString = `${method}&${encodeURIComponent(url)}&${encodeURIComponent(sortedParams)}`;
-  const signature = crypto.createHmac('sha256', signingKey).update(baseString).digest('base64');
-
-  return (
-    `OAuth realm="${realm}",` +
-    `oauth_consumer_key="${consumerKey}",` +
-    `oauth_token="${tokenId}",` +
-    `oauth_signature_method="HMAC-SHA256",` +
-    `oauth_timestamp="${timestamp}",` +
-    `oauth_nonce="${nonce}",` +
-    `oauth_version="1.0",` +
-    `oauth_signature="${encodeURIComponent(signature)}"`
-  );
-}
-
-// ── Table probe list ───────────────────────────────────────────────────────────
-// Format: [tableName, simpleSelectQuery, category]
-// Known-blocked (role perm denied): account, department, classification, employee, accountingperiod
-// Expected working: transaction, subsidiary
-// Additional common tables to probe:
-
-const PROBES: Array<[string, string, 'expected-pass' | 'expected-blocked' | 'unknown']> = [
-  // Expected to pass (confirmed working in prior session)
-  ['transaction', 'SELECT id, trandate, tranid FROM transaction FETCH NEXT 1 ROWS ONLY', 'expected-pass'],
-  ['subsidiary', 'SELECT id, name FROM subsidiary FETCH NEXT 1 ROWS ONLY', 'expected-pass'],
-
-  // Expected blocked (role permission denied per BLOCKERS B1)
-  ['account', 'SELECT id, acctnumber, acctname FROM account FETCH NEXT 1 ROWS ONLY', 'expected-blocked'],
-  ['department', 'SELECT id, name FROM department FETCH NEXT 1 ROWS ONLY', 'expected-blocked'],
-  ['classification', 'SELECT id, name FROM classification FETCH NEXT 1 ROWS ONLY', 'expected-blocked'],
-  ['employee', 'SELECT id, firstname, lastname FROM employee FETCH NEXT 1 ROWS ONLY', 'expected-blocked'],
-  ['accountingperiod', 'SELECT id, periodname FROM accountingperiod FETCH NEXT 1 ROWS ONLY', 'expected-blocked'],
-
-  // Unknown — probe to expand working set
-  ['vendor', 'SELECT id, entityid FROM vendor FETCH NEXT 1 ROWS ONLY', 'unknown'],
-  ['customer', 'SELECT id, entityid FROM customer FETCH NEXT 1 ROWS ONLY', 'unknown'],
-  ['item', 'SELECT id, itemid FROM item FETCH NEXT 1 ROWS ONLY', 'unknown'],
-  ['invoice', 'SELECT id, tranid FROM transaction WHERE type = \'CustInvc\' FETCH NEXT 1 ROWS ONLY', 'unknown'],
-  ['journalentry', 'SELECT id, tranid FROM transaction WHERE type = \'Journal\' FETCH NEXT 1 ROWS ONLY', 'unknown'],
-  ['currency', 'SELECT id, symbol, name FROM currency FETCH NEXT 1 ROWS ONLY', 'unknown'],
-  ['location', 'SELECT id, name FROM location FETCH NEXT 1 ROWS ONLY', 'unknown'],
-  ['budgetcategory', 'SELECT id, name FROM budgetcategory FETCH NEXT 1 ROWS ONLY', 'unknown'],
-  ['billingaccount', 'SELECT id FROM billingaccount FETCH NEXT 1 ROWS ONLY', 'unknown'],
-  ['rolepermissions', 'SELECT role, permkey FROM rolepermissions WHERE role = 1028 FETCH NEXT 5 ROWS ONLY', 'unknown'],
+const TABLES: string[] = [
+  'transaction',
+  'subsidiary',
+  // Previously blocked under TBA's integration role — expected to flip PASS under OAuth.
+  'account',
+  'department',
+  'classification',
+  'employee',
+  'accountingperiod',
+  'customer',
+  'vendor',
 ];
-
-// ── Probe runner ──────────────────────────────────────────────────────────────
 
 interface ProbeResult {
   table: string;
-  query: string;
-  category: string;
   status: 'PASS' | 'BLOCKED' | 'ERROR';
-  httpStatus: number;
+  detail: string;
   rowCount?: number;
-  errorCode?: string;
-  errorMsg?: string;
 }
 
-async function probeTable(
-  table: string,
-  query: string,
-  category: string,
-): Promise<ProbeResult> {
-  const url = `https://${accountId}.suitetalk.api.netsuite.com/services/rest/query/v1/suiteql`;
-  const auth = buildAuthHeader('POST', url);
-
+async function probe(accessToken: string, table: string): Promise<ProbeResult> {
+  const query = `SELECT id FROM ${table} FETCH NEXT 1 ROWS ONLY`;
   try {
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: auth,
-        'Content-Type': 'application/json',
-        Prefer: 'transient',
-      },
-      body: JSON.stringify({ q: query }),
-      signal: AbortSignal.timeout(15_000),
-    });
-
-    if (resp.ok) {
-      const data = await resp.json() as { count?: number; items?: unknown[] };
-      return {
-        table,
-        query,
-        category,
-        status: 'PASS',
-        httpStatus: resp.status,
-        rowCount: data.count ?? data.items?.length ?? 0,
-      };
+    const result = await callNetSuiteTool(env!.mcpServerUrl, accessToken, TOOL_SUITEQL, { query });
+    const text = result.content?.map((c) => c.text ?? '').join('') ?? '';
+    if (result.isError) {
+      const lower = text.toLowerCase();
+      const blocked = lower.includes('not found') || lower.includes('insufficient permission') || lower.includes('invalid_record_type');
+      return { table, status: blocked ? 'BLOCKED' : 'ERROR', detail: text.slice(0, 120) };
     }
-
-    const text = await resp.text();
-    let errorCode = String(resp.status);
-    let errorMsg = text;
+    let rowCount: number | undefined;
     try {
-      const errObj = JSON.parse(text) as { title?: string; o_error?: { code: string; message: string } };
-      errorCode = errObj?.o_error?.code ?? errorCode;
-      errorMsg = errObj?.o_error?.message ?? errObj?.title ?? text;
-    } catch { /* leave as raw text */ }
-
-    // NetSuite reports role permission denied as 400 "INVALID_RECORD_TYPE" or "Record X not found"
-    const isPermDenied =
-      resp.status === 400 &&
-      (errorMsg.toLowerCase().includes('not found') ||
-        errorMsg.toLowerCase().includes('invalid_record_type') ||
-        errorMsg.toLowerCase().includes('insufficient permission'));
-
-    return {
-      table,
-      query,
-      category,
-      status: isPermDenied ? 'BLOCKED' : 'ERROR',
-      httpStatus: resp.status,
-      errorCode,
-      errorMsg: errorMsg.slice(0, 200),
-    };
+      const parsed = JSON.parse(text) as { count?: number; items?: unknown[] };
+      rowCount = parsed.count ?? parsed.items?.length;
+    } catch { /* leave undefined */ }
+    return { table, status: 'PASS', detail: `${rowCount ?? '?'} row(s)`, rowCount: rowCount ?? 0 };
   } catch (err) {
-    return {
-      table,
-      query,
-      category,
-      status: 'ERROR',
-      httpStatus: 0,
-      errorMsg: String(err).slice(0, 200),
-    };
+    return { table, status: 'ERROR', detail: String(err).slice(0, 120) };
   }
 }
 
-// ── Main ───────────────────────────────────────────────────────────────────────
-
 async function main() {
-  console.log(`\nNetSuite table accessibility probe — account ${accountId}\n`);
-  console.log(`Probing ${PROBES.length} tables...\n`);
+  console.log(`\nNetSuite AI Connector (MCP) table accessibility probe — account ${accountId}`);
+  console.log(`MCP server: ${env!.mcpServerUrl}`);
+  console.log(`Redirect URI: ${env!.redirectUri}`);
+  console.log('Opening browser for OAuth consent (select your custom MCP role, NOT Administrator)...\n');
+
+  const tokenSet = await runAuthorizationCodeFlow(config);
+  const accessToken = tokenSet.accessToken;
+  console.log('OAuth access token obtained. Probing tables via ns_runCustomSuiteQL...\n');
 
   const results: ProbeResult[] = [];
-
-  for (const [table, query, category] of PROBES) {
+  for (const table of TABLES) {
     process.stdout.write(`  ${table.padEnd(22)}`);
-    const r = await probeTable(table, query, category);
+    const r = await probe(accessToken, table);
     results.push(r);
     const icon = r.status === 'PASS' ? '✓' : r.status === 'BLOCKED' ? '✗' : '!';
-    const detail =
-      r.status === 'PASS'
-        ? `HTTP ${r.httpStatus}, ${r.rowCount} row(s)`
-        : `HTTP ${r.httpStatus} — ${r.errorCode}: ${(r.errorMsg ?? '').slice(0, 80)}`;
-    console.log(`${icon}  ${r.status.padEnd(8)} ${detail}`);
-    // Small delay to avoid overwhelming the API
+    console.log(`${icon}  ${r.status.padEnd(8)} ${r.detail}`);
     await new Promise((res) => setTimeout(res, 300));
   }
 
   const passing = results.filter((r) => r.status === 'PASS');
   const blocked = results.filter((r) => r.status === 'BLOCKED');
   const errored = results.filter((r) => r.status === 'ERROR');
-
   console.log(`\nSummary: ${passing.length} PASS / ${blocked.length} BLOCKED / ${errored.length} ERROR\n`);
 
-  // ── Write docs/research/netsuite-current-state.md ──────────────────────────
-
   const now = new Date().toISOString().slice(0, 10);
-  const passRows = passing
-    .map((r) => `| \`${r.table}\` | PASS | ${r.rowCount} row(s) returned | — |`)
-    .join('\n');
-  const blockRows = blocked
-    .map((r) => `| \`${r.table}\` | BLOCKED | HTTP ${r.httpStatus} — ${r.errorCode} | Grant View in Lists tab |`)
-    .join('\n');
-  const errRows =
-    errored.length > 0
-      ? errored
-          .map((r) => `| \`${r.table}\` | ERROR | HTTP ${r.httpStatus} — ${(r.errorMsg ?? '').slice(0, 60)} | Investigate |`)
-          .join('\n')
-      : '| — | — | — | — |';
+  const passRows = passing.map((r) => `| \`${r.table}\` | PASS | ${r.detail} | — |`).join('\n');
+  const blockRows = blocked.map((r) => `| \`${r.table}\` | BLOCKED | ${r.detail} | Grant View on the user's MCP role |`).join('\n');
+  const errRows = errored.length > 0
+    ? errored.map((r) => `| \`${r.table}\` | ERROR | ${r.detail} | Investigate |`).join('\n')
+    : '| — | — | — | — |';
 
   const md = `# NetSuite Current Table Accessibility State
 
 > Generated: ${now}
 > Account: ${accountId}
+> Auth: OAuth 2.0 public client + PKCE via NetSuite AI Connector Service (MCP), scope \`mcp\`, Russell's user role
 > Source: \`scripts/netsuite-smoke-which-tables-work.ts\`
 
 ## Accessible Tables (PASS)
@@ -245,40 +141,17 @@ ${blockRows || '| — | — | — | — |'}
 |---|---|---|---|
 ${errRows}
 
-## metaDataProvider Research Finding
+## Notes
 
-**Context7 confirmed (2026-05-28):** The \`metaDataProvider\` option is a SuiteScript N/query module
-parameter only — not available as an HTTP header on the REST \`/services/rest/query/v1/suiteql\`
-endpoint. The REST endpoint only accepts \`Prefer: transient\`.
-
-- \`SUITE_QL\` (default): query fails with HTTP 400 if the role lacks permission on any referenced table.
-- \`STATIC\`: query proceeds but silently omits data for unauthorized fields/records.
-
-**Critical finding:** \`STATIC\` is only settable from SuiteScript server-side code (N/query module),
-not via REST HTTP headers. There is **no REST API workaround** that bypasses role permission without
-a NetSuite admin granting the View permission. The \`metaDataProvider=STATIC\` path is not accessible
-from the C-Suite app's TBA REST integration.
-
-**Conclusion:** Brian must grant View on account/department/classification/employee/accountingperiod
-(see \`docs/external/brian-netsuite-role-perms-request.md\`). No alternative technical path exists.
-
-## Degraded-mode client hardening
-
-\`isNetSuiteTableReadable(table)\` added to \`apps/utility/src/mcp/netsuite/client.ts\`:
-- Probes each table on first call; caches result per table name for the client instance lifetime.
-- Seeds with the 5 known-blocked tables as BLOCKED on construction (cold-start, no round-trip needed).
-- Playbooks call \`isNetSuiteTableReadable\` before querying; if false, emit \`DegradationWarning\`
-  via the existing \`PlaybookResult.degradationWarnings\` field.
-
-## Next step
-
-Send \`docs/external/brian-netsuite-role-perms-request.md\` to Brian. Once perms land,
-re-run this script to verify all 5 blocked tables flip to PASS.
+Under OAuth 2.0 + the NetSuite AI Connector Service the session runs with the user's
+custom MCP role (MCP Server Connection + "Log in using OAuth 2.0 Access Tokens" + REST
+Web Services), not the limited integration role TBA used. The five tables that returned
+HTTP 400 under TBA (account/department/classification/employee/accountingperiod) are
+expected to read clean here. If any still BLOCKED, the MCP role lacks View on that table.
 `;
 
-  const outPath = resolve(process.cwd(), 'docs/research/netsuite-current-state.md');
-  writeFileSync(outPath, md, 'utf8');
-  console.log(`Results written to: ${outPath}`);
+  writeFileSync(resolve(process.cwd(), 'docs/research/netsuite-current-state.md'), md, 'utf8');
+  console.log('Results written to: docs/research/netsuite-current-state.md');
 }
 
 main().catch((err) => {

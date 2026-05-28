@@ -1552,3 +1552,35 @@ TRACK 1 builds the assembly leg (acceptance: `pnpm dev` opens an Electron window
 - `electron-builder.yml` (files block)
 - `docs/decisions/0013-ch7-vite-assembly.md` (created)
 - `docs/assets/ch7-home-screen.png` (placeholder — replace via desktop run)
+
+---
+
+## Track 3 — NetSuite OAuth 2.0 migration (2026-05-28)
+
+### Summary
+Migrated NetSuite off TBA (OAuth 1.0a) onto OAuth 2.0 Authorization Code + PKCE, public client,
+scope `mcp`, talking to the hosted NetSuite AI Connector Service. Build complete; live creds gated.
+
+### Decommission note
+`~/mcp-servers/netsuite-mcp` (local standalone TBA MCP server) is superseded by the hosted remote
+MCP server (`https://603734.suitetalk.api.netsuite.com/services/mcp/v1/all`). Decommission is a
+Russell action: run `claude mcp remove netsuite` (or the equivalent) and delete `~/mcp-servers/netsuite-mcp/`.
+
+### End state
+`BUILD-COMPLETE-VERIFY-PENDING-CREDS` — all code, tests (105 green), docs, and ADR-0015 committed.
+Awaiting: Russell registers the NetSuite Integration Record (public client, scope=mcp, redirect URI
+http://localhost:8765/oauth/callback) and pastes NETSUITE_OAUTH_CLIENT_ID into apps/main/.env.local.
+
+### Files touched
+- `apps/utility/src/mcp/oauth/{pkce,loopbackServer,authCodeFlow,tokenStore,index}.ts` — reusable OAuth PKCE primitives
+- `apps/utility/src/mcp/netsuite/client.ts` — rewritten onto OAuth + MCP tools
+- `apps/utility/src/mcp/netsuite/mcp-transport.ts` — new; MCP session over streamable HTTP
+- `apps/utility/src/mcp/netsuite/oauth-config.ts` — new; endpoints, scope `mcp`, env reader (no secret)
+- `apps/utility/src/mcp/netsuite/errors.ts` — error messages updated; no client-secret reference
+- `apps/main/.env.local` — TBA vars removed; OAuth placeholders added (gitignored, not committed)
+- `apps/renderer/src/screens/Connectors.tsx` — new Settings → Connectors screen with Connect button
+- `tests/unit/mcp/netsuite/client.spec.ts` — refactored to toolInvoker seam (105 tests, 0 failures)
+- `tests/unit/mcp/oauth/oauth-primitives.spec.ts` — new; scope confirmed `mcp`
+- `docs/decisions/0015-netsuite-oauth-migration.md` — ADR written
+- `docs/research/netsuite-current-state.md` — OAuth replaces TBA; pending live verification
+- `docs/external/brian-netsuite-role-perms-request.md` — marked SUPERSEDED

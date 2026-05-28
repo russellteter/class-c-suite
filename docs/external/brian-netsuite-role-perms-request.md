@@ -1,3 +1,9 @@
+> **SUPERSEDED (2026-05-28) by ADR-0015.** The C-Suite NetSuite integration migrated off TBA
+> onto OAuth 2.0 via the NetSuite AI Connector Service. OAuth runs under Russell's user (custom
+> MCP) role, which already has the required permissions (MCP Server Connection + "Log in using
+> OAuth 2.0 Access Tokens" + REST Web Services), so this TBA-role grant request is obsolete.
+> Kept for history. Do not send.
+
 # NetSuite Role Permissions Request — C-Suite Integration
 
 Hi Brian,
