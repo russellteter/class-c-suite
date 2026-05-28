@@ -16,6 +16,8 @@
 import { createLogger } from '../../logger.js';
 import { insertToolCall } from '../../db/tool-calls.js';
 import type Database from 'better-sqlite3';
+import type { PlaybookDeps } from '@c-suite/shared-types/playbook';
+import type { AWSClient } from '../../mcp/aws/client.js';
 
 const log = createLogger();
 
@@ -38,132 +40,158 @@ export interface CashLeverRunResult {
   memoMarkdown?: string;
 }
 
-// ── Stub MCP calls (Ch.5 — Ch.8 ships real MCP integration) ──────────────────
+// ── Real MCP data fetchers (B47 Phase 2 — audit Finding 4) ───────────────────
+// Each fetcher calls the real ctx.deps client and records a REAL tool_call (real
+// result_json) so memo citations click through to genuine tool results. When a
+// dependency is absent or unauthenticated, the fetcher degrades honestly
+// (result:null, degraded:true) — it NEVER fabricates data. DOCTRINE #1.
 
-/**
- * Salesforce committed pipeline query stub.
- * ADR-0006 §1.3: stage labels R1-verified (B19 fix).
- * Source: docs/decisions/0006-ch5-cash-lever-slice.md §1.3
- *
- * UNKNOWN (B19 resolved in R1): stage labels patched to verified values.
- */
-async function stubSalesforceQuery(
-  db: Database.Database | null,
-  runId: string,
-  sourceId: string,
-): Promise<unknown> {
-  const result = [
-    { id: 'opp-001', name: 'Acme Renewal', amount: 1_200_000, stageName: 'Contracting',   closeDate: '2026-07-15', accountName: 'Acme Corp' },
-    { id: 'opp-002', name: 'Beta Corp New', amount: 850_000, stageName: 'Verbal Agreement', closeDate: '2026-06-30', accountName: 'Beta Corp' },
-    { id: 'opp-003', name: 'Gamma SaaS',   amount: 675_000,  stageName: 'Renewal Quote Sent', closeDate: '2026-07-01', accountName: 'Gamma LLC' },
-  ];
+// B19-verified committed-pipeline stages (validated against Class's SFDC schema in R1).
+const COMMITTED_PIPELINE_STAGES = [
+  'Verbal Agreement', 'Verbal Approval', 'Contracting', 'Quote in Review',
+  'Negotiation', 'Renewal Quote Sent', 'Qualified Renewal',
+];
 
-  if (db) {
-    insertToolCall(db, {
-      tool_call_id: `tc-sf-${Date.now()}`,
-      run_id: runId,
-      agent_invocation_id: `inv-cfo-${runId}`,
-      tool_name: 'salesforce.committedPipelineQuery',
-      args_json: JSON.stringify({
-        stagesIn: ['Verbal Agreement', 'Verbal Approval', 'Contracting', 'Quote in Review', 'Negotiation', 'Renewal Quote Sent', 'Qualified Renewal'],
-        activeAm: true,
-      }),
-      result_json: JSON.stringify(result),
-      source_id: sourceId,
-    });
-  }
-
-  log.info({ runId, message: `SF pipeline stub: ${result.length} opportunities` });
-  return result;
+function committedPipelineSoql(): string {
+  const stageList = COMMITTED_PIPELINE_STAGES.map((s) => `'${s.replace(/'/g, "\\'")}'`).join(', ');
+  return (
+    `SELECT Id, Name, Amount, StageName, CloseDate, Account.Name ` +
+    `FROM Opportunity WHERE StageName IN (${stageList}) AND IsClosed = false ` +
+    `ORDER BY CloseDate ASC`
+  );
 }
 
 /**
- * AWS Cost Explorer spend summary stub.
- * ADR-0006 §1.3 + UNKNOWN (B32): profile structure unknown; stub uses ['class', 'collab'].
- * ADR-0006 §1.4: AWS SSO expired → degrade (not block); flag degraded: aws in output.
+ * Committed-pipeline query via the real Salesforce client.
+ * Degrades (result:null) when the dep is absent or the query fails.
  */
-async function stubAwsSpendQuery(
+async function fetchSalesforcePipeline(
+  deps: PlaybookDeps,
   db: Database.Database | null,
   runId: string,
   sourceId: string,
-  options: { simulateExpired?: boolean } = {},
 ): Promise<{ result: unknown; degraded: boolean }> {
-  if (options.simulateExpired) {
-    log.info({ runId, message: 'AWS SSO expired — degrading (not blocking); flag aws in degraded_sources' });
+  if (!deps.salesforce) {
+    log.info({ runId, message: 'Salesforce dep absent — degrading (no committed-pipeline query)' });
     return { result: null, degraded: true };
   }
-
-  const result = [
-    { month: '2026-01', service: 'EC2',         totalCost: 42_800, currency: 'USD' },
-    { month: '2026-01', service: 'RDS',         totalCost: 18_300, currency: 'USD' },
-    { month: '2026-02', service: 'EC2',         totalCost: 44_100, currency: 'USD' },
-    { month: '2026-02', service: 'RDS',         totalCost: 18_800, currency: 'USD' },
-    { month: '2026-03', service: 'EC2',         totalCost: 45_200, currency: 'USD' },
-    { month: '2026-03', service: 'CloudFront',  totalCost: 9_400,  currency: 'USD' },
-  ];
-
-  if (db) {
-    insertToolCall(db, {
-      tool_call_id: `tc-aws-${Date.now()}`,
-      run_id: runId,
-      agent_invocation_id: `inv-cfo-${runId}`,
-      tool_name: 'aws.spendSummary',
-      args_json: JSON.stringify({ months: 6, profiles: ['class', 'collab'] }),
-      result_json: JSON.stringify(result),
-      source_id: sourceId,
-    });
+  const soql = committedPipelineSoql();
+  try {
+    const res = await deps.salesforce.query(soql);
+    if (db) {
+      insertToolCall(db, {
+        tool_call_id: `tc-sf-${Date.now()}`,
+        run_id: runId,
+        agent_invocation_id: `inv-cfo-${runId}`,
+        tool_name: 'salesforce.query',
+        args_json: JSON.stringify({ soql }),
+        result_json: JSON.stringify(res.records),
+        source_id: sourceId,
+      });
+    }
+    log.info({ runId, message: `Salesforce committed pipeline: ${res.records.length} opportunities (live)` });
+    return { result: res.records, degraded: false };
+  } catch (err) {
+    log.warn({ runId, message: `Salesforce query failed — degrading: ${String(err)}` });
+    return { result: null, degraded: true };
   }
-
-  log.info({ runId, message: `AWS spend stub: ${result.length} monthly records` });
-  return { result, degraded: false };
 }
 
 /**
- * NetSuite cash position query stub.
- * ADR-0006 §1.3 + R1 verified: SuiteQL works; $-6.5M to +$21.7M range.
- * UNKNOWN (B1): TBA tokens required for standalone Electron app.
- * Blocking if unreachable (ADR-0006 §1.4).
+ * Combined AWS Cost Explorer spend via the real AWS client (sums class + collab,
+ * R1-verified rule). Degrades when the dep is absent or BOTH profiles fail; a
+ * single-profile failure surfaces as a partial degrade (data still real).
  */
-async function stubNetSuiteQuery(
+async function fetchAwsSpend(
+  deps: PlaybookDeps,
   db: Database.Database | null,
   runId: string,
   sourceId: string,
-  options: { simulateUnreachable?: boolean } = {},
-): Promise<{ result: unknown; blocked: boolean }> {
-  if (options.simulateUnreachable) {
-    log.error({ runId, message: 'NetSuite unreachable — blocking run (ADR-0006 §1.4)' });
-    return { result: null, blocked: true };
+): Promise<{ result: unknown; degraded: boolean }> {
+  if (!deps.aws) {
+    log.info({ runId, message: 'AWS dep absent — degrading (no spend summary)' });
+    return { result: null, degraded: true };
   }
-
-  const result = [
-    { month: '2025-06', netAmount: -6_500_000, acctType: 'Bank', acctNumber: '1000' },
-    { month: '2025-07', netAmount: 8_200_000,  acctType: 'Bank', acctNumber: '1000' },
-    { month: '2025-08', netAmount: 4_100_000,  acctType: 'Bank', acctNumber: '1000' },
-    { month: '2025-09', netAmount: 21_700_000, acctType: 'Bank', acctNumber: '1000' },
-    { month: '2025-10', netAmount: 12_400_000, acctType: 'Bank', acctNumber: '1000' },
-    { month: '2025-11', netAmount: 9_800_000,  acctType: 'Bank', acctNumber: '1000' },
-    { month: '2025-12', netAmount: 14_200_000, acctType: 'Bank', acctNumber: '1000' },
-    { month: '2026-01', netAmount: 11_600_000, acctType: 'Bank', acctNumber: '1000' },
-    { month: '2026-02', netAmount: 8_900_000,  acctType: 'Bank', acctNumber: '1000' },
-    { month: '2026-03', netAmount: 13_300_000, acctType: 'Bank', acctNumber: '1000' },
-    { month: '2026-04', netAmount: 10_700_000, acctType: 'Bank', acctNumber: '1000' },
-    { month: '2026-05', netAmount: 14_200_000, acctType: 'Bank', acctNumber: '1000' },
-  ];
-
-  if (db) {
-    insertToolCall(db, {
-      tool_call_id: `tc-ns-${Date.now()}`,
-      run_id: runId,
-      agent_invocation_id: `inv-cfo-${runId}`,
-      tool_name: 'netsuite.cashPositionQuery',
-      args_json: JSON.stringify({}),
-      result_json: JSON.stringify(result),
-      source_id: sourceId,
+  // getCombinedCost (sum class+collab) lives on the concrete AWSClient, not the
+  // McpClient interface surface. buildDeps always constructs the concrete class.
+  const aws = deps.aws as unknown as AWSClient;
+  const end = new Date();
+  const start = new Date(end.getFullYear(), end.getMonth() - 6, 1);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  try {
+    const res = await aws.getCombinedCost({ start: fmt(start), end: fmt(end) });
+    if (db) {
+      insertToolCall(db, {
+        tool_call_id: `tc-aws-${Date.now()}`,
+        run_id: runId,
+        agent_invocation_id: `inv-cfo-${runId}`,
+        tool_name: 'aws.getCombinedCost',
+        args_json: JSON.stringify({ start: fmt(start), end: fmt(end), profiles: ['class', 'collab'] }),
+        result_json: JSON.stringify(res),
+        source_id: sourceId,
+      });
+    }
+    const partial = Array.isArray(res.degraded_sources) && res.degraded_sources.length > 0;
+    log.info({
+      runId,
+      message: `AWS combined spend: $${res.total} ${res.currency} (live${partial ? ', partial: ' + res.degraded_sources!.join('+') : ''})`,
     });
+    return { result: res, degraded: partial };
+  } catch (err) {
+    log.warn({ runId, message: `AWS getCombinedCost failed (both profiles?) — degrading: ${String(err)}` });
+    return { result: null, degraded: true };
   }
+}
 
-  log.info({ runId, message: `NetSuite cash stub: ${result.length} months` });
-  return { result, blocked: false };
+/**
+ * NetSuite cash position via the real NetSuite client (ns_runCustomSuiteQL MCP tool).
+ *
+ * DOCTRINE #1 gate: the cash-position SuiteQL must be VALIDATED against Class's
+ * NetSuite GL/account schema before it runs — a guessed query would emit real-but-
+ * wrong cited data. It is therefore NOT hardcoded here; it is supplied (post-
+ * validation) via NETSUITE_SUITEQL_CASH_POSITION. When the query env is unset, the
+ * NetSuite client is absent, or no OAuth credential is present (runSuiteQL → null),
+ * this degrades honestly. The wiring (runSuiteQL + real tool_call) is real regardless.
+ */
+async function fetchNetSuiteCash(
+  deps: PlaybookDeps,
+  db: Database.Database | null,
+  runId: string,
+  sourceId: string,
+): Promise<{ result: unknown; degraded: boolean }> {
+  const suiteQl = process.env.NETSUITE_SUITEQL_CASH_POSITION;
+  if (!deps.netsuite || !suiteQl) {
+    log.info({
+      runId,
+      message: !suiteQl
+        ? 'NetSuite cash query unset (NETSUITE_SUITEQL_CASH_POSITION pending schema validation) — degrading'
+        : 'NetSuite dep absent — degrading',
+    });
+    return { result: null, degraded: true };
+  }
+  try {
+    const res = await deps.netsuite.runSuiteQL(suiteQl);
+    if (res === null) {
+      log.info({ runId, message: 'NetSuite returned null (no OAuth credential — degraded mode)' });
+      return { result: null, degraded: true };
+    }
+    if (db) {
+      insertToolCall(db, {
+        tool_call_id: `tc-ns-${Date.now()}`,
+        run_id: runId,
+        agent_invocation_id: `inv-cfo-${runId}`,
+        tool_name: 'netsuite.runSuiteQL',
+        args_json: JSON.stringify({ query: suiteQl }),
+        result_json: JSON.stringify(res.items),
+        source_id: sourceId,
+      });
+    }
+    log.info({ runId, message: `NetSuite cash position: ${res.items.length} rows (live)` });
+    return { result: res.items, degraded: false };
+  } catch (err) {
+    log.warn({ runId, message: `NetSuite runSuiteQL failed — degrading: ${String(err)}` });
+    return { result: null, degraded: true };
+  }
 }
 
 /**
@@ -214,11 +242,9 @@ async function stubCashModelQuery(
 export interface CashLeverOptions {
   /** SQLite database handle for tool_call persistence */
   db?: Database.Database;
-  /** Simulate AWS SSO expired for degraded-mode testing */
-  simulateAwsExpired?: boolean;
-  /** Simulate NetSuite unreachable for blocker testing */
-  simulateNsUnreachable?: boolean;
-  /** Simulate cash model not found for degraded-mode testing */
+  /** Real MCP clients (Salesforce / AWS / NetSuite). Absent deps degrade honestly. */
+  deps?: PlaybookDeps;
+  /** Simulate cash model not found for degraded-mode testing (cash_model still stubbed). */
   simulateCashModelNotFound?: boolean;
 }
 
@@ -238,7 +264,7 @@ export async function runCashLeverPlaybook(
   question: string,
   options: CashLeverOptions = {},
 ): Promise<CashLeverRunResult> {
-  const { db = null, simulateAwsExpired = false, simulateNsUnreachable = false, simulateCashModelNotFound = false } = options;
+  const { db = null, deps = {}, simulateCashModelNotFound = false } = options;
   const degraded_sources: DegradedSource[] = [];
   const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '-');
 
@@ -247,18 +273,13 @@ export async function runCashLeverPlaybook(
   // ── CFO + COS fan-out in parallel ────────────────────────────────────────
 
   const [cfoResult, cosResult] = await Promise.all([
-    runCfoLens(runId, ts, db, { simulateAwsExpired, simulateNsUnreachable, simulateCashModelNotFound }),
+    runCfoLens(runId, ts, db, deps, { simulateCashModelNotFound }),
     runCosLens(runId, ts, db),
   ]);
 
-  // Collect degraded sources from CFO lens
+  // Collect degraded sources from CFO lens (honest degradation — no blocking)
   if (cfoResult.degraded_sources) {
     degraded_sources.push(...cfoResult.degraded_sources);
-  }
-
-  // Check for blocking condition (NetSuite unreachable)
-  if (cfoResult.blocked) {
-    throw new Error('NetSuite unreachable — cash lever playbook blocked (ADR-0006 §1.4)');
   }
 
   log.info({ runId, message: `Cash lever lenses complete — degraded: [${degraded_sources.join(', ')}]` });
@@ -284,34 +305,32 @@ async function runCfoLens(
   runId: string,
   ts: string,
   db: Database.Database | null,
+  deps: PlaybookDeps,
   options: {
-    simulateAwsExpired: boolean;
-    simulateNsUnreachable: boolean;
     simulateCashModelNotFound: boolean;
   },
 ): Promise<LensResult> {
   const degraded: DegradedSource[] = [];
 
-  // SF pipeline (required — blocks if auth expired per ADR-0006 §1.4)
-  const sfResult = await stubSalesforceQuery(db, runId, `sf-pipeline-${ts}`);
+  // SF committed pipeline (real query; degrades if dep absent/unauth)
+  const sfResult = await fetchSalesforcePipeline(deps, db, runId, `sf-pipeline-${ts}`);
+  if (sfResult.degraded) {
+    degraded.push('salesforce');
+  }
 
-  // AWS spend (degrades if SSO expired)
-  const awsResult = await stubAwsSpendQuery(db, runId, `aws-spend-${ts}`, {
-    simulateExpired: options.simulateAwsExpired,
-  });
+  // AWS combined spend (real; degrades if dep absent or both profiles fail)
+  const awsResult = await fetchAwsSpend(deps, db, runId, `aws-spend-${ts}`);
   if (awsResult.degraded) {
     degraded.push('aws');
   }
 
-  // NetSuite cash (blocks if unreachable)
-  const nsResult = await stubNetSuiteQuery(db, runId, `ns-cash-${ts}`, {
-    simulateUnreachable: options.simulateNsUnreachable,
-  });
-  if (nsResult.blocked) {
-    return { output: null, blocked: true };
+  // NetSuite cash position (real; degrades when query unvalidated / no credential)
+  const nsResult = await fetchNetSuiteCash(deps, db, runId, `ns-cash-${ts}`);
+  if (nsResult.degraded) {
+    degraded.push('netsuite');
   }
 
-  // Cash model xlsx (degrades if not found)
+  // Cash model xlsx — STILL STUBBED (no xlsx reader yet; see STUBBED_SOURCES).
   const xlsxResult = await stubCashModelQuery(db, runId, `cash-model-${ts}`, {
     simulateNotFound: options.simulateCashModelNotFound,
   });
@@ -367,10 +386,12 @@ async function runCosLens(
 
 import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, StubbedSource } from '@c-suite/shared-types/playbook';
 
-// B47 honest-stub declaration (audit Finding 4). cash-lever fabricates all four
-// data sources via stub*Query helpers below; STUB_MODE=live is refused by the guard
-// until these are wired to ctx.deps. Drop entries as each becomes real.
-export const STUBBED_SOURCES: readonly StubbedSource[] = ['salesforce', 'aws', 'netsuite', 'cash_model'];
+// B47 Phase 2 (audit Finding 4): Salesforce, AWS, and NetSuite are now wired to the
+// real ctx.deps clients with honest degradation. cash_model alone remains stubbed
+// (no xlsx reader yet) — so STUB_MODE=live is still guard-refused unless
+// ALLOW_STUBBED_LIVE=1, which downgrades cash_model to a degraded_source. Drop
+// 'cash_model' once a real VAULT_PATH xlsx reader lands.
+export const STUBBED_SOURCES: readonly StubbedSource[] = ['cash_model'];
 
 function adaptResult(r: CashLeverRunResult, degradedSources: DegradedSource[]): PlaybookResult {
   const stamps: string[] = degradedSources.length > 0 ? ['DEGRADED'] : ['CLEAN'];
@@ -389,6 +410,6 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
   input: PlaybookInput,
   ctx: PlaybookContext,
 ): Promise<PlaybookResult> => {
-  const result = await runCashLeverPlaybook(ctx.runId, input.prompt, { db: ctx.db });
+  const result = await runCashLeverPlaybook(ctx.runId, input.prompt, { db: ctx.db, deps: ctx.deps });
   return adaptResult(result, result.degraded_sources);
 };

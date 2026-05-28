@@ -148,7 +148,9 @@ describe('dynamic-import path (mondayTripwire) sees STUBBED_SOURCES', () => {
       '../../../apps/utility/src/playbooks/cash-lever/index.js'
     )) as unknown as PlaybookModule;
     expect(mod.STUBBED_SOURCES).toBeDefined();
-    expect(mod.STUBBED_SOURCES).toContain('netsuite');
+    // cash_model is the only remaining fabricated source after B47 Phase 2
+    // (salesforce/aws/netsuite now call real ctx.deps clients).
+    expect(mod.STUBBED_SOURCES).toContain('cash_model');
   });
 });
 
