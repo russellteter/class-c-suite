@@ -23,8 +23,8 @@
 import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, StubbedSource } from '@c-suite/shared-types/playbook';
 import type { DegradedSource } from '@c-suite/shared-types/playbook';
 
-// B47 honest-stub declaration (audit Finding 2): rigorScore is hardcoded, not from a real Verifier run.
-export const STUBBED_SOURCES: readonly StubbedSource[] = ['verifier_rigor'];
+// B47 Phase 2: rigorScore now comes from the real Verifier (run-loop / playbookVerifier).
+export const STUBBED_SOURCES: readonly StubbedSource[] = [];
 import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
 import { createLogger } from '../../logger.js';
 
@@ -228,12 +228,10 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     `_Playbook: gtm_realloc | Lenses: CRO, CFO, CMO, CPO, COS | Threshold: ${RIGOR_THRESHOLD}_`,
   ].join('\n');
 
-  // 4. Verifier (placeholder — real Verifier fires in run-loop; score ≥ threshold → CLEAN)
-  const rigorScore = 74;
-  const passed = rigorScore >= RIGOR_THRESHOLD;
+  // B47 Phase 2: rigorScore + CLEAN/DRAFT assigned by the real Verifier in run-loop
+  // (orchestrator/playbookVerifier.ts). The playbook no longer fabricates a score.
   const stamps: string[] = [
     ...(degradedSources.length > 0 ? ['DEGRADED'] : []),
-    passed ? 'CLEAN' : 'DRAFT',
   ];
 
   // Writebacks: workstream-update proposals
@@ -266,7 +264,7 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     degradedSources: degradedSources.map(String),
     lensOutputs,
     stamps,
-    rigorScore,
+    rigorScore: null,
     rigorThreshold: RIGOR_THRESHOLD,
     proposedWritebacks,
   };

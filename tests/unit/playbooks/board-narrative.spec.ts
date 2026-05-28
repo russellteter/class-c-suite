@@ -210,9 +210,11 @@ describe('board_narrative — prereq decision integration (ADR §3.6, Decision 4
 
 describe('board_narrative — stamps (ADR §3.3)', () => {
 
-  it('result.stamps contains CLEAN when rigorScore >= 70 and no degraded sources', async () => {
+  it('playbook defers scoring to run-loop: rigorScore null, no CLEAN/DRAFT emitted (B47 Phase 2)', async () => {
     const result = await runPlaybook(makeInput(), makeCtx());
-    expect(result.stamps).toContain('CLEAN');
+    expect(result.rigorScore).toBeNull();
+    expect(result.stamps).not.toContain('CLEAN');
+    expect(result.stamps).not.toContain('DRAFT');
   });
 
   it('result.stamps does not contain ADVERSARIAL_ONLY', async () => {

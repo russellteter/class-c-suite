@@ -109,9 +109,9 @@ describe('open_qa — ad-hoc decomposer path (ADR §12.2, §12.3)', () => {
     expect(result.stamps).toContain('DECOMPOSED_AD_HOC');
   });
 
-  it('rigorScore is present (non-null) on ad-hoc path', async () => {
+  it('rigorScore is null at the playbook layer on ad-hoc path (run-loop runs the real Verifier) (B47 Phase 2)', async () => {
     const result = await runPlaybook(makeInput('analyze our competitive landscape'), makeCtx());
-    expect(result.rigorScore).not.toBeNull();
+    expect(result.rigorScore).toBeNull();
   });
 
 });
@@ -123,15 +123,16 @@ describe('open_qa — rigor capping (ADR §13.6)', () => {
     mockDecompose.mockResolvedValue(AD_HOC_DECOMPOSITION);
   });
 
-  it('when raw Verifier score is 88, result.rigorScore is 85 (capped at 85)', async () => {
-    // open-qa/index.ts:line 121-122: rawScore=88, displayedScore=min(88,85)=85
+  it('the 85 cap is applied in run-loop (playbookVerifier.applyRigorCap), not the playbook (B47 Phase 2)', async () => {
+    // Cap moved to run-loop: see tests/unit/orchestrator/playbook-verifier.spec.ts.
+    // At the playbook layer the score is null pending the real Verifier run.
     const result = await runPlaybook(makeInput('any ad-hoc question'), makeCtx());
-    expect(result.rigorScore).toBe(85);
+    expect(result.rigorScore).toBeNull();
   });
 
-  it('when raw Verifier score is 88, result has rigorRawScore = 88 (uncapped)', async () => {
+  it('rigorRawScore is null at the playbook layer (assigned by the real Verifier in run-loop)', async () => {
     const result = await runPlaybook(makeInput('any ad-hoc question'), makeCtx()) as Record<string, unknown>;
-    expect(result.rigorRawScore).toBe(88);
+    expect(result.rigorRawScore).toBeNull();
   });
 
   it('rigorThreshold is 85 for open_qa (open-qa/index.ts:line 33)', async () => {

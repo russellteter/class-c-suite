@@ -22,6 +22,7 @@ import { modelClientFromEnv } from '../agents/modelClient.js';
 import { draftWritebacks } from '@c-suite/writeback-engine';
 import { routeToPlaybook } from '../playbooks/lib/playbookRouter.js';
 import { runPlaybookGuarded } from './stubGuard.js';
+import { scorePlaybookRigor, applyShipStamp } from './playbookVerifier.js';
 import { buildDeps } from '../playbooks/lib/buildDeps.js';
 // Ch.9: handoff brief generation (explicit-trigger only — NOT auto on every accepted decision)
 import { generateHandoffBrief } from '../agents/handoff/index.js';
@@ -130,6 +131,34 @@ export async function startRun(
         context: { skipDecompose: true },
       };
       await runPlaybookGuarded(redirectModule, targetId, redirectInput, playbookCtx);
+    }
+
+    // B47 Phase 2 (audit Finding 2): run the REAL Verifier on the playbook output.
+    // This is the single site that scores all Ch.7 early-return playbooks — it
+    // replaces the hardcoded `rigorScore = NN` placeholders the playbooks used to
+    // fabricate. Live mode rethrows on Verifier failure (fail loud); replay falls
+    // back to a labelled constant. quick_read bypasses the Verifier by design
+    // (ADR-0009 §3.5) and is skipped.
+    if (playbookId !== 'quick_read') {
+      const verifierFixtureDir =
+        process.env.VERIFIER_FIXTURE_DIR ??
+        `${process.cwd()}/tests/fixtures/lens-outputs/${runId}`;
+      const rigor = await scorePlaybookRigor(
+        playbookResult,
+        runId,
+        playbookId as PlaybookId,
+        question,
+        db,
+        verifierFixtureDir,
+      );
+      const mutable = playbookResult as {
+        rigorScore?: number | null;
+        rigorRawScore?: number | null;
+        stamps: string[];
+      };
+      mutable.rigorScore = rigor.rigorScore;
+      mutable.rigorRawScore = rigor.rigorRawScore;
+      mutable.stamps = applyShipStamp(playbookResult.stamps, rigor.rigorScore, playbookId as PlaybookId);
     }
 
     // quick_read bypasses Verifier entirely (ADR-0009 §3.5 + §6 run-loop integration).

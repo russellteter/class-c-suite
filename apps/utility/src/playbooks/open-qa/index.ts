@@ -21,7 +21,8 @@
 import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, PlaybookId, StubbedSource } from '@c-suite/shared-types/playbook';
 
 // B47 honest-stub declaration (audit Finding 2): rigorScore is hardcoded, not from a real Verifier run.
-export const STUBBED_SOURCES: readonly StubbedSource[] = ['verifier_rigor'];
+// B47 Phase 2: rigorScore now comes from the real Verifier (run-loop / playbookVerifier).
+export const STUBBED_SOURCES: readonly StubbedSource[] = [];
 import type { LensRole } from '@c-suite/shared-types/agent-definition';
 import { decompose } from '../lib/decomposer.js';
 import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
@@ -120,17 +121,16 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
 
     const memoMarkdown = buildMemo(input.prompt, sections, outputShape, runId, lenses);
 
-    // §13.6: compute rigorScore (stub 88 > cap of 85)
-    const rawScore = 88; // placeholder — real Verifier fires in run-loop
-    const displayedScore = Math.min(rawScore, RIGOR_CAP);
-
+    // B47 Phase 2: rigorScore + rigorRawScore assigned by the real Verifier in
+    // run-loop (orchestrator/playbookVerifier.ts), which applies the open_qa cap of
+    // 85 (§13.6). The playbook no longer fabricates a score.
     return {
       memoMarkdown,
       degradedSources: degradedSources.map(String),
       lensOutputs,
       stamps: ['DECOMPOSED_AD_HOC'],
-      rigorScore: displayedScore,
-      rigorRawScore: rawScore,
+      rigorScore: null,
+      rigorRawScore: null,
       rigorThreshold: RIGOR_THRESHOLD,
       proposedWritebacks: [],  // Synthesizer authors these in production
     };
@@ -149,8 +149,7 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     })
   );
 
-  const rawScore = 80;
-  const displayedScore = Math.min(rawScore, RIGOR_CAP);
+  // B47 Phase 2: rigorScore + rigorRawScore assigned by the real Verifier in run-loop.
   const memoMarkdown = buildMemo(input.prompt, [], 'memo', runId, allLenses);
 
   return {
@@ -158,8 +157,8 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     degradedSources: [],
     lensOutputs,
     stamps: ['DECOMPOSED_AD_HOC'],
-    rigorScore: displayedScore,
-    rigorRawScore: rawScore,
+    rigorScore: null,
+    rigorRawScore: null,
     rigorThreshold: RIGOR_THRESHOLD,
     proposedWritebacks: [],
   };

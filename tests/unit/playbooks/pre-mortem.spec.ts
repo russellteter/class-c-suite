@@ -108,18 +108,17 @@ describe('pre_mortem — stamps (ADR §3.3)', () => {
 
 });
 
-describe('pre_mortem — Verifier still runs (ADR §3.4)', () => {
+describe('pre_mortem — Verifier deferred to run-loop (B47 Phase 2)', () => {
 
-  it('result.rigorScore is non-null (Verifier ran — stub returns 72)', async () => {
+  it('result.rigorScore is null at the playbook layer (run-loop runs the real Verifier)', async () => {
     const result = await runPlaybook(makeInput(), makeCtx());
-    expect(result.rigorScore).not.toBeNull();
+    expect(result.rigorScore).toBeNull();
   });
 
-  it('result.rigorScore is a number between 0 and 100', async () => {
+  it('playbook does not emit a CLEAN/DRAFT ship stamp (run-loop recomputes from the real score)', async () => {
     const result = await runPlaybook(makeInput(), makeCtx());
-    expect(typeof result.rigorScore).toBe('number');
-    expect(result.rigorScore as number).toBeGreaterThanOrEqual(0);
-    expect(result.rigorScore as number).toBeLessThanOrEqual(100);
+    expect(result.stamps).not.toContain('CLEAN');
+    expect(result.stamps).not.toContain('DRAFT');
   });
 
   it('rigorThreshold equals 70 (pre-mortem/index.ts:line 31)', async () => {

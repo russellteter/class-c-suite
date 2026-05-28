@@ -23,8 +23,8 @@
 
 import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, StubbedSource } from '@c-suite/shared-types/playbook';
 
-// B47 honest-stub declaration (audit Finding 2): rigorScore is hardcoded, not from a real Verifier run.
-export const STUBBED_SOURCES: readonly StubbedSource[] = ['verifier_rigor'];
+// B47 Phase 2: rigorScore now comes from the real Verifier (run-loop / playbookVerifier).
+export const STUBBED_SOURCES: readonly StubbedSource[] = [];
 import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
 import { createLogger } from '../../logger.js';
 
@@ -158,10 +158,10 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     `_Run ID: ${runId} | Playbook: pre_mortem | Agents: RedTeam, Steelman_`,
   ].join('\n');
 
-  // 5. Verifier scores citation discipline — real Verifier fires in run-loop integration.
-  const rigorScore = 72; // placeholder
-  const passed = rigorScore >= RIGOR_THRESHOLD;
-
+  // 5. Verifier runs in run-loop (B47 Phase 2, orchestrator/playbookVerifier.ts):
+  //    rigorScore is null here — the real Verifier assigns it, and the CLEAN/DRAFT
+  //    ship stamp is recomputed there from the real score. The playbook no longer
+  //    fabricates a rigor score.
   return {
     memoMarkdown,
     degradedSources: [],
@@ -169,8 +169,8 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
       RedTeam: redTeamOutput,
       Steelman: steelmanOutput,
     },
-    stamps: ['ADVERSARIAL_ONLY', passed ? 'CLEAN' : 'DRAFT'],
-    rigorScore,
+    stamps: ['ADVERSARIAL_ONLY'],
+    rigorScore: null,
     rigorThreshold: RIGOR_THRESHOLD,
     proposedWritebacks: [],  // pre-mortem-update proposals authored by Synthesizer in production
   };

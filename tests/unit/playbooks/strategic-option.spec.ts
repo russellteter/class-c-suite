@@ -296,9 +296,11 @@ describe('strategic_option — PlaybookModule contract (ADR §3.1)', () => {
     expect(result.rigorThreshold).toBe(80);
   });
 
-  it('result.stamps contains CLEAN when rigorScore >= 80', async () => {
+  it('playbook defers scoring to run-loop: rigorScore null, no CLEAN/DRAFT emitted (B47 Phase 2)', async () => {
     const result = await runPlaybook(makeInput(), makeCtx());
-    expect(result.stamps).toContain('CLEAN');
+    expect(result.rigorScore).toBeNull();
+    expect(result.stamps).not.toContain('CLEAN');
+    expect(result.stamps).not.toContain('DRAFT');
   });
 
 });

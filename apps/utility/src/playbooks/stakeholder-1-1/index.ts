@@ -20,8 +20,8 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, StubbedSource } from '@c-suite/shared-types/playbook';
 
-// B47 honest-stub declaration (audit Finding 2): rigorScore is hardcoded, not from a real Verifier run.
-export const STUBBED_SOURCES: readonly StubbedSource[] = ['verifier_rigor'];
+// B47 Phase 2: rigorScore now comes from the real Verifier (run-loop / playbookVerifier).
+export const STUBBED_SOURCES: readonly StubbedSource[] = [];
 import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
 import { createStakeholderSkeleton } from '../lib/stakeholderSkeleton.js';
 import { dispatchLens } from '../../orchestrator/dispatch.js';
@@ -202,22 +202,15 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     `_Run ID: ${runId} | Playbook: stakeholder_1_1 | Lens: COS_`,
   ].join('\n');
 
-  // 5. Verifier stub (real Verifier wired by run-loop; rigorScore computed there)
-  // Phase A: return a well-formed result; run-loop integrates Verifier.
-  const rigorScore = 75; // placeholder — real Verifier fires in run-loop integration
-  const passed = rigorScore >= RIGOR_THRESHOLD;
-  if (!stamps.includes('DEGRADED')) {
-    stamps.push(passed ? 'CLEAN' : 'DRAFT');
-  } else {
-    stamps.push(passed ? 'CLEAN' : 'DRAFT');
-  }
-
+  // B47 Phase 2: rigorScore + CLEAN/DRAFT assigned by the real Verifier in run-loop
+  // (orchestrator/playbookVerifier.ts). The playbook no longer fabricates a score;
+  // it returns its non-ship stamps (DEGRADED / STAKEHOLDER_SKELETON) only.
   return {
     memoMarkdown,
     degradedSources: prereq.kind === 'degrade' ? prereq.flags : [],
     lensOutputs: { COS: { role: 'COS', stakeholderSlug: slug, stakeholderContent } },
     stamps,
-    rigorScore,
+    rigorScore: null,
     rigorThreshold: RIGOR_THRESHOLD,
     proposedWritebacks: [],  // Synthesizer authors these; stub for Phase A
   };
