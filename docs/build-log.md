@@ -1706,3 +1706,53 @@ Connectors activated + verified at the client level with REAL data (commit `ebcc
   (gitignored); enables STUB_MODE=live real-inference runs in the Electron app.
 - Still needs the Electron runtime for a full end-to-end cash-lever live memo
   (buildDeps needs safeStorage to construct the SF/NS clients) — that's the Ch.11 demo.
+
+---
+
+## 2026-05-28 — Truth-correction: the run path is UNWIRED (not just cred/runtime-gated)
+
+Session `d3ceebb0`, after the boot-chain + preload keystone fixes (`3d8fe41`, `872f25a`)
+made the app launch and render. Applied the A-category IPC contract fix, then attempted
+the Cash Lever E2E per the resume recipe. It is not runnable — and the reason is deeper
+than "needs creds/Electron." The core run path is not connected end-to-end.
+
+### A-category IPC contract fix — DONE + verified (`06b839f`)
+Added 5 renderer→main UI-action kinds to the `IpcMessage` union (`run.cancelled`,
+`vault.openFile`, `playbook.invoke`, `home.refresh`, `auth.reconnect`); removed the two
+`as never` casts in `PlanApproval.tsx` and dropped the unused `plan` field from
+`run.plan.approved`. Verified: shared-types build clean, full typecheck green (9 workspaces),
+`ipc.spec.ts` 63/63 (added coverage for all 5 kinds), direct `validateIpc` assertions pass,
+Electron E2E harness shows the live `run.cancelled` ZodError gone (0 pageerrors, 1 expected
+font-CSP console error).
+
+### Why Cash Lever E2E cannot "just run" — evidence
+- **`startRun` has zero production callers.** `grep -rn "startRun" apps` → only the definition
+  at `apps/utility/src/orchestrator/run-loop.ts:60`, its comments, and compiled `dist` copies.
+  The orchestrator is fully built and unit-tested in pieces but is never invoked in production.
+- **Renderer never emits `run.start`.** `grep -rn "run.start" apps/renderer/src` → empty.
+  Clicking a playbook renders `PlanApproval`; approving emits `run.plan.approved`, which
+  nothing consumes. No `run.start` is ever sent.
+- **Utility has no `run.start` handler.** `apps/utility/src/index.ts` handles exactly three
+  kinds: `__port_init`, `scheduler:reset`, `handoff.preview.requested`. Nothing routes to `startRun`.
+- **Main does not relay renderer IPC to the utility.** `apps/main/src/main.ts` posts only
+  `scheduler:reset` (line 167) and `__port_init` (supervisor). No generic forward path exists.
+- **Memo-surface is also unbuilt.** `transitions.ts:7` states "SafeWrite handles the actual
+  file write after this transition" — but no caller performs it. `state-machine.ts` carries
+  `memoMarkdown: ''` and threads only the `memoPath` *string*. The Synthesizer's memo content
+  lands in an `agent_invocations` row and is never assembled + SafeWritten to the vault.
+- **Headless E2E is ABI-blocked.** `better-sqlite3` is built for Electron 33's ABI, so any
+  `startRun`-driven test fails under plain-Node vitest with `ERR_DLOPEN_FAILED` (the documented
+  gotcha). A headless run must use Electron's ABI (e.g. `ELECTRON_RUN_AS_NODE`).
+
+### Corrected status
+Prior build-log framed the missing E2E as "needs `CLAUDE_CODE_OAUTH_TOKEN` + AWS SSO + Electron
+runtime — that's the Ch.11 demo." That is necessary but not sufficient: even fully credentialed,
+clicking Cash Lever invokes nothing. The remaining work is a **capability build**, not a demo run:
+1. Renderer emits `run.start` on plan approval (currently emits only `run.plan.approved`).
+2. Main forwards `run.start` to the utility port (no relay today).
+3. Utility adds a `run.start` handler that calls `startRun(runId, playbookId, question, db, emit)`.
+4. Run-loop (or a post-transition step) assembles the Synthesizer memo and SafeWrites it to the
+   vault, emitting progress/result IPC back to the renderer.
+This crosses renderer + main + utility + orchestrator and pairs with the open Ch.7 Vite-assembly
+leg (frontend-assembly-gap handoff, same day). It is a genuine product-shape build, scoped OUT of
+the resume recipe and surfaced to Russell for sequencing (likely the substance of Ch.11).

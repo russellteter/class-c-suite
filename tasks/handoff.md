@@ -1,64 +1,69 @@
-# Handoff — B47 Phase 2: real Verifier + real cash-lever data (2026-05-28)
+# Handoff — Make the C-Suite app actually run (2026-05-28)
 
-## What shipped this session (committed + pushed)
-- **Real Verifier scores all Ch.7 playbooks** (commit `f12d185`). Deleted 7
-  hardcoded `rigorScore = NN` placeholders. New `playbookVerifier.ts` adapts the
-  in-memory result → VerifierInput and runs the real Verifier at ONE run-loop site.
-  Live mode MUST produce a real score (rethrows on failure); replay falls back to a
-  labelled constant. `'verifier_rigor'` dropped from all 7 STUBBED_SOURCES.
-- **cash-lever wired to real Salesforce/AWS/NetSuite** (commit `aaa6999`) with
-  honest degradation + real tool_call recording. STUBBED_SOURCES: 4 → `['cash_model']`
-  (only the xlsx reader remains stubbed).
-- 376 orchestrator+playbook+jobs tests pass; `pnpm typecheck` clean (9 workspaces).
+Trigger: Russell — "nothing really works at all... try to do anything." Prior work verified
+connectors in isolation but never drove the assembled app. Two keystone fixes landed; renderer
+IPC contract hygiene + E2E proof remain.
 
-## Truth over appearance — what is NOT live-verified (DOCTRINE #1)
-The session goal was "real live data universally, verified in production." That is
-not fully achievable in one session because three connectors + inference are gated
-on Russell. What's real now: all code paths call real clients with honest
-degradation, unit-proven. What's unverified-live: see the unblock list.
+## What was done this session
+- Diagnosed why the prior session died: extended-thinking 400 (corrupted thinking block after
+  interrupt/compaction). That session is unrecoverable by typing; use this one (`d3ceebb0`).
+- Fixed boot chain (`3d8fe41`): restored `apps/main/package.json` regression from `269effe`
+  (dropped `type:module`/`main`/deps), rebuilt better-sqlite3 for Electron 33 ABI, cleared stale
+  single-instance lock, and gave `writeback-engine`/`vault-writer`/`vault-watcher` a `tsc` build +
+  `main→dist` (they pointed at raw `.ts` → utility crash-looped → every screen dead).
+- Fixed renderer IPC bridge (`872f25a`): preload was ESM under `sandbox:true` → never loaded →
+  `window.ipc` absent. Renamed `preload.ts`→`preload.cts` (emits true CommonJS `preload.cjs`).
+- Built repeatable Electron E2E harness `tests/e2e/` (playwright `_electron`, drives the REAL
+  window). Verified: utility stays alive, `window.ipc` round-trips (`runs:list → array(0)`).
+- Ran static IPC audit + live baseline: enumerated all renderer↔shared-types↔main drift.
 
-## Connector status (updated after Russell supplied creds 2026-05-28)
-- **Salesforce — LIVE VERIFIED.** No Connected App needed; rides the `sf` CLI session
-  (class-prod). 612 real Opportunities returned. buildDeps gap fixed (`ebccafc`).
-- **AWS — LIVE VERIFIED (partial).** class = $493,848.41 real; collab degrades
-  honestly. Remaining: fix collab SSO login (see below) for the summed view.
-- **NetSuite — creds active, Connect pending.** AI Connector / `mcp`, confidential
-  client; secret threaded. Russell must: (a) in-app Connect (browser consent) to mint
-  the refresh token + revoke old TBA `2b80c7a9`; (b) validate a cash-position SuiteQL
-  vs Class's schema and set `NETSUITE_SUITEQL_CASH_POSITION` (until set, NetSuite
-  degrades honestly — no guessed query runs, DOCTRINE #1).
-- **Inference token — set** in `.env.local`. Enables STUB_MODE=live in the app.
+## Current state
+- WORKING: app boots, utility alive (0 crashes), IPC bridge live, all 11 screens render cleanly
+  (Home/Connectors/Scheduler screenshots look polished). Both fixes committed + auto-pushed to main.
+- NOT working / by design: 8 invoke channels have no main handler (settings, netsuite connect,
+  tool-call) — **intentionally deferred to Ch.10** (UI labels them "Pending Ch.10"). `cost.usage`
+  only emits during a run, so "USAGE LOADING…" + empty rail at idle is expected (no runs yet).
+- NOT fixed yet: 5 renderer-emitted IPC kinds missing from the `ipc.ts` union + 2 `as never` casts
+  → runtime ZodErrors (`run.cancelled` reproduced live).
 
-## Remaining Russell actions
-1. **AWS collab SSO:** `aws sso login --profile collab` failing. collab uses a
-   separate sso-session (start URL `https://d-9067b2215a.awsapps.com/start`, role
-   `Billing`, acct 421879804649). Diagnose: `aws sso login --profile collab` and
-   capture the exact error; if the portal URL or role changed, re-run
-   `aws configure sso --profile collab`. Until fixed, AWS data is class-only (flagged).
-2. **NetSuite Connect** (browser consent) + validate/set `NETSUITE_SUITEQL_CASH_POSITION`.
-3. **Full end-to-end live memo:** run the Electron app with `STUB_MODE=live`
-   (+ `ALLOW_STUBBED_LIVE=1` while cash_model is still stubbed). buildDeps needs the
-   Electron safeStorage to construct the SF/NS clients, so the full cash-lever live
-   run happens in the app, not a headless script. Client-level data paths already
-   proven live this session.
+## Files touched
+- `git status`: untracked preview harness (`vite.preview.config.ts`, `apps/renderer/preview.html`),
+  `csuite-home.png`, `.playwright-mcp/`, `build/config.gypi`, several `tasks/*.md`; modified
+  `CLAUDE.md`; deleted `build/entitlements.mac.plist`. None are mine-pending except the resume doc.
+- `git diff --stat HEAD~2`: apps/main/package.json, preload.ts→preload.cts, window.ts, 3 package
+  pkgs, root package.json, pnpm-lock.yaml, tests/e2e/* (+268/-30).
 
-## Known calibration caveat (not a bug — flag for first live run)
-Verifier scores for adversarial-only / lens-light playbooks (pre-mortem etc., which
-pass empty `positionMetadata` + few/no lens outputs) are now REAL but their
-CALIBRATION is unvalidated. Eyeball the rigor score on the first live memo per
-playbook; if a playbook scores oddly low because the Verifier prompt expects lens
-breadth, adjust the prompt or the adapter — do not re-introduce a hardcoded score.
+## Open threads
+- A-category IPC fix — DONE + verified + committed (`06b839f`, auto-pushed). Added the 5 kinds to
+  `packages/shared-types/src/ipc.ts`, removed both `as never` casts in `PlanApproval.tsx`, dropped
+  the unused `plan` field from `run.plan.approved`. Verified: typecheck green, `ipc.spec.ts` 63/63
+  (+5 new-kind cases), direct `validateIpc` assertions pass, Electron harness shows the live
+  `run.cancelled` ZodError gone (0 pageerrors). No longer an open thread.
+- **THE BIG ONE — the run path is UNWIRED (not cred/runtime-gated).** Cash Lever E2E cannot run
+  because nothing invokes the orchestrator. Evidence (see build-log 2026-05-28 truth-correction):
+  `startRun` has zero production callers (`grep -rn "startRun" apps` → only the def in
+  `run-loop.ts:60` + dist); the renderer never emits `run.start`; the utility (`apps/utility/src/index.ts`)
+  handles only `__port_init`/`scheduler:reset`/`handoff.preview.requested`; main never relays renderer
+  IPC to the utility; and no caller SafeWrites the Synthesizer memo (`transitions.ts:7` defers it,
+  `state-machine.ts` carries `memoMarkdown: ''` + only a `memoPath` string). The orchestrator is built
+  and unit-tested but never connected. This is a capability build, not a demo run — see Next step.
+- Headless `startRun` E2E is ABI-blocked: `better-sqlite3` is built for Electron 33 ABI →
+  `ERR_DLOPEN_FAILED` under plain-Node vitest. Drive it under Electron's ABI (`ELECTRON_RUN_AS_NODE`)
+  or inside the app, not via `npx vitest`.
+- `tests/e2e/cash-lever-stub.spec.ts` is STALE: it imports a nonexistent `runOrchestrator` from
+  `apps/main/src/orchestrator/index.js`. The real entry is `startRun` in `apps/utility/src/orchestrator/run-loop.ts`.
+- A standalone vite (:5273) may still be running from `tests/e2e/run.sh` — harmless; `pkill -f "electron@33.4.11"; lsof -tiTCP:5273 | xargs kill` to clean.
 
-## Still deferred (own sessions)
-- Finding 3: Synthesizer write-back proposals (empty = honest emptiness, not in guard vocab).
-- Finding 5: scheduled-job real sources (sundayRenewal, mondayTripwire metrics).
-- cash_model xlsx reader (then drop `'cash_model'` from STUBBED_SOURCES via the
-  `CASH_MODEL_XLSX_PATH` env-gate pattern).
+## Next step (product-shape build — surface to Russell for sequencing)
+Wire the run path end-to-end (likely the substance of Ch.11). Four legs, crossing renderer + main + utility + orchestrator:
+1. Renderer: emit `run.start` (playbook + question + runId) on plan approval — today it emits only `run.plan.approved`.
+2. Main: forward `run.start` to the utility port (add the relay; only `scheduler:reset` is forwarded today).
+3. Utility: add a `run.start` handler in `apps/utility/src/index.ts` that calls `startRun(runId, playbookId, question, db, emit)`.
+4. Memo surface: assemble the Synthesizer memo and SafeWrite it to the vault (the run-loop computes only a `memoPath` string today), emitting progress/result IPC back to the renderer.
+Pairs with the open Ch.7 Vite-assembly leg (`thoughts/.../2026-05-28_05-34_netsuite-wiring-and-frontend-assembly-gap.yaml`).
 
 ## Resume recipe
-1. `git pull` (HEAD should be `aaa6999` or later) + `pnpm install`.
-2. Read this file + `docs/build-log.md` (B47 Phase 2) + `tasks/b47-phase2-data-wire-brief.md`.
-3. If AWS SSO refreshed: re-run the live AWS check (see git history / build-log for the
-   `getCombinedCost` probe), then mark cash-lever AWS path verified.
-4. Verify state: `pnpm typecheck` (clean); `npx vitest run tests/unit/orchestrator/
-   tests/unit/playbooks/ tests/unit/jobs/` (376 pass).
+1. `cd "/Users/russellteter/Claude Code Projects/c-suite"` (branch `main`).
+2. Read this file + the build-log 2026-05-28 truth-correction entry. (`tasks/resume-2026-05-28_nothing-works.md` has the older boot-chain diagnostic.)
+3. Verify app still boots/renders: `bash tests/e2e/run.sh` then `node -e "const r=require('./tests/e2e/report.json');console.log(JSON.stringify(r.summary))"` — expect bridge round-trip ok, 1 console error (font CSP only; run.cancelled ZodError is fixed).
+4. Build the run-path legs above (TDD; mind the better-sqlite3 ABI — run integration under Electron, not plain-Node vitest). Do NOT implement the 8 Ch.10 handlers (deferred).
