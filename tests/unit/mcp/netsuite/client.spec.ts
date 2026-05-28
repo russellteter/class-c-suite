@@ -243,6 +243,99 @@ describe('NetSuiteClient — token-present mode', () => {
   });
 });
 
+// ── isNetSuiteTableReadable ───────────────────────────────────────────────────
+
+describe('NetSuiteClient — isNetSuiteTableReadable', () => {
+  it('returns false for known-blocked tables without a network call', async () => {
+    const client = new NetSuiteClient(makeVault({ hasCredential: true }));
+    const mockFetch = vi.fn();
+    vi.stubGlobal('fetch', mockFetch);
+
+    const knownBlocked = ['account', 'department', 'classification', 'employee', 'accountingperiod'];
+    for (const table of knownBlocked) {
+      const result = await client.isNetSuiteTableReadable(table);
+      expect(result, `${table} should be false`).toBe(false);
+    }
+    // No network call should have been made — seeded from cold-start deny-list.
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('returns false for known-blocked tables in token-absent mode', async () => {
+    const client = new NetSuiteClient(makeVault({ hasCredential: false }));
+    const result = await client.isNetSuiteTableReadable('account');
+    expect(result).toBe(false);
+  });
+
+  it('returns true for accessible tables (probe returns 200)', async () => {
+    const client = new NetSuiteClient(makeVault({ hasCredential: true }));
+    vi.stubGlobal('fetch', makeFetch([{ status: 200, body: GOOD_SUITEQL_RESPONSE }]));
+
+    const result = await client.isNetSuiteTableReadable('transaction');
+    expect(result).toBe(true);
+  });
+
+  it('caches the probe result — second call does not issue another fetch', async () => {
+    const client = new NetSuiteClient(makeVault({ hasCredential: true }));
+    const mockFetch = makeFetch([{ status: 200, body: GOOD_SUITEQL_RESPONSE }]);
+    vi.stubGlobal('fetch', mockFetch);
+
+    await client.isNetSuiteTableReadable('vendor');
+    await client.isNetSuiteTableReadable('vendor');
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns false for a table that returns 400 permission-denied', async () => {
+    const client = new NetSuiteClient(makeVault({ hasCredential: true }));
+    vi.stubGlobal('fetch', makeFetch([{ status: 400, body: { title: "Record 'customtable_x' not found" } }]));
+
+    const result = await client.isNetSuiteTableReadable('customtable_x');
+    expect(result).toBe(false);
+  });
+
+  it('returns false in token-absent mode for any table', async () => {
+    const client = new NetSuiteClient(makeVault({ hasCredential: false }));
+    const mockFetch = vi.fn();
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await client.isNetSuiteTableReadable('transaction');
+    expect(result).toBe(false);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+});
+
+// ── buildDegradationWarning ───────────────────────────────────────────────────
+
+describe('NetSuiteClient — buildDegradationWarning', () => {
+  it('returns a structured warning with table name and remediation', () => {
+    const client = new NetSuiteClient(makeVault());
+    const warning = client.buildDegradationWarning('account');
+
+    expect(warning.table).toBe('account');
+    expect(warning.reason).toContain('account');
+    expect(warning.remediation).toContain('Setup → Users/Roles → Manage Roles');
+    expect(warning.attemptedQuery).toBeUndefined();
+  });
+
+  it('includes attemptedQuery when provided', () => {
+    const client = new NetSuiteClient(makeVault());
+    const query = 'SELECT id FROM account FETCH NEXT 10 ROWS ONLY';
+    const warning = client.buildDegradationWarning('account', query);
+
+    expect(warning.attemptedQuery).toBe(query);
+  });
+
+  it('returns warnings for all 5 known-blocked tables', () => {
+    const client = new NetSuiteClient(makeVault());
+    const blocked = ['account', 'department', 'classification', 'employee', 'accountingperiod'];
+    for (const table of blocked) {
+      const w = client.buildDegradationWarning(table);
+      expect(w.table).toBe(table);
+      expect(w.reason.length).toBeGreaterThan(0);
+      expect(w.remediation.length).toBeGreaterThan(0);
+    }
+  });
+});
+
 // ── error handling ────────────────────────────────────────────────────────────
 
 describe('NetSuiteClient — error handling', () => {

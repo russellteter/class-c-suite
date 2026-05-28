@@ -81,6 +81,12 @@ export interface NetSuiteClient extends McpClient {
   /** Returns null + sets degraded=true when TBA credentials are absent (token-absent mode). */
   runSavedSearch(id: string): Promise<NetSuiteQueryResult | null>;
   degraded: boolean;
+  /**
+   * Returns true if the role can read the given SuiteQL table.
+   * Probes once + caches per client instance. Known-blocked tables return false immediately.
+   * Token-absent mode always returns false.
+   */
+  isNetSuiteTableReadable(table: string): Promise<boolean>;
 }
 
 export interface AwsClient extends McpClient {

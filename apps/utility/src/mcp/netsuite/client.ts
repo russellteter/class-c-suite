@@ -18,6 +18,7 @@ import type {
   NetSuiteQueryResult,
 } from '@c-suite/shared-types/mcp';
 import { NetSuiteQueryResultSchema } from '@c-suite/shared-types/mcp';
+import type { DegradationWarning } from '@c-suite/shared-types/playbook';
 import type { SafeStorageVault } from '../../credentials/safeStorageVault.js';
 import { buildTBAAuthHeader, parseTBACredentials } from './tba-auth.js';
 import type { TBACredentials } from './tba-auth.js';
@@ -32,6 +33,21 @@ import {
 
 const REQUEST_TIMEOUT_MS = 30_000;
 
+/**
+ * Tables that the standard integration role cannot read via SuiteQL REST API.
+ * Seeded from live probe against account 603734 (2026-05-28).
+ * Role returns HTTP 400 "Record X not found" — NetSuite's signal for insufficient permission.
+ * These remain blocked until Brian grants View on each in Setup → Users/Roles → Manage Roles.
+ * Source: docs/research/netsuite-current-state.md
+ */
+const KNOWN_BLOCKED_TABLES: ReadonlySet<string> = new Set([
+  'account',
+  'department',
+  'classification',
+  'employee',
+  'accountingperiod',
+]);
+
 export class NetSuiteClient implements INetSuiteClient {
   readonly serviceId = 'netsuite' as const;
 
@@ -40,6 +56,15 @@ export class NetSuiteClient implements INetSuiteClient {
 
   private lastSuccessAt: Date | undefined;
   private lastError: string | undefined;
+
+  /**
+   * Per-table readability cache. Seeded with known-blocked tables as false.
+   * Populated lazily on first probe of each table. Lives for client instance lifetime.
+   * A false entry means "role lacks View permission for this table."
+   */
+  private readonly tableReadableCache = new Map<string, boolean>(
+    [...KNOWN_BLOCKED_TABLES].map((t) => [t, false])
+  );
 
   constructor(private readonly vault: SafeStorageVault) {}
 
@@ -76,6 +101,72 @@ export class NetSuiteClient implements INetSuiteClient {
       lastSuccessAt: this.lastSuccessAt,
       lastError: this.lastError,
       authMode: 'tba',
+    };
+  }
+
+  // ── Per-table readability guard ─────────────────────────────────────────────
+
+  /**
+   * Returns true if the role can read the given SuiteQL table.
+   *
+   * Cold start: returns false immediately for the 5 known-blocked tables
+   * (account/department/classification/employee/accountingperiod) without a
+   * round-trip — these are blocked in the current integration role on account 603734.
+   *
+   * Unknown tables: probes once with a minimal FETCH NEXT 1 query and caches the result.
+   * A 400 "Record not found" response → false (permission denied).
+   * Any successful 2xx response → true.
+   * Token-absent mode: always returns false.
+   *
+   * Playbooks must call this before any SuiteQL query that touches a gated table.
+   * If false, emit a DegradationWarning (via buildDegradationWarning) into PlaybookResult
+   * rather than crashing.
+   */
+  async isNetSuiteTableReadable(table: string): Promise<boolean> {
+    const cached = this.tableReadableCache.get(table);
+    if (cached !== undefined) return cached;
+
+    // Token-absent: nothing is readable.
+    const cred = await this.loadCredential();
+    if (!cred) {
+      this.tableReadableCache.set(table, false);
+      return false;
+    }
+
+    const url = `https://${cred.accountId}.suitetalk.api.netsuite.com/services/rest/query/v1/suiteql`;
+    const probe = `SELECT id FROM ${table} FETCH NEXT 1 ROWS ONLY`;
+    const authHeader = buildTBAAuthHeader(cred, 'POST', url);
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: authHeader.Authorization,
+          'Content-Type': 'application/json',
+          Prefer: 'transient',
+        },
+        body: JSON.stringify({ q: probe }),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+      const readable = response.ok;
+      this.tableReadableCache.set(table, readable);
+      return readable;
+    } catch {
+      // Network error — don't cache; let the next call retry.
+      return false;
+    }
+  }
+
+  /**
+   * Build a structured DegradationWarning for a blocked table.
+   * Playbooks include this in PlaybookResult.degradationWarnings.
+   */
+  buildDegradationWarning(table: string, attemptedQuery?: string): DegradationWarning {
+    return {
+      table,
+      reason: `NetSuite role lacks View permission on '${table}' — SuiteQL returns HTTP 400 "Record not found" (insufficient permission signal).`,
+      remediation: `Ask your NetSuite admin to grant View on '${table}' in Setup → Users/Roles → Manage Roles → [role] → Permissions → Lists tab.`,
+      ...(attemptedQuery !== undefined ? { attemptedQuery } : {}),
     };
   }
 

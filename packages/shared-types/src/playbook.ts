@@ -149,6 +149,29 @@ export type ProposedWriteback = {
   [k: string]: unknown;
 };
 
+// ── DegradationWarning — per-table NS permission warning (Ch.8 hardening) ────
+// Emitted at the data/emission layer when isNetSuiteTableReadable() returns false.
+// TRACK 6 note: this field is present on every PlaybookResult; renderer should
+// surface a banner/pill showing table name + remediation when warnings.length > 0.
+
+export interface DegradationWarning {
+  /** NetSuite table name that was inaccessible (e.g. 'account', 'department') */
+  table: string;
+  /** Human-readable reason for the block */
+  reason: string;
+  /** One-line remediation for the user */
+  remediation: string;
+  /** The SuiteQL query that triggered the check, if available */
+  attemptedQuery?: string;
+}
+
+export const DegradationWarningSchema = z.object({
+  table: z.string(),
+  reason: z.string(),
+  remediation: z.string(),
+  attemptedQuery: z.string().optional(),
+});
+
 // ── PlaybookResult per ADR-0009 §3.1 + §13.6 (rigorRawScore for open_qa) ────
 
 export const PlaybookResultSchema = z.object({
@@ -160,6 +183,9 @@ export const PlaybookResultSchema = z.object({
   rigorThreshold: z.number(),
   rigorRawScore: z.number().nullable().optional(),  // open_qa only — raw pre-cap score (§13.6)
   proposedWritebacks: z.array(z.unknown()),
+  // Per-table NetSuite degradation warnings (Ch.8 hardening).
+  // Empty array when all NS tables are accessible or NS is not used.
+  degradationWarnings: z.array(DegradationWarningSchema).optional(),
 });
 export type PlaybookResult = z.infer<typeof PlaybookResultSchema>;
 
