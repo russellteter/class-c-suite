@@ -14,7 +14,9 @@ Unit tests that mock `fetch`, `googleapis`, the OAuth flow, and the Salesforce/N
 
 ---
 
-## Finding 1 (P0) — No real model client; the agent runtime is entirely the stub harness
+## Finding 1 (P0) — No real model client; the agent runtime is entirely the stub harness — KEYSTONE LANDED (B47)
+
+**Status: KEYSTONE LANDED — B47 closed.** `RealClaudeClient` + `modelClientFromEnv()` factory wired into `dispatch.ts` and `run-loop.ts`. `STUB_MODE=live` → real model calls via Max subscription. Items 2–6 below still open.
 
 The "stub-model harness" (`packages/stub-harness`) was built as the Ch.0–Ch.4 testing scaffold (delivery.md §Stub-model harness: "CI default STUB_MODE=replay; zero live inference in CI"). It was **never replaced with a real client** for production. The real-client path does not exist.
 

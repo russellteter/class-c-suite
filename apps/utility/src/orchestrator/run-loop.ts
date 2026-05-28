@@ -17,7 +17,8 @@ import type { IpcEmit } from './hooks.js';
 import { buildVerifierInput, VerifierInputContractViolation } from '../verifier-assembler.js';
 import { runVerifier, StubVerifierInvoker } from '../agents/verifier-runner.js';
 import { rigorScore, rigorThreshold, shipStatus as computeShipStatus } from '../scoring/rigorScore.js';
-import { StubClaudeClient } from '@c-suite/stub-harness/stub';
+// B47: StubClaudeClient direct import replaced by modelClientFromEnv() factory (ADR-0017).
+import { modelClientFromEnv } from '../agents/modelClient.js';
 import { draftWritebacks } from '@c-suite/writeback-engine';
 import { routeToPlaybook } from '../playbooks/lib/playbookRouter.js';
 import { buildDeps } from '../playbooks/lib/buildDeps.js';
@@ -214,13 +215,14 @@ export async function startRun(
     const synthState = { ...state, kind: 'synthesizer' as const, runId } as RunState & { kind: 'synthesizer' };
     const verifierInput = buildVerifierInput(runId, synthState, db);
 
-    const stubMode = (process.env.STUB_MODE ?? 'replay') as 'replay' | 'record' | 'live';
+    // B47: factory drives client selection. STUB_MODE=live → RealClaudeClient.
+    // Fixture dir only used by StubClaudeClient (ignored by RealClaudeClient).
     const fixtureDir =
       process.env.VERIFIER_FIXTURE_DIR ??
       `${process.cwd()}/tests/fixtures/lens-outputs/${runId}`;
-    const stubClient = new StubClaudeClient(stubMode, fixtureDir);
+    const verifierClient = modelClientFromEnv(fixtureDir);
     const invoker = new StubVerifierInvoker(
-      stubClient,
+      verifierClient,
       runId,
       playbookId,
       question,

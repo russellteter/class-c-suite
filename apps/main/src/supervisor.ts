@@ -67,6 +67,12 @@ export function forkUtility(): Electron.UtilityProcess {
       ...process.env,
       UTILITY_ROLE: 'orchestrator',
       UTILITY_DIAG: '1',   // B45: emit env/ABI dump on startup for crash triage
+      // B47 (ADR-0017): production uses the real Claude model client via Max subscription.
+      // STUB_MODE=live → RealClaudeClient; auth = CLAUDE_CODE_OAUTH_TOKEN (never ANTHROPIC_API_KEY).
+      STUB_MODE: process.env.STUB_MODE ?? 'live',
+      // CLAUDE_CODE_OAUTH_TOKEN is inherited from process.env via the spread above.
+      // Set it in apps/main/.env.local via `claude setup-token`.
+      // ANTHROPIC_API_KEY must NOT be set — RealClaudeClient strips it to prevent pay-per-token billing.
     },
     stdio: 'pipe',    // utility stderr+stdout piped to main for crash logging
   });

@@ -1,6 +1,7 @@
 // apps/utility/src/orchestrator/dispatch.ts
 // Source: docs/decisions/0004-ch3-runtime-spine.md §4 + §6
-// Lens isolation enforcement + stub harness wiring.
+// B47: real model client wired via modelClientFromEnv() factory (ADR-0017).
+// Lens isolation enforcement + factory-driven model client routing.
 import type Database from 'better-sqlite3';
 import type { LensRole } from '@c-suite/shared-types/agent-definition';
 import type { LensContextBundle } from '@c-suite/shared-types/lens-context-bundle';
@@ -8,6 +9,7 @@ import type { LensOutput } from '@c-suite/shared-types/lens-output';
 import { buildLensContextBundleSchema } from '@c-suite/shared-types/lens-context-bundle';
 import { AGENT_REGISTRY } from '../agents/registry.js';
 import { createHooks, type IpcEmit } from './hooks.js';
+import { modelClientFromEnv } from '../agents/modelClient.js';
 
 // ── Stub mode routing ─────────────────────────────────────────────────────────
 
@@ -90,12 +92,11 @@ export async function dispatchLens<R extends LensRole>(
     return stubOutput;
   }
 
-  // For 'record' and 'live': use the real stub harness client
+  // For 'record' and 'live': route through the factory.
+  // STUB_MODE=live → RealClaudeClient (Max subscription, ADR-0017).
+  // STUB_MODE=record → StubClaudeClient in record mode.
   const def = AGENT_REGISTRY[role];
-  // Dynamic import to avoid bundling issues in non-test environments
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stubModule = await import('@c-suite/stub-harness/stub' as any);
-  const client = (stubModule as { stubFromEnv: () => { invoke: (opts: unknown) => Promise<unknown> } }).stubFromEnv();
+  const client = modelClientFromEnv();
 
   await onSubagentStart(
     { hook_event_name: 'SubagentStart', agent_id: `${role}-live`, agent_type: 'lens' },
@@ -103,12 +104,11 @@ export async function dispatchLens<R extends LensRole>(
     {},
   );
 
-  const rawOutput = await client.invoke({
-    systemPrompt: def.systemPrompt,
-    input: bundle,
-    model: def.modelHint,
-    toolAllowlist: def.toolAllowlist,
-  });
+  // invoke(definition, context) — two-arg signature matching StubClaudeClient and RealClaudeClient.
+  const rawOutput = await client.invoke(
+    { role: def.role, systemPrompt: def.systemPrompt },
+    bundle,
+  );
 
   const output = await onSubagentStop(rawOutput);
   return output as LensOutput;
