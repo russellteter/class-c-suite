@@ -1,16 +1,13 @@
 // apps/renderer/src/screens/Home.tsx
-// Source: tasks/ch7-renderer-brief.md §1 — Variant B (dense rail) + §2 components + §3 hooks.
-// Ch.7 Phase A rewrite; replaces Ch.5 stub wholesale.
-// Layout: CSS Grid 280px | 1fr | 240px (desktop); single column below 900px.
-// Left rail is sticky. IPC stubs with TODO ch7-phase-b comments throughout.
+// TRACK 6 (ch6.3d): rewritten to Variant A — Editorial Sharp (Russell-confirmed 2026-05-28).
+// Source: ~/Desktop/csuite-design-home.html Variant A; ADR-0014 CCC adoption.
+// Layout: navy gradient header → 3-col body (tree 200px | content 1fr | right 168px).
+// Keeps all Ch.7/Ch.10 hooks, handlers, keyboard shortcuts, and live IPC components
+// (TripwireBanner, CatchupToast, JobsStrip own their own scheduler.* subscriptions).
 
 import React, { useState } from 'react';
-import '../design/tokens.css';
 import { PlaybookTile } from '../components/PlaybookTile.js';
 import { OpenQABar } from '../components/OpenQABar.js';
-import { WorkstreamRail } from '../components/WorkstreamRail.js';
-import { OpenDecisionsList } from '../components/OpenDecisionsList.js';
-import { WritebacksCounter } from '../components/WritebacksCounter.js';
 import { JobsStrip } from '../components/JobsStrip.js';
 import { CatchupToast } from '../components/CatchupToast.js';
 import { TripwireBanner } from '../components/TripwireBanner.js';
@@ -18,11 +15,7 @@ import { useHomeData } from '../hooks/useHomeData.js';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts.js';
 import type { PlaybookTileData, PlaybookId } from '../components/HomeTypes.js';
 
-// ── Playbook tile catalogue ───────────────────────────────────────────────────
-// Ordinal order matches Cmd+1..Cmd+8 mapping in useKeyboardShortcuts.ts.
-// lastRunAt + freshness are runtime values; Phase A stubs them as null/gray
-// since home.playbookActivity IPC is not wired yet.
-// TODO ch7-phase-b: receive lastRunAt + freshness from home.playbookActivity IPC variant.
+// ── Playbook tile catalogue (Cmd+1..Cmd+8) ────────────────────────────────────
 
 function computeFreshness(lastRunAt: Date | null): PlaybookTileData['freshness'] {
   if (!lastRunAt) return 'gray';
@@ -32,7 +25,6 @@ function computeFreshness(lastRunAt: Date | null): PlaybookTileData['freshness']
   return 'gray';
 }
 
-// Short PlaybookId names per ADR-0009 §3.2 canonical.
 const TILE_CATALOGUE: Omit<PlaybookTileData, 'lastRunAt' | 'freshness'>[] = [
   { ordinal: 1, id: 'cash_lever',           name: 'Cash Lever vs Trough',   icon: '💰', keyboardHint: '⌘1' },
   { ordinal: 2, id: 'gtm_realloc',          name: 'GTM Resource Realloc',   icon: '🎯', keyboardHint: '⌘2' },
@@ -44,79 +36,50 @@ const TILE_CATALOGUE: Omit<PlaybookTileData, 'lastRunAt' | 'freshness'>[] = [
   { ordinal: 8, id: 'quick_read',           name: 'Quick Multi-Lens Read',  icon: '⚡', keyboardHint: '⌘8' },
 ];
 
-// ── Today's date display ──────────────────────────────────────────────────────
-
 function formatToday(): string {
-  return new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
+  return new Date()
+    .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+    .toUpperCase()
+    .replace(/,/g, ' ·');
 }
 
-// ── Sub-components (layout helpers) ──────────────────────────────────────────
-
-function RailSectionLabel({ children }: { children: React.ReactNode }): React.ReactElement {
-  return (
-    <div style={{
-      fontSize: 'var(--text-2xs)',
-      textTransform: 'uppercase',
-      letterSpacing: '0.08em',
-      color: 'var(--color-text-muted)',
-      marginBottom: 'var(--space-2)',
-      paddingBottom: 'var(--space-1)',
-      borderBottom: '1px solid var(--color-border)',
-    }}>
-      {children}
-    </div>
-  );
-}
-
-function RightLabel({ children }: { children: React.ReactNode }): React.ReactElement {
-  return (
-    <div style={{
-      fontSize: 'var(--text-2xs)',
-      textTransform: 'uppercase',
-      letterSpacing: '0.08em',
-      color: 'var(--color-text-muted)',
-      marginBottom: 'var(--space-2)',
-      paddingBottom: 'var(--space-1)',
-      borderBottom: '1px solid var(--color-border)',
-    }}>
-      {children}
-    </div>
-  );
+function dotClass(status: 'GREEN' | 'YELLOW' | 'RED'): string {
+  return status === 'GREEN' ? 'g' : status === 'YELLOW' ? 'y' : 'r';
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 export interface HomeProps {
-  /** Called when a tile is clicked or Cmd+1-8 fires — nav to plan-approval */
   onTileClick?: (playbookId: PlaybookId) => void;
-  /** Called when Open Q&A is submitted — nav to plan-approval with prompt */
   onOpenQASubmit?: (prompt: string) => void;
-  /** Called when writebacks counter is clicked — nav to WritebackPane */
   onWritebacksClick?: () => void;
-  /** Called when a JobsStrip row is clicked — nav to SettingsScheduler with pre-selected job */
   onJobClick?: (jobId: string) => void;
-  /** Called when "view memo" is activated from a job row or tripwire banner */
   onViewMemo?: (memoPath: string) => void;
-  /** Called when Settings → Scheduler sidebar entry is clicked */
   onSettingsScheduler?: () => void;
-  /** Called when Settings → Notifications sidebar entry is clicked */
   onSettingsNotifications?: () => void;
 }
 
 // ── Home screen ───────────────────────────────────────────────────────────────
 
-export function Home({ onTileClick, onOpenQASubmit, onWritebacksClick, onJobClick, onViewMemo, onSettingsScheduler, onSettingsNotifications }: HomeProps): React.ReactElement {
+export function Home({
+  onTileClick,
+  onOpenQASubmit,
+  onWritebacksClick,
+  onJobClick,
+  onViewMemo,
+  onSettingsScheduler,
+  onSettingsNotifications,
+}: HomeProps): React.ReactElement {
   const [qaValue, setQaValue] = useState('');
   const homeData = useHomeData();
   useKeyboardShortcuts();
 
-  // W30 proximity: stubbed to "26 days" — Runtime sub-agent wires home.w30Proximity.
-  // TODO ch7-phase-b: wire home.w30Proximity IPC variant (W30 indexer hook).
-  const w30ProximityLabel = '26 days';
+  // W30 proximity: stubbed; Runtime wires home.w30Proximity (TODO ch7-phase-b).
+  const w30ProximityLabel = '26d';
 
   const tiles: PlaybookTileData[] = TILE_CATALOGUE.map((t) => ({
     ...t,
-    lastRunAt: null, // TODO ch7-phase-b: wire from home.playbookActivity IPC
+    lastRunAt: null,
     freshness: computeFreshness(null),
   }));
 
@@ -125,329 +88,206 @@ export function Home({ onTileClick, onOpenQASubmit, onWritebacksClick, onJobClic
     onOpenQASubmit?.(prompt);
   }
 
-  function handleTileClick(id: PlaybookId) {
-    onTileClick?.(id);
-  }
-
   const costUsage = homeData.costUsage;
   const windowPct = costUsage?.windowPct ?? 0;
 
   return (
     <div
-      style={{
-        background: 'var(--color-navy-900)',
-        color: 'var(--color-text-primary)',
-        minHeight: '100vh',
-        fontFamily: '-apple-system, "SF Pro Display", "Inter", system-ui, sans-serif',
-        fontSize: 'var(--text-sm)',
-        lineHeight: 'var(--leading-snug)',
-      }}
+      className="cs-home"
+      style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--gray-50)', fontFamily: 'var(--font-sans)', color: 'var(--navy)' }}
       data-testid="home-screen"
     >
-      {/* ── TOP BAR ────────────────────────────────────────────────────────── */}
-      <header
-        role="banner"
-        aria-label="Session context"
-        style={{
-          background: 'var(--color-navy-700)',
-          borderBottom: '1px solid var(--color-border)',
-          padding: '7px var(--space-4)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-3)',
-          flexWrap: 'wrap',
-        }}
-      >
-        {/* Date */}
-        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--color-text-secondary)' }}>
-          <span style={{ color: 'var(--color-text-primary)' }}>{formatToday()}</span>
-        </div>
-
-        {/* W30 trough chip */}
-        <div
+      {/* ── EDITORIAL HEADER ──────────────────────────────────────────────── */}
+      <header className="cs-header" role="banner" aria-label="Session context">
+        <h1>C-Suite</h1>
+        <span className="cs-stamp num" data-testid="home-date">{formatToday()}</span>
+        <span
+          className="num"
           style={{
-            fontSize: 'var(--text-xs)',
-            background: 'rgba(201,161,75,0.12)',
-            border: '1px solid rgba(201,161,75,0.3)',
-            borderRadius: 'var(--radius-sm)',
-            padding: '2px 7px',
-            color: 'var(--color-gold-500)',
+            marginLeft: 'auto',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10px',
+            background: 'rgba(255,186,0,0.14)',
+            border: '1px solid rgba(255,186,0,0.4)',
+            color: 'var(--gold)',
+            padding: '3px 8px',
+            borderRadius: 'var(--r-sm)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
           }}
           aria-label={`W30 trough in ${w30ProximityLabel}`}
         >
-          W30 in <strong>{w30ProximityLabel}</strong>
-        </div>
-
-        {/* Spacer */}
-        <div style={{ flex: 1 }} />
-
-        {/* Cost ribbon */}
-        <div
-          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}
+          W30 in {w30ProximityLabel}
+        </span>
+        <span
+          className="num"
+          style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase' }}
           aria-label="Token usage"
         >
           {costUsage !== null ? (
             <>
-              <span>
-                Window{' '}
-                <strong style={{ color: 'var(--color-text-secondary)' }}>
-                  {Math.round(windowPct)}%
-                </strong>
-              </span>
-              <div
+              WINDOW <strong style={{ color: '#fff' }}>{Math.round(windowPct)}%</strong>
+              <span
                 role="progressbar"
                 aria-valuenow={Math.round(windowPct)}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-label={`Context window ${Math.round(windowPct)}% used`}
-                style={{
-                  width: '60px',
-                  height: '4px',
-                  background: 'var(--color-surface-2)',
-                  borderRadius: '2px',
-                  overflow: 'hidden',
-                }}
+                style={{ width: '54px', height: '4px', background: 'rgba(255,255,255,0.15)', borderRadius: '2px', overflow: 'hidden', display: 'inline-block' }}
               >
-                <div style={{
-                  height: '100%',
-                  width: `${windowPct}%`,
-                  background: 'linear-gradient(90deg, var(--color-purple-500), var(--color-purple-400))',
-                  borderRadius: '2px',
-                }} />
-              </div>
+                <span style={{ display: 'block', height: '100%', width: `${windowPct}%`, background: 'linear-gradient(90deg, var(--purple), var(--purple-400))' }} />
+              </span>
               {costUsage.todayUsd !== null && (
-                <span>
-                  Today{' '}
-                  <strong style={{ color: 'var(--color-text-secondary)' }}>
-                    ${costUsage.todayUsd.toFixed(2)}
-                  </strong>
-                </span>
+                <>TODAY <strong style={{ color: '#fff' }}>${costUsage.todayUsd.toFixed(2)}</strong></>
               )}
             </>
           ) : (
-            <span style={{ color: 'var(--color-text-muted)' }}>Usage loading…</span>
+            <span>USAGE LOADING…</span>
           )}
-        </div>
+        </span>
       </header>
 
-      {/* ── TRIPWIRE BANNER (top-of-home, above body) ──────────────────────── */}
-      {/* Subscribes to scheduler.tripwire.flipped IPC internally */}
+      {/* Tripwire banner (live scheduler.tripwire.flipped subscription) */}
       <TripwireBanner onOpenMemo={onViewMemo} />
 
       {/* ── THREE-COLUMN BODY ─────────────────────────────────────────────── */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '280px 1fr 240px',
-          minHeight: 'calc(100vh - 37px)',
-        }}
-      >
-        {/* ── LEFT RAIL ──────────────────────────────────────────────────── */}
-        <nav
-          aria-label="Context rail — workstreams, decisions, writebacks"
-          style={{
-            background: 'rgba(10,24,73,0.92)',
-            borderRight: '1px solid var(--color-border)',
-            padding: 'var(--space-3) 0',
-            overflowY: 'auto',
-            position: 'sticky',
-            top: 0,
-            height: 'calc(100vh - 37px)',
-          }}
-        >
-          {/* Workstreams */}
-          <div style={{ padding: '0 var(--space-3)', marginBottom: 'var(--space-4)' }}>
-            <RailSectionLabel>Workstreams</RailSectionLabel>
-            <WorkstreamRail workstreams={homeData.workstreams} />
-          </div>
-
-          {/* Open Decisions */}
-          <div style={{ padding: '0 var(--space-3)', marginBottom: 'var(--space-4)' }}>
-            <RailSectionLabel>Open Decisions</RailSectionLabel>
-            <OpenDecisionsList decisions={homeData.decisions} />
-          </div>
-
-          {/* Writebacks Counter */}
-          <div style={{ padding: '0 var(--space-3)', marginBottom: 'var(--space-4)' }}>
-            <RailSectionLabel>Writebacks</RailSectionLabel>
-            {onWritebacksClick ? (
-              <WritebacksCounter count={homeData.writebackCount} onClick={onWritebacksClick} />
+      <div className="cs-home-body" style={{ flex: 1, display: 'grid', gridTemplateColumns: '200px 1fr 168px', overflow: 'hidden' }}>
+        {/* ── LEFT: tree-pane sidebar ────────────────────────────────────── */}
+        <nav className="cs-tree" aria-label="Context rail — workstreams, decisions, writebacks">
+          <div className="cs-tree-sec">
+            <h3 className="cs-eyebrow">Workstreams</h3>
+            {homeData.workstreams.length === 0 ? (
+              <div className="cs-empty" style={{ padding: '5px 16px' }}>No active workstreams</div>
             ) : (
-              <WritebacksCounter count={homeData.writebackCount} onClick={() => {}} />
+              homeData.workstreams.map((ws, i) => (
+                <div key={ws.id} className={`cs-row${i === 0 ? ' sel' : ''}`} data-testid={`workstream-${ws.id}`}>
+                  <span className={`cs-dot ${dotClass(ws.status)}`} />
+                  <span className="ws">{ws.id}</span>
+                  <span className="cnt num">{ws.phase}</span>
+                </div>
+              ))
             )}
           </div>
 
-          {/* Settings nav entries (Ch.10) — buttons inside the outer rail <nav>, no nested nav */}
-          <div style={{ padding: '0 var(--space-3)' }} aria-label="Settings navigation" role="group">
-            <RailSectionLabel>Settings</RailSectionLabel>
+          <div className="cs-tree-sec">
+            <h3 className="cs-eyebrow">Open Decisions</h3>
+            {homeData.decisions.length === 0 ? (
+              <div className="cs-empty" style={{ padding: '5px 16px' }}>No open decisions</div>
+            ) : (
+              homeData.decisions.map((d) => (
+                <div key={d.id} className="cs-row" title={d.title} data-testid={`decision-${d.id}`}>
+                  <span className="ws">{d.id}</span>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="cs-tree-sec">
+            <h3 className="cs-eyebrow">Writebacks</h3>
             <button
               type="button"
-              onClick={onSettingsScheduler}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                background: 'none',
-                border: 'none',
-                padding: '4px var(--space-2)',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: 'var(--text-xs)',
-                color: 'var(--color-text-secondary)',
-                cursor: 'pointer',
-                marginBottom: 'var(--space-1)',
-              }}
-              aria-label="Open Scheduler settings"
+              className="cs-row"
+              onClick={() => onWritebacksClick?.()}
+              data-testid="writebacks-row"
+              aria-label={`${homeData.writebackCount} pending writebacks`}
             >
-              Scheduler
+              <span className="ws" style={{ color: 'var(--purple)', fontWeight: 600 }}>
+                {homeData.writebackCount} pending →
+              </span>
             </button>
-            <button
-              type="button"
-              onClick={onSettingsNotifications}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                background: 'none',
-                border: 'none',
-                padding: '4px var(--space-2)',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: 'var(--text-xs)',
-                color: 'var(--color-text-secondary)',
-                cursor: 'pointer',
-              }}
-              aria-label="Open Notifications settings"
-            >
-              Notifications
+          </div>
+
+          <div className="cs-tree-sec" role="group" aria-label="Settings navigation">
+            <h3 className="cs-eyebrow">Settings</h3>
+            <button type="button" className="cs-row" onClick={onSettingsScheduler} aria-label="Open Scheduler settings">
+              <span className="ws">Scheduler</span>
+            </button>
+            <button type="button" className="cs-row" onClick={onSettingsNotifications} aria-label="Open Notifications settings">
+              <span className="ws">Notifications</span>
             </button>
           </div>
         </nav>
 
-        {/* ── CENTER CANVAS ──────────────────────────────────────────────── */}
-        <main
-          style={{
-            padding: 'var(--space-3) var(--space-4)',
-            overflowY: 'auto',
-          }}
-          data-testid="home-center"
-        >
-          {/* Open Q&A bar */}
-          <OpenQABar
-            value={qaValue}
-            onChange={setQaValue}
-            onSubmit={handleQASubmit}
-            decomposerPreview={null} // TODO ch7-phase-b: wire decomposer preview IPC
-            submitDisabled={false}
-          />
-
-          {/* Playbook tiles — 4×2 grid */}
-          <div
-            style={{
-              fontSize: 'var(--text-xs)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: 'var(--color-text-muted)',
-              marginBottom: 'var(--space-2)',
-            }}
-            id="pb-section-label"
-          >
-            Playbooks
+        {/* ── CENTER: content pane ───────────────────────────────────────── */}
+        <main style={{ overflow: 'auto', padding: '16px 20px' }} data-testid="home-center">
+          <div style={{ marginBottom: '18px' }}>
+            <OpenQABar
+              value={qaValue}
+              onChange={setQaValue}
+              onSubmit={handleQASubmit}
+              decomposerPreview={null}
+              submitDisabled={false}
+            />
           </div>
+
+          <span className="cs-eyebrow" id="pb-section-label">Playbooks</span>
           <div
             role="list"
             aria-labelledby="pb-section-label"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 140px)',
-              gap: 'var(--space-2)',
-              marginBottom: 'var(--space-3)',
-            }}
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginTop: '10px' }}
             data-testid="playbook-grid"
           >
             {tiles.map((tile) => (
               <div key={tile.id} role="listitem">
-                <PlaybookTile {...tile} onClick={handleTileClick} />
+                <PlaybookTile {...tile} onClick={(id) => onTileClick?.(id)} />
               </div>
             ))}
           </div>
         </main>
 
-        {/* ── RIGHT COLUMN ───────────────────────────────────────────────── */}
-        <aside
-          aria-label="Cost and scheduled jobs"
-          style={{
-            borderLeft: '1px solid var(--color-border)',
-            padding: 'var(--space-3)',
-            overflowY: 'auto',
-          }}
-        >
-          {/* Token meter — fixed-height 120px section */}
-          <div style={{ marginBottom: 'var(--space-4)', minHeight: '120px' }}>
-            <RightLabel>Token Meter</RightLabel>
+        {/* ── RIGHT: token meter + scheduled jobs ────────────────────────── */}
+        <aside style={{ borderLeft: '1px solid var(--gray-200)', background: 'var(--paper)', overflow: 'auto', padding: '14px' }} aria-label="Cost and scheduled jobs">
+          <span className="cs-eyebrow">Token Meter</span>
+          <div className="cs-meter" style={{ margin: '8px 0 18px' }}>
             {costUsage !== null ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                {/* Window used */}
-                <div>
-                  <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)' }}>
-                    Window used
-                  </div>
-                  <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                    {Math.round(windowPct)}%
-                  </div>
-                  <div
-                    role="progressbar"
-                    aria-valuenow={Math.round(windowPct)}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label={`Window ${Math.round(windowPct)}% used`}
-                    style={{ height: '5px', background: 'var(--color-surface-2)', borderRadius: '2px', overflow: 'hidden', marginTop: '2px' }}
-                  >
-                    <div style={{ height: '100%', width: `${windowPct}%`, background: 'linear-gradient(90deg, var(--color-purple-500), var(--color-purple-400))', borderRadius: '2px' }} />
-                  </div>
+              <>
+                <div className="big num">{Math.round(windowPct)}%</div>
+                <div className="cap">Window used</div>
+                <div
+                  className="bar"
+                  role="progressbar"
+                  aria-valuenow={Math.round(windowPct)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`Window ${Math.round(windowPct)}% used`}
+                >
+                  <i style={{ width: `${windowPct}%` }} />
                 </div>
-
-                {/* Today's spend */}
                 {costUsage.todayUsd !== null && (
-                  <div>
-                    <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)' }}>Today's spend</div>
-                    <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                      ${costUsage.todayUsd.toFixed(2)}
-                    </div>
+                  <div style={{ marginTop: '10px' }}>
+                    <div className="big num" style={{ fontSize: '20px' }}>${costUsage.todayUsd.toFixed(2)}</div>
+                    <div className="cap">Spend today</div>
                   </div>
                 )}
-              </div>
+              </>
             ) : (
-              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                Loading…
-              </p>
+              <div className="cs-empty">Loading…</div>
             )}
           </div>
 
-          {/* Scheduled jobs strip — Ch.10: live IPC subscription inside JobsStrip */}
-          <div>
-            <RightLabel>Scheduled Jobs</RightLabel>
-            <JobsStrip
-              onJobClick={onJobClick}
-              onViewMemo={onViewMemo}
-            />
+          <span className="cs-eyebrow">Scheduled Jobs</span>
+          <div style={{ marginTop: '6px' }}>
+            <JobsStrip onJobClick={onJobClick} onViewMemo={onViewMemo} />
           </div>
         </aside>
       </div>
 
-      {/* ── CATCHUP TOAST (subscribes to scheduler.catchup.summary IPC internally) */}
+      {/* Catch-up toast (live scheduler.catchup.summary subscription) */}
       <CatchupToast />
 
-      {/* ── RESPONSIVE: single column under 900px ────────────────────────── */}
+      {/* Responsive: collapse to single column under 900px (CCC breakpoint) */}
       <style>{`
         @media (max-width: 900px) {
-          [data-testid="home-screen"] > div:nth-child(2) {
+          [data-testid="home-screen"] .cs-home-body {
             grid-template-columns: 1fr !important;
+            overflow: auto !important;
           }
-          [data-testid="home-screen"] > div:nth-child(2) > nav {
-            position: static !important;
-            height: auto !important;
-          }
-          [data-testid="home-screen"] [role="list"][aria-labelledby="pb-section-label"] {
-            grid-template-columns: repeat(2, 140px) !important;
+          [data-testid="home-screen"] .cs-tree { border-right: none; border-bottom: 1px solid var(--gray-200); }
+          [data-testid="home-screen"] aside { border-left: none; border-top: 1px solid var(--gray-200); }
+        }
+        @media (max-width: 640px) {
+          [data-testid="home-screen"] [data-testid="playbook-grid"] {
+            grid-template-columns: 1fr !important;
           }
         }
       `}</style>

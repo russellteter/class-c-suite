@@ -109,11 +109,11 @@ function displayCoverage(s: RoundTableState): string {
   return s.coverage ?? '—%';
 }
 
-function verifierNodeColor(score: number | null): string {
-  if (score === null) return 'var(--muted)';
-  if (score >= 70) return 'var(--success)'; // clean
-  if (score >= 50) return 'var(--warning)'; // amber
-  return 'var(--error)';                    // red
+function verifierInkColor(score: number | null): string {
+  if (score === null) return 'var(--gray-500)';
+  if (score >= 70) return 'var(--success-ink)'; // clean (teal)
+  if (score >= 50) return 'var(--warning-ink)'; // amber
+  return 'var(--error-ink)';                     // red
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -172,127 +172,108 @@ export function RoundTable({ runId, activeLenses = DEFAULT_CASH_LEVER_LENSES }: 
     active: activeLenses.includes(n.role),
   }));
 
+  const liveCount = state.toolCallsInFlight.size;
+  const running = liveCount > 0 || state.pulsingAgents.size > 0;
+  const runPhase = state.verifierScore !== null ? 'COMPLETE' : running ? 'RUNNING' : '00:00';
+  const sourcesEm = state.sources === null;
+  const verifiedEm = state.verified === null;
+  const coverageEm = state.coverage === null;
+
   return (
     <div
-      style={{ fontFamily: 'var(--font-sans)', padding: '24px', minHeight: '100vh', background: 'var(--bg-surface)' }}
+      className="cs-roundtable"
+      style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--gray-50)', fontFamily: 'var(--font-sans)' }}
       data-testid="round-table"
     >
-      {/* Substance ribbon (honest-signal contract AC-9) */}
+      {/* Editorial header with gradient underline */}
+      <header className="cs-header" style={{ display: 'block', padding: '14px 22px' }}>
+        <h1>Cash Lever vs Trough</h1>
+        <span className="cs-stamp" style={{ display: 'block', marginTop: '3px' }} data-testid="run-stamp">
+          RUN {runId} · {runPhase}
+        </span>
+      </header>
+
+      {/* Substance ribbon — KPI strip (honest-signal contract AC-9) */}
       <div
-        className="glass-card"
-        style={{ display: 'flex', gap: '32px', alignItems: 'center', marginBottom: '24px', padding: '16px 20px' }}
+        className="cs-kpi-strip"
+        style={{ gridTemplateColumns: 'repeat(3, 1fr)', borderRadius: 0, borderLeft: 'none', borderRight: 'none', position: 'relative' }}
         data-testid="substance-ribbon"
       >
-        <div>
-          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>
-            Sources
-          </div>
-          <div
-            style={{ fontSize: '20px', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--navy)' }}
-            data-testid="ribbon-sources"
-          >
-            {displaySources(state)}
-          </div>
+        <div className="cs-kpi">
+          <span className="lbl">Sources</span>
+          <div className={`val${sourcesEm ? ' em' : ''}`} data-testid="ribbon-sources">{displaySources(state)}</div>
         </div>
-        <div>
-          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>
-            Verified
-          </div>
-          <div
-            style={{ fontSize: '20px', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--navy)' }}
-            data-testid="ribbon-verified"
-          >
-            {displayVerified(state)}
-          </div>
+        <div className="cs-kpi">
+          <span className="lbl">Verified</span>
+          <div className={`val${verifiedEm ? ' em' : ''}`} data-testid="ribbon-verified">{displayVerified(state)}</div>
         </div>
-        <div>
-          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>
-            Coverage
-          </div>
-          <div
-            style={{ fontSize: '20px', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--navy)' }}
-            data-testid="ribbon-coverage"
-          >
-            {displayCoverage(state)}
-          </div>
+        <div className="cs-kpi">
+          <span className="lbl">Coverage</span>
+          <div className={`val${coverageEm ? ' em' : ''}`} data-testid="ribbon-coverage">{displayCoverage(state)}</div>
         </div>
-        {state.toolCallsInFlight.size > 0 && (
-          <div style={{ marginLeft: 'auto' }}>
-            <span className="glass-badge glass-badge--purple" style={{ animation: 'phase-pulse 2s ease-in-out infinite' }}>
-              {state.toolCallsInFlight.size} tool call{state.toolCallsInFlight.size !== 1 ? 's' : ''} live
-            </span>
-          </div>
+        {liveCount > 0 && (
+          <span
+            className="cs-pill live cs-pulsing"
+            style={{ position: 'absolute', top: '14px', right: '22px' }}
+            data-testid="live-tool-badge"
+          >
+            {liveCount} tool call{liveCount !== 1 ? 's' : ''} live
+          </span>
         )}
       </div>
 
-      {/* Lens nodes */}
-      <div
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}
-        data-testid="lens-nodes"
-      >
-        {lenses.map(lens => {
-          const isPulsing = state.pulsingAgents.has(lens.role);
-          return (
-            <div
-              key={lens.role}
-              className={`glass-card ${lens.active ? 'glass-card--selected' : ''}`}
-              style={{ opacity: lens.active ? 1 : 0.4, textAlign: 'center', padding: '16px' }}
-              data-testid={`lens-node-${lens.role}`}
-            >
-              <div
-                className="phase-node__circle"
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  background: lens.active ? 'var(--purple)' : 'var(--muted)',
-                  margin: '0 auto 8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontWeight: 700,
-                  fontSize: '13px',
-                  animation: isPulsing ? 'phase-pulse 2s ease-in-out infinite' : 'none',
-                }}
-              >
-                {lens.role}
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--navy)', fontWeight: 600 }}>
-                {lens.label}
-              </div>
-              {isPulsing && (
-                <span className="glass-badge glass-badge--purple" style={{ marginTop: '6px' }}>
-                  Running
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Synthesizer + Verifier downstream nodes */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-        <div className="glass-card" style={{ textAlign: 'center' }} data-testid="synthesizer-node">
-          <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--navy)', marginBottom: '4px' }}>Synthesizer</div>
-          <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Weaving lens outputs into memo</div>
-        </div>
+      <div className="cs-rt-body" style={{ flex: 1, padding: '20px 22px', overflow: 'auto' }}>
+        {/* Active lenses */}
+        <span className="cs-eyebrow">Active Lenses</span>
         <div
-          className="glass-card"
-          style={{ textAlign: 'center', borderColor: state.verifierScore !== null ? verifierNodeColor(state.verifierScore) : undefined }}
-          data-testid="verifier-node"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '10px' }}
+          data-testid="lens-nodes"
         >
-          <div style={{ fontWeight: 700, fontSize: '13px', color: verifierNodeColor(state.verifierScore), marginBottom: '4px' }}>
-            Verifier
+          {lenses.map(lens => {
+            const isPulsing = state.pulsingAgents.has(lens.role);
+            return (
+              <div
+                key={lens.role}
+                className={`cs-node ${lens.active ? 'on' : 'dim'}`}
+                data-testid={`lens-node-${lens.role}`}
+              >
+                <div className={`circle${isPulsing ? ' cs-pulsing' : ''}`}>{lens.role}</div>
+                <div className="role">{lens.label}</div>
+                {isPulsing && <div className="run">running</div>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Synthesizer + Verifier downstream nodes */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '14px' }}>
+          <div className="cs-node" style={{ textAlign: 'center' }} data-testid="synthesizer-node">
+            <div className="t">Synthesizer</div>
+            <div className="s">{running ? 'Awaiting lens outputs' : 'Weaving lens outputs into memo'}</div>
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
-            {state.verifierScore !== null ? `Rigor: ${state.verifierScore}/100` : 'Pending'}
+          <div
+            className="cs-node"
+            style={{ textAlign: 'center', borderColor: state.verifierStatus === 'clean' ? 'var(--success)' : undefined }}
+            data-testid="verifier-node"
+          >
+            <div className="t" style={{ color: verifierInkColor(state.verifierScore) }}>
+              {state.verifierScore !== null ? `Verifier · ${state.verifierScore}/100` : 'Verifier'}
+            </div>
+            <div className="s">
+              {state.verified !== null
+                ? `${state.verified} claims verified`
+                : 'Pending'}
+            </div>
+            {state.verifierStatus && (
+              <span
+                className={`cs-pill ${state.verifierStatus === 'clean' ? 'success' : 'warning'}`}
+                style={{ marginTop: '6px' }}
+                data-testid="verifier-verdict"
+              >
+                {state.verifierStatus === 'clean' ? 'Clean' : 'Draft'}
+              </span>
+            )}
           </div>
-          {state.verifierStatus && (
-            <span className={`glass-badge ${state.verifierStatus === 'clean' ? 'glass-badge--success' : 'glass-badge--warning'}`} style={{ marginTop: '6px' }}>
-              {state.verifierStatus.toUpperCase()}
-            </span>
-          )}
         </div>
       </div>
     </div>

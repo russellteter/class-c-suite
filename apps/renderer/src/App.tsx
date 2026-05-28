@@ -15,6 +15,8 @@ import { HandoffPreview } from './screens/HandoffPreview.js';
 import { SettingsScheduler } from './screens/SettingsScheduler.js';
 import { NotificationSettings } from './screens/NotificationSettings.js';
 import { Connectors } from './screens/Connectors.js';
+import { RoundTable } from './screens/RoundTable.js';
+import { MemoViewer, type MemoViewerMemo } from './screens/MemoViewer.js';
 import type { PlaybookId } from './components/HomeTypes.js';
 import { onHandoffPreviewReady, type HandoffBrief } from './ipc/handoff.js';
 
@@ -31,7 +33,62 @@ type Screen =
   // Ch.10 — Settings sub-screens
   | { name: 'settings-scheduler'; selectedJobId?: string }
   | { name: 'settings-notifications' }
-  | { name: 'settings-connectors' };
+  | { name: 'settings-connectors' }
+  // TRACK 6 — hero-screen test routes (headless Playwright fidelity checks)
+  | { name: 'roundtable'; runId: string }
+  | { name: 'memo-viewer'; memo: MemoViewerMemo };
+
+// ── Fixtures for the hero-screen test routes (?screen=roundtable / memo-viewer) ─
+
+const FIXTURE_MEMO_MARKDOWN = [
+  '# LOC draw vs AWS deferral — W30 trough',
+  '',
+  'The W30 cash trough lands in 26 days. NetSuite AR aging shows $1.42M collectible inside the window[^cash-001], against a projected $2.1M shortfall at trough.',
+  '',
+  '## Option 1 — Draw the Barclays LOC',
+  'Available headroom is $3.0M at SOFR+275[^barclays-003]. Draws are reversible within the quarter and preserve the AWS commit schedule.',
+  '',
+  '## Option 2 — Defer the AWS reserved-instance prepay',
+  'Deferring the Q3 prepay frees $1.8M[^aws-002] but forfeits the 31% reserved-instance discount, a $560K annualized cost.',
+  '',
+  '## Recommendation',
+  'Draw the LOC for the trough, hold the AWS prepay. Cheaper carry, fully reversible.',
+].join('\n');
+
+function fixtureMemo(variant: string | null): MemoViewerMemo {
+  const base: MemoViewerMemo = {
+    runId: 'r-2026-05-27-cash-lever-a4f9',
+    memoMarkdown: FIXTURE_MEMO_MARKDOWN,
+    status: 'clean',
+    rigorScore: 78,
+    filename: '2026-05-27-cash-lever-loc-vs-aws.md',
+    memoTitle: 'Cash Memo',
+    hasAcceptedDecision: true,
+    outputSurfaces: [
+      { kind: 'gdoc', url: 'https://docs.google.com/document/d/fixture', title: 'View as Google Doc' },
+    ],
+  };
+  if (variant === 'draft') {
+    return {
+      ...base,
+      status: 'draft',
+      rigorScore: 61,
+      filename: '2026-05-27-cash-lever-loc-vs-aws.draft.md',
+      failureReasons: ['Coverage 64% below 70% threshold', '2 claims unverified by the verifier'],
+      hasAcceptedDecision: false,
+    };
+  }
+  if (variant === 'degraded') {
+    return {
+      ...base,
+      degradationWarnings: [
+        { table: 'account', reason: 'Role lacks View permission on Account records', remediation: 'Grant the integration role View access to Lists › Accounting › Accounts' },
+        { table: 'department', reason: 'SuiteQL returned INSUFFICIENT_PERMISSION', remediation: 'Add the Department permission to the integration role' },
+      ],
+    };
+  }
+  return base;
+}
 
 function initialScreen(): Screen {
   // Allow test navigation via URL query params (brief §Wiring: "openable via a test route")
@@ -46,6 +103,12 @@ function initialScreen(): Screen {
     if (screen === 'history') {
       const artifactId = params.get('artifactId') ?? 'UNKNOWN';
       return { name: 'history', artifactId };
+    }
+    if (screen === 'roundtable') {
+      return { name: 'roundtable', runId: params.get('runId') ?? 'r-2026-05-27-cash-lever-a4f9' };
+    }
+    if (screen === 'memo-viewer') {
+      return { name: 'memo-viewer', memo: fixtureMemo(params.get('variant')) };
     }
   }
   return { name: 'home' };
@@ -171,6 +234,12 @@ export function App(): React.ReactElement {
           onBack={() => navigateTo({ name: 'home' })}
         />
       );
+
+    case 'roundtable':
+      return <RoundTable runId={screen.runId} />;
+
+    case 'memo-viewer':
+      return <MemoViewer memo={screen.memo} onClose={() => navigateTo({ name: 'home' })} />;
 
     case 'home':
     default:

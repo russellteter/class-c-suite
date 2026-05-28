@@ -12,6 +12,7 @@ import React, { useState, useCallback } from 'react';
 import { invokeToolCallGet } from '../ipc/subscriptions.js';
 import { DrawUpCTA } from '../components/DrawUpCTA.js';
 import { sendHandoffPreviewRequested } from '../ipc/handoff.js';
+import type { DegradationWarning, OutputSurface } from '@c-suite/shared-types/playbook';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,9 +27,29 @@ export interface MemoViewerMemo {
   memoPath?: string;
   /** Memo title (used in handoff origin label) */
   memoTitle?: string;
+  /** Verifier rigor score (0–100) — shown in the document sub-line. */
+  rigorScore?: number | null;
   /** True when at least one accepted decision writeback exists for this memo.
    *  Gates the "Draw up for Cowork" CTA per ADR §5.1. */
   hasAcceptedDecision?: boolean;
+  /** Per-table NetSuite degradation warnings (TRACK 3). Renders a banner+table. */
+  degradationWarnings?: DegradationWarning[];
+  /** External-document render targets (TRACK 5). Renders View-as links. */
+  outputSurfaces?: OutputSurface[];
+}
+
+// ── Output-surface link helpers (TRACK 5) ─────────────────────────────────────
+
+const SURFACE_LABEL: Record<string, string> = {
+  gdoc: 'View as Google Doc',
+  gsheet: 'View as Google Sheet',
+  gslides: 'View as Google Slides',
+  gdrive_upload: 'View in Google Drive',
+};
+
+function renderableSurfaces(surfaces?: OutputSurface[]): OutputSurface[] {
+  // 'memo' is the markdown itself (already shown); only link external artifacts with a URL.
+  return (surfaces ?? []).filter((s) => s.kind !== 'memo' && typeof s.url === 'string' && s.url.length > 0);
 }
 
 interface ToolCallSidePanel {
@@ -61,8 +82,7 @@ export function parseMemoMarkdown(
       segments.push(
         <button
           key={`citation-${sourceId}-${i}`}
-          className="glass-badge glass-badge--purple"
-          style={{ cursor: 'pointer', border: 'none', fontSize: '10px', verticalAlign: 'super' }}
+          className="cs-cite"
           onClick={() => onCitationClick(sourceId)}
           aria-label={`Source: ${sourceId}`}
           data-source-id={sourceId}
@@ -135,151 +155,134 @@ export function MemoViewer({ memo, onClose }: MemoViewerProps): React.ReactEleme
   }, []);
 
   const memoContent = parseMemoMarkdown(memo.memoMarkdown, handleCitationClick);
+  const surfaces = renderableSurfaces(memo.outputSurfaces);
+  const warnings = memo.degradationWarnings ?? [];
+  const panelOpen = !!(sidePanel || sidePanelLoading);
+  const statusLabel = memo.status === 'clean' ? 'Clean' : 'Draft';
+  const rigorLabel = memo.rigorScore != null ? ` · Rigor ${memo.rigorScore}/100` : '';
+
+  function safePretty(json: string): string {
+    try {
+      return JSON.stringify(JSON.parse(json), null, 2);
+    } catch {
+      return json;
+    }
+  }
 
   return (
     <div
-      style={{ fontFamily: 'var(--font-sans)', display: 'flex', minHeight: '100vh', background: 'var(--bg-surface)' }}
+      className="cs-memo"
+      style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--gray-50)', fontFamily: 'var(--font-sans)' }}
       data-testid="memo-viewer"
     >
-      {/* Main memo area */}
-      <div style={{ flex: 1, padding: '24px', overflow: 'auto' }}>
-        {/* DRAFT banner (AC-8) */}
-        {memo.status === 'draft' && (
-          <div
-            className="draft-banner"
-            role="banner"
-            aria-label="DRAFT"
-            style={{ marginBottom: '20px' }}
-            data-testid="draft-banner"
-          >
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: '13px', color: '#92400e', marginBottom: '4px' }}>
-                DRAFT — Rigor below 70% threshold
+      {/* Editorial header with filename stamp + Draw-up CTA */}
+      <header className="cs-header">
+        <h1>{memo.memoTitle ?? 'Cash Memo'}</h1>
+        {memo.filename && (
+          <span className="cs-stamp" data-testid="memo-filename">{memo.filename}</span>
+        )}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {surfaces.map((s, i) => (
+            <a
+              key={`surface-${i}`}
+              className="cs-surface-link"
+              href={s.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid={`output-surface-${s.kind}`}
+            >
+              {s.title ?? SURFACE_LABEL[s.kind] ?? 'View document'} ↗
+            </a>
+          ))}
+          {memo.status === 'clean' && memo.hasAcceptedDecision && (
+            <DrawUpCTA onClick={handleDrawUpForCowork} data-testid="memo-viewer-draw-up-cta" />
+          )}
+        </div>
+      </header>
+
+      {/* Two-column body: memo + docked tool-call panel */}
+      <div
+        style={{ flex: 1, display: 'grid', gridTemplateColumns: panelOpen ? '1fr 300px' : '1fr', overflow: 'hidden' }}
+      >
+        <div style={{ overflow: 'auto', padding: '22px 26px' }}>
+          {/* Degradation warnings (TRACK 3) */}
+          {warnings.length > 0 && (
+            <div className="cs-degrade" role="status" aria-label="Degraded data sources" data-testid="degradation-banner">
+              <div className="hd">
+                <span className="cs-dot y" /> {warnings.length} data source{warnings.length !== 1 ? 's' : ''} unavailable
               </div>
-              <div style={{ fontSize: '12px', color: '#78350f' }}>
-                Citations are still functional. Review failure reasons before sharing.
-              </div>
+              <table>
+                <thead>
+                  <tr><th>Table</th><th>Reason</th><th>Remediation</th></tr>
+                </thead>
+                <tbody>
+                  {warnings.map((w, i) => (
+                    <tr key={`warn-${i}`} data-testid="degradation-row">
+                      <td><span className="tbl">{w.table}</span></td>
+                      <td>{w.reason}</td>
+                      <td>{w.remediation}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* DRAFT banner (AC-8) */}
+          {memo.status === 'draft' && (
+            <div className="cs-draft" role="banner" aria-label="DRAFT" style={{ marginBottom: '16px' }} data-testid="draft-banner">
+              <div className="t">DRAFT — Rigor below 70% threshold</div>
+              <div className="d">Citations are still functional. Review failure reasons before sharing.</div>
               {memo.failureReasons && memo.failureReasons.length > 0 && (
-                <button
-                  className="glass-btn-secondary"
-                  style={{ marginTop: '8px', fontSize: '11px', padding: '4px 10px', color: '#92400e', borderColor: 'rgba(217,119,6,0.3)' }}
-                  onClick={() => setDraftExpanded(e => !e)}
-                  data-testid="draft-expand-btn"
-                >
+                <button className="why" onClick={() => setDraftExpanded(e => !e)} data-testid="draft-expand-btn">
                   {draftExpanded ? 'Hide' : 'Why draft?'} ({memo.failureReasons.length} reason{memo.failureReasons.length !== 1 ? 's' : ''})
                 </button>
               )}
               {draftExpanded && memo.failureReasons && (
-                <ul style={{ marginTop: '8px', paddingLeft: '16px', fontSize: '12px', color: '#78350f' }} data-testid="draft-failure-reasons">
-                  {memo.failureReasons.map((reason, i) => (
-                    <li key={i} style={{ marginBottom: '4px' }}>{reason}</li>
-                  ))}
+                <ul data-testid="draft-failure-reasons">
+                  {memo.failureReasons.map((reason, i) => (<li key={i}>{reason}</li>))}
                 </ul>
               )}
             </div>
+          )}
+
+          <div className="cs-eyebrow" style={{ marginBottom: '14px' }}>
+            Memo · {memo.memoTitle ?? 'Cash Lever'} · {statusLabel}
           </div>
+
+          {/* Memo document surface */}
+          <div className="cs-doc" data-testid="memo-content">
+            <div className="sub">Generated {memo.runId}{rigorLabel}</div>
+            {memoContent}
+          </div>
+        </div>
+
+        {/* Tool-call detail panel (AC-7) — docked right */}
+        {panelOpen && (
+          <aside className="cs-panel" role="complementary" aria-label="Tool call detail" data-testid="tool-call-panel">
+            <div className="ph">
+              <span className="t">Tool Call Detail</span>
+              <button className="x" onClick={() => setSidePanel(null)} data-testid="tool-call-panel-close">Close</button>
+            </div>
+            {sidePanelLoading ? (
+              <div className="cs-skel" style={{ height: '120px' }} data-testid="tool-call-panel-loading" />
+            ) : sidePanel ? (
+              <>
+                <div className="fld"><div className="l">Source ID</div><code>{sidePanel.sourceId}</code></div>
+                <div className="fld"><div className="l">Tool Name</div><code style={{ color: 'var(--navy)' }}>{sidePanel.tool_name}</code></div>
+                <div className="fld"><div className="l">Arguments</div><pre>{safePretty(sidePanel.args_json)}</pre></div>
+                <div className="fld"><div className="l">Result</div><pre style={{ maxHeight: '300px' }}>{safePretty(sidePanel.result_json)}</pre></div>
+                <div className="fld">
+                  <div className="l">Called At</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--navy)' }} className="num">
+                    {sidePanel.called_at ? new Date(sidePanel.called_at * 1000).toISOString() : '—'}
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </aside>
         )}
-
-        {/* Memo filename + Draw up for Cowork CTA */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-          {memo.filename && (
-            <span className="glass-badge glass-badge--navy" style={{ fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
-              {memo.filename}
-            </span>
-          )}
-          {/* CTA: only when shipped-clean + has at least one accepted decision writeback (ADR §5.1) */}
-          {memo.status === 'clean' && memo.hasAcceptedDecision && (
-            <DrawUpCTA
-              onClick={handleDrawUpForCowork}
-              data-testid="memo-viewer-draw-up-cta"
-            />
-          )}
-        </div>
-
-        {/* Memo content */}
-        <div
-          className="glass-card"
-          style={{ lineHeight: 1.7, fontSize: '14px', color: 'var(--navy)' }}
-          data-testid="memo-content"
-        >
-          {memoContent}
-        </div>
       </div>
-
-      {/* Tool-call side panel (AC-7) */}
-      {(sidePanel || sidePanelLoading) && (
-        <aside
-          style={{
-            width: '380px',
-            borderLeft: '1px solid var(--glass-border)',
-            background: 'var(--bg-surface-alt)',
-            padding: '20px',
-            overflow: 'auto',
-          }}
-          role="complementary"
-          aria-label="Tool call detail"
-          data-testid="tool-call-panel"
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--navy)' }}>Tool Call Detail</h3>
-            <button
-              className="glass-btn-secondary"
-              style={{ padding: '4px 10px', fontSize: '11px' }}
-              onClick={() => setSidePanel(null)}
-              data-testid="tool-call-panel-close"
-            >
-              Close
-            </button>
-          </div>
-
-          {sidePanelLoading ? (
-            <div className="skeleton" style={{ height: '120px' }} data-testid="tool-call-panel-loading" />
-          ) : sidePanel ? (
-            <>
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                  Source ID
-                </div>
-                <code style={{ fontSize: '12px', color: 'var(--purple)' }}>{sidePanel.sourceId}</code>
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                  Tool Name
-                </div>
-                <code style={{ fontSize: '12px', color: 'var(--navy)' }}>{sidePanel.tool_name}</code>
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                  Arguments
-                </div>
-                <pre style={{ fontSize: '11px', background: 'var(--glass-bg)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', overflow: 'auto', margin: 0 }}>
-                  {JSON.stringify(JSON.parse(sidePanel.args_json), null, 2)}
-                </pre>
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                  Result
-                </div>
-                <pre style={{ fontSize: '11px', background: 'var(--glass-bg)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', overflow: 'auto', margin: 0, maxHeight: '300px' }}>
-                  {JSON.stringify(JSON.parse(sidePanel.result_json), null, 2)}
-                </pre>
-              </div>
-
-              <div>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                  Called At
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--navy)', fontFamily: 'var(--font-mono)' }}>
-                  {sidePanel.called_at ? new Date(sidePanel.called_at * 1000).toISOString() : '—'}
-                </div>
-              </div>
-            </>
-          ) : null}
-        </aside>
-      )}
     </div>
   );
 }
