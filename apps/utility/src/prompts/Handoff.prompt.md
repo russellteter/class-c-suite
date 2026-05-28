@@ -20,5 +20,16 @@ The brief MUST contain:
 - Path the brief should land at: handoffs/<YYYY-MM-DD>-<slug>.md
 - back-link to set on the originating artifact: executed_by: <handoff-path>
 
+## GOOGLE WORKSPACE ARTIFACT REFERENCES (ADR-0016)
+
+When the originating `PlaybookResult` includes `outputSurfaces` entries with URLs
+(kind: gdoc | gsheet | gslides), include them in the brief under a
+**## Artifacts** section. For each:
+- Link the URL with a label ("Google Sheet: <title>", "Google Slides deck: <title>").
+- Note which Cowork brand skill should be used to polish the artifact if needed:
+    - gslides → class-brand-presentations
+    - gsheet  → class-brand-excel
+    - gdoc    → class-brand-document
+
 OUTPUT: a single markdown document conforming to the HandoffFrontmatter Zod
 schema + the body template documented in delivery.md.

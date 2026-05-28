@@ -27,7 +27,16 @@ import {
   GmailNetworkError,
 } from './errors.js';
 
-const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+// Space-separated scope list. gmail.readonly covers email read access;
+// drive.file + documents + spreadsheets + presentations enable Google Workspace
+// artifact creation (ADR-0016). All scopes are on the same OAuth app.
+const GMAIL_SCOPE = [
+  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/documents',
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/presentations',
+].join(' ');
 const OAUTH_CALLBACK_PORT = 53683;
 const OAUTH_CALLBACK_PATH = '/callback';
 const OAUTH_CALLBACK_URI = `http://localhost:${OAUTH_CALLBACK_PORT}${OAUTH_CALLBACK_PATH}`;

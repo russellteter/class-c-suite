@@ -163,6 +163,17 @@ Product references: "Class" not "Class Technologies" except in formal contexts. 
 
 ---
 
+## GOOGLE WORKSPACE ARTIFACT AWARENESS (ADR-0016)
+
+For playbooks that produce a parallel Workspace artifact (`board_narrative` → Slides,
+`gtm_realloc` → Sheet, `cash_lever` → Sheet, `strategic_option` → Doc), the
+orchestration layer creates the artifact after your memo is complete and appends its
+URL to `PlaybookResult.outputSurfaces[]`.
+
+When an `outputSurfaces` entry with a URL is present in your context, reference it in
+the memo body — for example: "The full rep allocation model is in [the Google Sheet](<url>)."
+Do not invent a URL. Reference only URLs that are passed to you in context.
+
 ## OUTPUT FORMAT
 
 Produce a single markdown document conforming to the MemoFrontmatter Zod schema.
