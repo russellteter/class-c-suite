@@ -40,6 +40,12 @@ export function defaultNetsuiteMcpServerUrl(accountId: string): string {
 export interface NetSuiteOAuthEnv {
   accountId: string;
   clientId: string;
+  /**
+   * OAuth client secret. Present for a CONFIDENTIAL AI-Connector integration record
+   * (Russell's record carries a Consumer Secret); sent on the token exchange
+   * alongside PKCE. Absent for a strict public client. NEVER logged.
+   */
+  clientSecret?: string;
   /** Redirect URI registered in the Integration Record. Must match byte-for-byte. */
   redirectUri: string;
   /** Hosted remote MCP server URL. */
@@ -61,9 +67,11 @@ export function readNetSuiteOAuthEnv(): NetSuiteOAuthEnv | null {
   const accountId = process.env['NETSUITE_ACCOUNT_ID'];
   const clientId = process.env['NETSUITE_OAUTH_CLIENT_ID'];
   if (!accountId || !clientId) return null;
+  const clientSecret = process.env['NETSUITE_OAUTH_CLIENT_SECRET'];
   return {
     accountId,
     clientId,
+    ...(clientSecret ? { clientSecret } : {}),
     redirectUri: process.env['NETSUITE_OAUTH_REDIRECT_URI'] || OAUTH_REDIRECT_URI,
     mcpServerUrl: process.env['NETSUITE_MCP_SERVER_URL'] || defaultNetsuiteMcpServerUrl(accountId),
   };
@@ -76,7 +84,9 @@ export function buildNetSuiteOAuthConfig(env: NetSuiteOAuthEnv): OAuthProviderCo
     authorizeEndpoint: netsuiteAuthorizeEndpoint(env.accountId),
     tokenEndpoint: netsuiteTokenEndpoint(env.accountId),
     clientId: env.clientId,
-    // PUBLIC CLIENT: no clientSecret — PKCE code_verifier is the only client proof.
+    // Confidential AI-Connector client: secret sent on token exchange alongside PKCE.
+    // Omitted (public client) when NETSUITE_OAUTH_CLIENT_SECRET is unset.
+    ...(env.clientSecret ? { clientSecret: env.clientSecret } : {}),
     scope: NETSUITE_SCOPE,
     redirectUri: env.redirectUri,
   };

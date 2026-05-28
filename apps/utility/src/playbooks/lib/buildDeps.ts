@@ -39,11 +39,14 @@ export async function buildDeps(playbookId: PlaybookId, db: Database.Database): 
     log.warn({ message: 'buildDeps: safeStorage unavailable, MCP clients that require credentials will be skipped', err: String(err) });
   }
 
-  // Salesforce — requires safeStorage credential.
+  // Salesforce — Connected App (vault) OR SFDX CLI session (Russell-decision
+  // 2026-05-28: ride the existing `sf` login, no dedicated Connected App). Construct
+  // when EITHER auth path is available; the client resolves oauth-vs-sfdx in query().
   if (vault) {
     try {
       const cred = await loadCredential(db, 'salesforce');
-      if (cred) {
+      const { hasSfdxAuth } = await import('../../mcp/salesforce/sfdx-auth.js');
+      if (cred || (await hasSfdxAuth())) {
         const { SalesforceClient } = await import('../../mcp/salesforce/client.js');
         deps.salesforce = new SalesforceClient(vault);
       }
