@@ -460,3 +460,15 @@ Per DOCTRINE law #9 (live-corrected learning): if a chapter discovers a blocker 
 **Status.** MITIGATED 2026-05-27. Ch.7 entry unblocked.
 **Owner.** CLOSED.
 
+---
+
+## Phase 2 overclaim correction (2026-05-28)
+
+### B46 — Phase 2 overclaim: Ch.7 Vite-into-Electron assembly leg never built `NEW` `P0`
+**What.** `.claude/project-state.json` + `docs/build-log.md` claimed "PHASE 2 COMPLETE / all chapters Ch.0-Ch.10 closed." This was an overclaim. Ch.7's assembly leg — the Vite build that bundles the 11 React screens into a renderer the Electron main process actually loads — was never built. `apps/renderer/index.html` is a static Ch.6 placeholder; there is no `vite.config.ts`; `apps/renderer/src/index.tsx` is referenced nowhere; `apps/main/src/main.ts` `loadFile`s the placeholder; `electron-builder.yml` has no `files/renderer-dist` block. The 11 screens + routing are real and unit-tested (+372 specs) but never bundled into a running app. There is no runnable C-Suite — only screens in jsdom.
+**Why it slipped.** Ch.5-Ch.10 chapter audits validated screens as jsdom unit specs ("tests green = chapter done"). No chapter audit included end-to-end integration proof (a launchable Electron window with the screen rendered + screenshotted). The Ch.10 audit caught the IPC bridge bug because it exercised a runtime path; the Ch.7 audit only checked screens as isolated units.
+**Bites at.** Ch.11 (package + 8 on-Mac demos) cannot run — there is nothing to package or demo.
+**Mitigation.** TRACK 1 of the 2026-05-28 finishing-touches session builds the assembly leg (vite.config + index.html entry + main.ts dev/prod load + root `dev` script + electron-builder files block). TRACK 7 amends chapter acceptance criteria so every UI-producing chapter henceforth requires INTEGRATION PROOF (`pnpm dev` demo + screenshot) before "complete" — jsdom-only specs are insufficient. Source: handoff `thoughts/shared/handoffs/general/2026-05-28_05-34_netsuite-wiring-and-frontend-assembly-gap.yaml`.
+**Naming note.** This entry uses ID B46 (not B40) because B40-B43 already exist as ultra-review candidate IDs and B44/B45 are formal entries. The session brief referred to it as "B40" conceptually.
+**Owner.** TRACK 1 (assembly) + TRACK 7 (acceptance-criteria amendment), 2026-05-28 session.
+

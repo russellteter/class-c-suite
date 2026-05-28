@@ -1472,3 +1472,32 @@ Russell shipped a standalone NetSuite MCP (`~/mcp-servers/netsuite-mcp`, TBA/OAu
 The TBA token's role can read `transaction` + `subsidiary` but is denied `account`, `department`, `classification`, `employee`, `accountingperiod` — NetSuite returns HTTP 400 `Record 'x' was not found` (INVALID_PARAMETER), which is how SuiteQL reports insufficient role permission (confirmed via context7: default `metaDataProvider=SUITE_QL` fails on missing permission). The C-Suite's cash/payroll queries (`cashGLBalanceQuery`, `payrollByDeptQuery`, covenant tracking, weekly cash forecast) all join `account`/`department`, so they return nothing until fixed.
 
 **Fix (NetSuite UI → Setup → Users/Roles → Manage Roles → the role on the TBA token → Permissions):** add View-level access for the tables our queries hit. The typical permkey→table mapping is Lists>Accounts (`account`), Lists>Departments (`department`), Lists>Classes (`classification`), Lists>Employees (`employee`), Setup>Manage Accounting Periods (`accountingperiod`) — confirm the exact permission names against the role's existing grants when applying (context7 confirmed SuiteQL enforces record-level permission by default but did not return the authoritative permkey→table map; verify in the Records Catalog "required permission" field per record). Re-run `./scripts/mcp-live-smoke.sh netsuite` to confirm; the section now prints the real SuiteQL error if a table is still denied.
+
+---
+
+# Phase 2 overclaim correction — 2026-05-28
+
+**TRACK 0 of the finishing-touches multi-track session.** The prior "PHASE 2 COMPLETE — all build chapters Ch.0-Ch.10 closed" claim (build-log status table + `.claude/project-state.json` `current_phase: phase-2-complete`) was an overclaim and is corrected here.
+
+## What was wrong
+Ch.7's Vite-into-Electron **assembly leg was never built.** The 11 React screens + routing are real and unit-tested (+372 specs), but they were never bundled into a renderer the Electron main process loads. Concretely (per handoff `thoughts/shared/handoffs/general/2026-05-28_05-34_netsuite-wiring-and-frontend-assembly-gap.yaml` §findings/frontend-never-assembled):
+- No `vite.config.ts` exists anywhere in the repo.
+- `apps/renderer/src/index.tsx` is referenced nowhere.
+- `apps/renderer/index.html` is a static Ch.6 placeholder; `apps/main/src/main.ts` `loadFile`s it.
+- `electron-builder.yml` has no `files/renderer-dist` block.
+
+There is **no runnable C-Suite app** — only screens in jsdom. Ch.11 (package + 8 on-Mac demos) cannot run because there is nothing to package or demo.
+
+## Why the chapter audits missed it
+Ch.5-Ch.10 chapter audits validated screens as **jsdom unit specs only** — the "tests green = chapter done" pattern. No chapter audit required end-to-end integration proof (a launchable Electron window with the screen rendered + screenshotted). The audit *mechanism* works (the Ch.10 audit caught the IPC MessagePort bridge bug because it exercised a runtime path); the *Ch.7 acceptance criteria* were too weak — they checked screens as isolated units, not as an assembled, rendering app.
+
+## Corrections made (TRACK 0)
+- `.claude/project-state.json` `current_phase` → `ch-7-assembly-open` (was `phase-2-complete`).
+- `BLOCKERS.md` → added **B46** (Phase 2 overclaim, P0) with mitigation pointer to TRACK 1.
+- This build-log entry.
+
+## Chapter acceptance criteria being amended (TRACK 7)
+`docs/architecture/delivery.md` per-chapter ritual + `ROADMAP.md` Ch.5-Ch.10 acceptance criteria are being amended to add an **INTEGRATION PROOF** requirement: every chapter that produces a UI surface, an MCP wiring, or an end-user-visible flow must include a working `pnpm dev` acceptance demo + screenshot/log in this build-log before the chapter is marked complete. jsdom-only unit specs are insufficient. This prevents recurrence of the assembly gap at Ch.11.
+
+## Remediation tracks (this session)
+TRACK 1 builds the assembly leg (acceptance: `pnpm dev` opens an Electron window showing Home with fixtures + screenshot). TRACK 3 hardens NetSuite (degraded-mode path + Brian role-perm request). TRACK 4 hardens the other connectors. TRACK 5 wires Google Workspace output surfaces. TRACK 6 runs the full CCC design-system overhaul. TRACK 8 installs a pre-commit credential hook + historical scan.
