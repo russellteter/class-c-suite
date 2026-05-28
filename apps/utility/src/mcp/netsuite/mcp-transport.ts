@@ -12,6 +12,15 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
+/**
+ * MCP Standard Tools tool names (MCP Standard Tools SuiteApp).
+ * Live here (not in client.ts) so scripts can import them without pulling in
+ * @c-suite/shared-types (whose package `exports` only declares an `import`
+ * condition and fails under tsx's CJS resolver).
+ */
+export const TOOL_SUITEQL = 'ns_runCustomSuiteQL';
+export const TOOL_SAVED_SEARCH = 'ns_runSavedSearch';
+
 export interface McpToolResult {
   /** Raw content blocks returned by the tool (text/json). */
   content: Array<{ type: string; text?: string; [k: string]: unknown }>;

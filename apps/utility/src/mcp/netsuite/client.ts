@@ -35,7 +35,7 @@ import {
   requireNetSuiteOAuthConfig,
   defaultNetsuiteMcpServerUrl,
 } from './oauth-config.js';
-import { callNetSuiteTool, type McpToolResult } from './mcp-transport.js';
+import { callNetSuiteTool, TOOL_SUITEQL, TOOL_SAVED_SEARCH, type McpToolResult } from './mcp-transport.js';
 import {
   NetSuiteAuthMissingError,
   NetSuiteAuthExpiredError,
@@ -45,9 +45,8 @@ import {
   NetSuiteVaultError,
 } from './errors.js';
 
-/** MCP Standard Tools tool names (MCP Standard Tools SuiteApp). */
-export const TOOL_SUITEQL = 'ns_runCustomSuiteQL';
-export const TOOL_SAVED_SEARCH = 'ns_runSavedSearch';
+// Re-export tool names from mcp-transport for callers that import them from the client.
+export { TOOL_SUITEQL, TOOL_SAVED_SEARCH };
 
 /**
  * Injectable tool invoker — production calls the hosted MCP server; tests inject a fake.
