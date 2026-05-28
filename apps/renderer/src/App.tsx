@@ -4,14 +4,16 @@
 // Ch.7: Home is the default route (replaces Ch.1 HomeScreen stub); adds plan-approval route
 //       wired to tile-click and Open Q&A submit per tasks/ch7-renderer-brief.md §4.
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { WritebackDraft } from '@c-suite/shared-types/writeback';
 import { WritebackPane } from './screens/WritebackPane.js';
 import { ConversationPane } from './screens/ConversationPane.js';
 import { AcceptedHistory } from './screens/AcceptedHistory.js';
 import { Home } from './screens/Home.js';
 import { PlanApproval, type Ch5RunPlan } from './screens/PlanApproval.js';
+import { HandoffPreview } from './screens/HandoffPreview.js';
 import type { PlaybookId } from './components/HomeTypes.js';
+import { onHandoffPreviewReady, type HandoffBrief } from './ipc/handoff.js';
 
 // ---- Screen routing -------------------------------------------------------
 
@@ -20,7 +22,9 @@ type Screen =
   | { name: 'writeback' }
   | { name: 'conversation'; writebackId: string; draft: WritebackDraft | null }
   | { name: 'history'; artifactId: string }
-  | { name: 'plan-approval'; plan: Ch5RunPlan };
+  | { name: 'plan-approval'; plan: Ch5RunPlan }
+  // Ch.9 — HandoffPreview state machine: idle (any screen) → preview-open → (sent/cancelled) → idle
+  | { name: 'handoff-preview'; brief: HandoffBrief; returnScreen: Screen };
 
 function initialScreen(): Screen {
   // Allow test navigation via URL query params (brief §Wiring: "openable via a test route")
@@ -80,7 +84,29 @@ export function App(): React.ReactElement {
 
   const navigateTo = (next: Screen) => setScreen(next);
 
+  // Ch.9 — subscribe to handoff.preview.ready from Runtime.
+  // When generated brief arrives, push HandoffPreview screen preserving current return point.
+  // TODO ch9-runtime-ship: Runtime sub-agent emits this on handoff.preview.requested trigger.
+  useEffect(() => {
+    const cleanup = onHandoffPreviewReady(({ brief }) => {
+      setScreen((current) => ({
+        name: 'handoff-preview',
+        brief,
+        returnScreen: current.name === 'handoff-preview' ? current.returnScreen : current,
+      }));
+    });
+    return cleanup;
+  }, []);
+
   switch (screen.name) {
+    case 'handoff-preview':
+      return (
+        <HandoffPreview
+          brief={screen.brief}
+          onClose={() => navigateTo(screen.returnScreen)}
+        />
+      );
+
     case 'plan-approval':
       return (
         <PlanApproval

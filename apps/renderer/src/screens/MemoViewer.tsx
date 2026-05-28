@@ -10,6 +10,8 @@
 
 import React, { useState, useCallback } from 'react';
 import { invokeToolCallGet } from '../ipc/subscriptions.js';
+import { DrawUpCTA } from '../components/DrawUpCTA.js';
+import { sendHandoffPreviewRequested } from '../ipc/handoff.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -20,6 +22,13 @@ export interface MemoViewerMemo {
   failureReasons?: string[];
   /** The filename to display (e.g. 2026-05-27-cash-lever-loc-vs-aws.draft.md) */
   filename?: string;
+  /** Vault-relative path to the memo file (used in handoff origin link) */
+  memoPath?: string;
+  /** Memo title (used in handoff origin label) */
+  memoTitle?: string;
+  /** True when at least one accepted decision writeback exists for this memo.
+   *  Gates the "Draw up for Cowork" CTA per ADR §5.1. */
+  hasAcceptedDecision?: boolean;
 }
 
 interface ToolCallSidePanel {
@@ -35,8 +44,9 @@ interface ToolCallSidePanel {
 /**
  * Parse memo markdown and return segments: plain text or citation buttons.
  * Footnote pattern: [^source-id] → clickable badge.
+ * Exported for reuse in HandoffPreview (Ch.9) — same rendering pattern.
  */
-function parseMemoMarkdown(
+export function parseMemoMarkdown(
   markdown: string,
   onCitationClick: (sourceId: string) => void,
 ): React.ReactNode[] {
@@ -92,6 +102,17 @@ export function MemoViewer({ memo, onClose }: MemoViewerProps): React.ReactEleme
   const [sidePanel, setSidePanel] = useState<ToolCallSidePanel | null>(null);
   const [sidePanelLoading, setSidePanelLoading] = useState(false);
   const [draftExpanded, setDraftExpanded] = useState(false);
+
+  const handleDrawUpForCowork = useCallback(() => {
+    // ADR §5.1: only fires when memo is shipped-clean + has accepted decision
+    // TODO ch9-runtime-ship: Runtime's run-loop.ts hook listens for this IPC variant
+    sendHandoffPreviewRequested({
+      runId: memo.runId,
+      originType: 'memo',
+      originPath: memo.memoPath ?? memo.filename ?? memo.runId,
+      originTitle: memo.memoTitle ?? memo.filename ?? 'Memo',
+    });
+  }, [memo.runId, memo.memoPath, memo.filename, memo.memoTitle]);
 
   const handleCitationClick = useCallback(async (sourceId: string) => {
     setSidePanelLoading(true);
@@ -159,14 +180,21 @@ export function MemoViewer({ memo, onClose }: MemoViewerProps): React.ReactEleme
           </div>
         )}
 
-        {/* Memo filename */}
-        {memo.filename && (
-          <div style={{ marginBottom: '16px' }}>
+        {/* Memo filename + Draw up for Cowork CTA */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+          {memo.filename && (
             <span className="glass-badge glass-badge--navy" style={{ fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
               {memo.filename}
             </span>
-          </div>
-        )}
+          )}
+          {/* CTA: only when shipped-clean + has at least one accepted decision writeback (ADR §5.1) */}
+          {memo.status === 'clean' && memo.hasAcceptedDecision && (
+            <DrawUpCTA
+              onClick={handleDrawUpForCowork}
+              data-testid="memo-viewer-draw-up-cta"
+            />
+          )}
+        </div>
 
         {/* Memo content */}
         <div

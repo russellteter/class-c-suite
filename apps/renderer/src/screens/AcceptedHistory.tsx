@@ -7,6 +7,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { onIpc, invokeIpc } from '../ipc-client.js';
 import { DiffView } from '../components/DiffView.js';
+import { DrawUpCTA } from '../components/DrawUpCTA.js';
+import { LinkedExecution } from '../components/LinkedExecution.js';
+import { sendHandoffPreviewRequested } from '../ipc/handoff.js';
 import '../design/tokens.css';
 
 interface CommitEntry {
@@ -21,6 +24,14 @@ interface CommitEntry {
   playbook?: string;
   /** Verifier rigor score — optional */
   rigorScore?: number | null;
+  /** Derived from artifactId prefix: 'decision' | 'position' | 'pre_mortem' | other.
+   *  Used to gate "Draw up for Cowork" CTA (ADR §5.1). */
+  originType?: 'decision' | 'position' | 'pre_mortem' | 'other';
+  /** Artifact title derived from writebackId or artifactPath */
+  artifactTitle?: string;
+  /** Paths to Cowork-produced execution artifacts (ADR §6.3, AC-11).
+   *  Populated when executed_by is set on the originating artifact. */
+  executedBy?: string[] | null;
 }
 
 interface AcceptedHistoryProps {
@@ -28,7 +39,17 @@ interface AcceptedHistoryProps {
   onBack: () => void;
 }
 
-function CommitRow({ entry, expanded, onToggle }: { entry: CommitEntry; expanded: boolean; onToggle: () => void }): React.ReactElement {
+function CommitRow({
+  entry,
+  expanded,
+  onToggle,
+  onDrawUp,
+}: {
+  entry: CommitEntry;
+  expanded: boolean;
+  onToggle: () => void;
+  onDrawUp?: () => void;
+}): React.ReactElement {
   const shaShort = entry.gitSha.length >= 7 ? entry.gitSha.slice(0, 7) : entry.gitSha;
   const committedAt = new Date(entry.committedAt).toLocaleString();
 
@@ -141,17 +162,44 @@ function CommitRow({ entry, expanded, onToggle }: { entry: CommitEntry; expanded
               {entry.artifactPath}
             </span>
           </div>
+
+          {/* Linked execution (AC-11) — visible when executed_by is populated */}
+          <LinkedExecution executedBy={entry.executedBy ?? null} />
+
+          {/* Draw up for Cowork CTA — decision, position, pre-mortem only (ADR §5.1) */}
+          {onDrawUp &&
+            (entry.originType === 'decision' ||
+              entry.originType === 'position' ||
+              entry.originType === 'pre_mortem') && (
+              <div style={{ marginTop: 'var(--space-3)' }}>
+                <DrawUpCTA onClick={onDrawUp} />
+              </div>
+            )}
         </div>
       </div>
     </div>
   );
 }
 
+/** Derive origin type from artifactId prefix (DEC- / POS- / PM-) */
+function deriveOriginType(artifactId: string): CommitEntry['originType'] {
+  if (artifactId.startsWith('DEC-')) return 'decision';
+  if (artifactId.startsWith('POS-')) return 'position';
+  if (artifactId.startsWith('PM-')) return 'pre_mortem';
+  return 'other';
+}
+
 function parseEntry(item: unknown): CommitEntry | null {
   if (typeof item !== 'object' || item === null) return null;
   const r = item as Record<string, unknown>;
+  const writebackId = typeof r['writebackId'] === 'string' ? r['writebackId'] : String(r['writebackId'] ?? '');
+  const artifactId = typeof r['artifactId'] === 'string' ? r['artifactId'] : writebackId;
+  const executedByRaw = r['executedBy'] ?? r['executed_by'];
+  const executedBy = Array.isArray(executedByRaw)
+    ? (executedByRaw as unknown[]).filter((p): p is string => typeof p === 'string')
+    : null;
   return {
-    writebackId: typeof r['writebackId'] === 'string' ? r['writebackId'] : String(r['writebackId'] ?? ''),
+    writebackId,
     artifactPath: typeof r['artifactPath'] === 'string' ? r['artifactPath'] : '',
     gitSha: typeof r['gitSha'] === 'string' ? r['gitSha'] : '',
     committedAt: typeof r['committedAt'] === 'number' ? r['committedAt'] : 0,
@@ -159,6 +207,9 @@ function parseEntry(item: unknown): CommitEntry | null {
     diff: typeof r['diff'] === 'string' ? r['diff'] : null,
     playbook: typeof r['playbook'] === 'string' ? r['playbook'] : undefined,
     rigorScore: typeof r['rigorScore'] === 'number' ? r['rigorScore'] : null,
+    originType: deriveOriginType(artifactId),
+    artifactTitle: typeof r['artifactTitle'] === 'string' ? r['artifactTitle'] : artifactId,
+    executedBy,
   };
 }
 
@@ -298,6 +349,21 @@ export function AcceptedHistory({ artifactId, onBack }: AcceptedHistoryProps): R
                 entry={entry}
                 expanded={expandedShas.has(key)}
                 onToggle={() => toggleExpand(key)}
+                onDrawUp={
+                  (entry.originType === 'decision' ||
+                    entry.originType === 'position' ||
+                    entry.originType === 'pre_mortem')
+                    ? () => {
+                        // ADR §5.1 — send handoff.preview.requested for this artifact
+                        sendHandoffPreviewRequested({
+                          runId: entry.runId,
+                          originType: entry.originType as 'decision' | 'position' | 'pre_mortem',
+                          originPath: entry.artifactPath,
+                          originTitle: entry.artifactTitle ?? entry.writebackId,
+                        });
+                      }
+                    : undefined
+                }
               />
             </div>
           );
