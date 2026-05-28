@@ -152,6 +152,64 @@ function stubPlanFromPrompt(prompt: string): Ch5RunPlan {
   };
 }
 
+// ---- Persistent chrome ----------------------------------------------------
+
+/** Slim global nav, always rendered above every screen. Guarantees a way Home. */
+function GlobalNav({ screenName, onHome }: { screenName: string; onHome: () => void }): React.ReactElement {
+  return (
+    <div
+      role="navigation"
+      aria-label="Global navigation"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12, padding: '0 14px',
+        height: 36, flexShrink: 0, background: 'var(--navy, #0b1733)', color: '#fff',
+        borderBottom: '1px solid rgba(255,255,255,0.08)', WebkitUserSelect: 'none',
+      }}
+    >
+      <button onClick={onHome} aria-label="C-Suite home"
+        style={{ background: 'transparent', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, letterSpacing: '0.02em', cursor: 'pointer' }}>
+        C-Suite
+      </button>
+      <button onClick={onHome} aria-label="Go to Home"
+        style={{
+          background: screenName === 'home' ? 'rgba(255,255,255,0.14)' : 'transparent',
+          border: '1px solid rgba(255,255,255,0.18)', color: '#fff', fontSize: 12,
+          padding: '2px 10px', borderRadius: 6, cursor: 'pointer',
+        }}>
+        Home
+      </button>
+      <span style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        {screenName.replace(/-/g, ' ')}
+      </span>
+    </div>
+  );
+}
+
+/** Catches a screen render crash and shows a recoverable fallback (never a blank window). */
+class AppErrorBoundary extends React.Component<
+  { onHome: () => void; children: React.ReactNode },
+  { error: Error | null }
+> {
+  state: { error: Error | null } = { error: null };
+  static getDerivedStateFromError(error: Error): { error: Error } { return { error }; }
+  componentDidCatch(error: Error): void { console.error('[C-Suite] screen render crashed:', error); }
+  render(): React.ReactNode {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 32, fontFamily: 'var(--font-sans, system-ui)' }}>
+          <h2 style={{ margin: '0 0 8px' }}>This screen hit an error.</h2>
+          <p style={{ color: '#64748b', margin: '0 0 16px', fontSize: 13 }}>{this.state.error.message}</p>
+          <button onClick={this.props.onHome}
+            style={{ background: 'var(--navy, #0b1733)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>
+            ← Back to Home
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ---- Root component -------------------------------------------------------
 
 export function App(): React.ReactElement {
@@ -173,6 +231,7 @@ export function App(): React.ReactElement {
     return cleanup;
   }, []);
 
+  const content: React.ReactElement = ((): React.ReactElement => {
   switch (screen.name) {
     case 'settings-scheduler':
       return (
@@ -297,4 +356,16 @@ export function App(): React.ReactElement {
         </>
       );
   }
+  })();
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <GlobalNav screenName={screen.name} onHome={() => navigateTo({ name: 'home' })} />
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+        <AppErrorBoundary key={screen.name} onHome={() => navigateTo({ name: 'home' })}>
+          {content}
+        </AppErrorBoundary>
+      </div>
+    </div>
+  );
 }
