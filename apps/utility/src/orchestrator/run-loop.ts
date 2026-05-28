@@ -21,6 +21,9 @@ import { StubClaudeClient } from '@c-suite/stub-harness/stub';
 import { draftWritebacks } from '@c-suite/writeback-engine';
 import { routeToPlaybook } from '../playbooks/lib/playbookRouter.js';
 import { buildDeps } from '../playbooks/lib/buildDeps.js';
+// Ch.9: handoff brief generation (explicit-trigger only — NOT auto on every accepted decision)
+import { generateHandoffBrief } from '../agents/handoff/index.js';
+import type { HandoffGeneratorInput } from '@c-suite/shared-types/handoff';
 
 // Phase A + B playbooks that bypass the inherited Ch.5 state-machine and go through
 // routeToPlaybook. Derived from PlaybookIdSchema (ADR-0009 §3.2) minus 'cash_lever'
@@ -293,6 +296,40 @@ export async function startRun(
   agentRolesInvoked.push('Handoff');
 
   return { finalState: state, visitedStates, agentRolesInvoked };
+}
+
+// ── Ch.9 Handoff preview hook ─────────────────────────────────────────────────
+//
+// Called ONLY when the renderer sends `handoff.preview.requested` IPC (explicit
+// user trigger on "Draw up for Cowork" CTA). NOT called automatically on every
+// accepted decision — spec explicitly forbids auto-generation (ADR-0011 §5.1).
+//
+// Source: docs/decisions/0011-ch9-cowork-handoff.md §7 + brief §7 (run-loop hook).
+/**
+ * Handle an explicit "draw up for Cowork" request from the UI.
+ * Generates a HandoffBrief and emits `handoff.preview.ready` to the renderer.
+ * Emits `handoff.failed` on any error.
+ *
+ * IMPORTANT: This function must ONLY be called in response to a
+ * `handoff.preview.requested` IPC event — never on every accepted decision.
+ */
+export async function handleHandoffPreviewRequested(
+  runId: string,
+  input: HandoffGeneratorInput,
+  emit: IpcEmit,
+): Promise<void> {
+  try {
+    const brief = await generateHandoffBrief(input);
+    emit({
+      kind: 'handoff.preview.ready',
+      payload: { runId, brief },
+    });
+  } catch (err) {
+    emit({
+      kind: 'handoff.failed',
+      payload: { runId, reason: String(err) },
+    });
+  }
 }
 
 /**

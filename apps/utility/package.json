@@ -20,6 +20,7 @@
     "@c-suite/stub-harness": "workspace:*",
     "@c-suite/writeback-engine": "workspace:*",
     "chokidar": "^3.6.0",
+    "js-yaml": "^4.1.0",
     "electron": "^33.4.11",
     "pino": "^10.3.1",
     "simple-git": "^3.36.0",

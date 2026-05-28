@@ -313,6 +313,55 @@ export const IpcMessage = z.discriminatedUnion('kind', [
       exitCode: z.number().nullable(),
     }),
   }),
+  // Ch.9 ADR-0011 §5.3 — Cowork handoff IPC variants.
+  // handoff.preview.requested: renderer → main; explicit "Draw up for Cowork" trigger (NOT auto).
+  z.object({
+    kind: z.literal('handoff.preview.requested'),
+    payload: z.object({
+      runId: z.string(),
+      originType: z.enum(['decision', 'memo', 'position', 'pre_mortem']),
+      originId: z.string(),
+    }),
+  }),
+  // handoff.preview.ready: main → renderer; generation complete.
+  z.object({
+    kind: z.literal('handoff.preview.ready'),
+    payload: z.object({
+      runId: z.string(),
+      brief: z.unknown(),    // HandoffBrief — validated in utility before emit
+    }),
+  }),
+  // handoff.send: renderer → main; Russell confirms the brief (possibly with edits).
+  z.object({
+    kind: z.literal('handoff.send'),
+    payload: z.object({
+      runId: z.string(),
+      brief: z.unknown(),                   // HandoffBrief
+      editedBodyMarkdown: z.string().optional(),
+    }),
+  }),
+  // handoff.sent: main → renderer; SafeWrite + git commit succeeded.
+  z.object({
+    kind: z.literal('handoff.sent'),
+    payload: z.object({
+      runId: z.string(),
+      handoffId: z.string(),
+      path: z.string(),
+    }),
+  }),
+  // handoff.cancelled: renderer → main; Russell cancelled preview without sending.
+  z.object({
+    kind: z.literal('handoff.cancelled'),
+    payload: z.object({ runId: z.string() }),
+  }),
+  // handoff.failed: main → renderer; generation or write failed.
+  z.object({
+    kind: z.literal('handoff.failed'),
+    payload: z.object({
+      runId: z.string(),
+      reason: z.string(),
+    }),
+  }),
   // Ch.6 ADR-0008 §3.3 — per-writeback iteration + accept/reject/edit IPC events.
   // Do NOT modify writeback.proposed / writeback.committed (existing shapes above).
   z.object({

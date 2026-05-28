@@ -28,6 +28,8 @@ export const PositionFrontmatter = z.object({
   predictions_spawned: z.array(z.string()),
   source: z.string(),
   correction_log: z.array(z.string()).optional(),    // POS-014 only; strings (not objects)
+  // Ch.9: execution back-link appended by link-back watcher
+  executed_by: z.union([z.string(), z.array(z.string())]).nullable().optional(),
 }).passthrough();
 export type PositionFrontmatter = z.infer<typeof PositionFrontmatter>;
 
@@ -46,7 +48,9 @@ export const DecisionFrontmatter = z.object({
   linked_positions: z.array(z.string()).optional(),
   predictions_spawned: z.array(z.string()).optional(),
   tripwires: z.array(z.string()).optional(),
-  executed_by: z.string().nullable().optional(),     // path to Cowork handoff or output (Ch.9)
+  // Ch.9: widened from string to array — link-back watcher appends multiple execution paths.
+  // Union covers legacy single-string values already in the vault.
+  executed_by: z.union([z.string(), z.array(z.string())]).nullable().optional(),
 }).passthrough();
 export type DecisionFrontmatter = z.infer<typeof DecisionFrontmatter>;
 
@@ -158,6 +162,8 @@ export const PreMortemFrontmatter = z.object({
   related_tripwires: z.array(z.string()).optional(),
   depends_on: z.array(z.string()).optional(),        // normalized from depends-on
   source: z.string().optional(),
+  // Ch.9: execution back-link
+  executed_by: z.union([z.string(), z.array(z.string())]).nullable().optional(),
 }).passthrough();
 export type PreMortemFrontmatter = z.infer<typeof PreMortemFrontmatter>;
 
@@ -198,18 +204,12 @@ export const MemoFrontmatter = z.object({
     draft_path: z.string(),
   })).optional(),
   handoff_path: z.string().optional(),
+  // Ch.9: execution back-link (memo can also be executed directly)
+  executed_by: z.union([z.string(), z.array(z.string())]).nullable().optional(),
 }).passthrough();
 
-// --- HandoffFrontmatter v2 (ADR §2.8; Ch.9 deepens shape) ---
-
-export const HandoffFrontmatter = z.object({
-  id: z.string(),
-  decision_id: z.string().optional(),
-  memo_id: z.string().optional(),
-  created: z.string(),
-  cowork_brand_skills: z.array(z.string()),
-  status: z.enum(['drafted', 'sent', 'executed']),
-}).passthrough();
+// NOTE: HandoffFrontmatter moved to packages/shared-types/src/handoff.ts (Ch.9).
+// Re-exported from index.ts via './handoff'. Do NOT re-define here.
 
 // --- TripwireFrontmatter (R0 §2.8 — financial-tripwires/ shape) ---
 

@@ -8,9 +8,11 @@ import { z } from 'zod';
 import {
   PositionFrontmatter, DecisionFrontmatter, WorkstreamFrontmatterUnion,
   StakeholderFrontmatter, PreMortemFrontmatter, PredictionFrontmatter,
-  MemoFrontmatter, HandoffFrontmatter, TripwireFrontmatter, CompetitorFrontmatter,
+  MemoFrontmatter, TripwireFrontmatter, CompetitorFrontmatter,
   type ArtifactZone,
 } from './vault-schemas.js';
+// Ch.9: HandoffFrontmatter moved to handoff.ts to own its deeper shape.
+import { HandoffFrontmatter } from './handoff.js';
 import { normalizeKeys } from './normalizeKeys.js';
 
 /**

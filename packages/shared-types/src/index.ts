@@ -25,3 +25,5 @@ export * from './lens-context-bundle.js';
 export * from './playbook.js';
 // Ch.8: MCP shared types
 export * from './mcp.js';
+// Ch.9: Cowork execution handoff types
+export * from './handoff.js';
