@@ -66,7 +66,12 @@ Every chapter (Ch.0 through Ch.11) runs the same nine-step ritual:
    mock-only MCP specs are NECESSARY BUT NOT SUFFICIENT. This requirement
    exists because the Ch.7 assembly leg shipped "complete" on +372 green
    jsdom specs while the screens were never bundled into a runnable app
-   (B46, 2026-05-28).
+   (B46, 2026-05-28). Integration screenshots/demos MUST exercise
+   POPULATED fixture states, not just empty/loading — the Ch.6 design QA
+   scored screens off empty-state screenshots and missed a decision-row
+   regression that only appeared with populated data (2026-05-28). And
+   re-run the component UNIT specs after any redesign: visual QA alone
+   does not catch token/DOM-contract drift.
 
 7. DOCS
    Orchestrator updates docs/build-log.md (Ch.N entry per the build-log
