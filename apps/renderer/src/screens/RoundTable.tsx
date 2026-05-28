@@ -122,9 +122,37 @@ interface RoundTableProps {
   runId: string;
   /** Lens roles lit for this playbook (defaults to cash_lever: CFO + COS) */
   activeLenses?: string[];
+  /** Test-only: seed the reducer to a fixed run-state so headless renders can show
+   *  the mid-run (pulse) and post-verifier (CLEAN) states without live IPC events.
+   *  Production never passes this — the reducer is driven by useRunEvents. */
+  seedState?: 'midrun' | 'complete';
 }
 
 const DEFAULT_CASH_LEVER_LENSES = ['CFO', 'COS'];
+
+// Synthetic reducer seeds for the headless test route (?state=midrun|complete).
+function seededState(seed: 'midrun' | 'complete'): RoundTableState {
+  if (seed === 'midrun') {
+    return {
+      sources: 7,
+      verified: null,
+      coverage: null,
+      pulsingAgents: new Set(['CFO']),
+      toolCallsInFlight: new Set(['tc-1', 'tc-2']),
+      verifierScore: null,
+      verifierStatus: null,
+    };
+  }
+  return {
+    sources: 14,
+    verified: '12/14',
+    coverage: '86%',
+    pulsingAgents: new Set(),
+    toolCallsInFlight: new Set(),
+    verifierScore: 78,
+    verifierStatus: 'clean',
+  };
+}
 
 const ALL_LENS_NODES: LensNode[] = [
   { role: 'CEO', label: 'CEO',  active: false },
@@ -135,8 +163,12 @@ const ALL_LENS_NODES: LensNode[] = [
   { role: 'COS', label: 'COS',  active: false },
 ];
 
-export function RoundTable({ runId, activeLenses = DEFAULT_CASH_LEVER_LENSES }: RoundTableProps): React.ReactElement {
-  const [state, dispatch] = useReducer(roundTableReducer, undefined, initialRoundTableState);
+export function RoundTable({ runId, activeLenses = DEFAULT_CASH_LEVER_LENSES, seedState }: RoundTableProps): React.ReactElement {
+  const [state, dispatch] = useReducer(
+    roundTableReducer,
+    seedState,
+    (seed) => (seed ? seededState(seed) : initialRoundTableState()),
+  );
 
   const handleEvent = useCallback((event: RunIpcEvent) => {
     switch (event.type) {

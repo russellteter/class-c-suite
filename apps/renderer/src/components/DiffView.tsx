@@ -29,21 +29,23 @@ function parseDiff(diff: string): ParsedLine[] {
   });
 }
 
+// TRACK 6 (ch6.3e): CCC editorial tokens — teal-add / red-remove tints (gap 5),
+// navy ink, gray-200 surfaces. The write-back review diff pane.
 const lineStyles: Record<ParsedLine['type'], React.CSSProperties> = {
   add: {
-    background: 'rgba(79, 174, 106, 0.12)',
-    color: 'var(--color-success)',
+    background: 'var(--success-soft)',
+    color: 'var(--success-ink)',
   },
   remove: {
-    background: 'rgba(255, 92, 92, 0.12)',
-    color: 'var(--color-error)',
+    background: 'var(--error-soft)',
+    color: 'var(--error-ink)',
   },
   header: {
-    color: 'var(--color-text-muted)',
+    color: 'var(--gray-500)',
     fontStyle: 'italic',
   },
   context: {
-    color: 'var(--color-text-secondary)',
+    color: 'var(--gray-700)',
   },
 };
 
@@ -57,12 +59,12 @@ export function DiffView({ diff, maxLines, className }: DiffViewProps): React.Re
     <div
       className={className}
       style={{
-        fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace',
-        fontSize: 'var(--text-xs)',
-        lineHeight: 'var(--leading-tight)',
-        background: 'var(--color-surface-1)',
-        border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-base)',
+        fontFamily: 'var(--font-mono)',
+        fontSize: '11px',
+        lineHeight: 1.5,
+        background: 'var(--gray-50)',
+        border: '1px solid var(--gray-200)',
+        borderRadius: 'var(--r-sm)',
         overflow: 'auto',
       }}
       role="region"
@@ -72,7 +74,7 @@ export function DiffView({ diff, maxLines, className }: DiffViewProps): React.Re
         <div
           key={i}
           style={{
-            padding: '1px var(--space-2)',
+            padding: '1px 8px',
             whiteSpace: 'pre',
             ...lineStyles[line.type],
           }}
@@ -83,10 +85,10 @@ export function DiffView({ diff, maxLines, className }: DiffViewProps): React.Re
       {truncated && (
         <div
           style={{
-            padding: '2px var(--space-2)',
-            color: 'var(--color-text-muted)',
-            fontSize: 'var(--text-xs)',
-            borderTop: '1px solid var(--color-border)',
+            padding: '2px 8px',
+            color: 'var(--gray-500)',
+            fontSize: '11px',
+            borderTop: '1px solid var(--gray-200)',
             textAlign: 'center',
           }}
         >

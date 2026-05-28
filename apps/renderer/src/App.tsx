@@ -35,7 +35,7 @@ type Screen =
   | { name: 'settings-notifications' }
   | { name: 'settings-connectors' }
   // TRACK 6 — hero-screen test routes (headless Playwright fidelity checks)
-  | { name: 'roundtable'; runId: string }
+  | { name: 'roundtable'; runId: string; seedState?: 'midrun' | 'complete' }
   | { name: 'memo-viewer'; memo: MemoViewerMemo };
 
 // ── Fixtures for the hero-screen test routes (?screen=roundtable / memo-viewer) ─
@@ -105,7 +105,12 @@ function initialScreen(): Screen {
       return { name: 'history', artifactId };
     }
     if (screen === 'roundtable') {
-      return { name: 'roundtable', runId: params.get('runId') ?? 'r-2026-05-27-cash-lever-a4f9' };
+      const st = params.get('state');
+      return {
+        name: 'roundtable',
+        runId: params.get('runId') ?? 'r-2026-05-27-cash-lever-a4f9',
+        seedState: st === 'midrun' || st === 'complete' ? st : undefined,
+      };
     }
     if (screen === 'memo-viewer') {
       return { name: 'memo-viewer', memo: fixtureMemo(params.get('variant')) };
@@ -236,7 +241,7 @@ export function App(): React.ReactElement {
       );
 
     case 'roundtable':
-      return <RoundTable runId={screen.runId} />;
+      return <RoundTable runId={screen.runId} seedState={screen.seedState} />;
 
     case 'memo-viewer':
       return <MemoViewer memo={screen.memo} onClose={() => navigateTo({ name: 'home' })} />;
