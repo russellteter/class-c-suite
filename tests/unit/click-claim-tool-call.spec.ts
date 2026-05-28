@@ -38,6 +38,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
+import { seedFromMigrations } from '../helpers/seedFromMigrations.js';
 
 // ── Runtime import — Ch.5 Runtime shipped ───────────────────────────────────
 import {
@@ -45,37 +46,29 @@ import {
 } from '../../apps/utility/src/db/tool-calls.js';
 
 // ── Test SQLite setup ─────────────────────────────────────────────────────────
+// Use production migrations (db/migrations/001..007) instead of the formerly
+// hand-rolled DDL, which had drifted from prod: tool_call_id/agent_invocation_id
+// vs prod call_id/invocation_id (db/migrations/001_initial.sql lines 47-58).
+// seedFromMigrations() applies all migrations; runs + agent_invocations rows are
+// seeded so the tool_calls FK constraints (invocation_id → agent_invocations,
+// run_id → runs) resolve with foreign_keys=ON.
 
-function createTestDb(): Database.Database {
-  const db = new Database(':memory:');
-  db.pragma('journal_mode = WAL');
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS tool_calls (
-      tool_call_id          TEXT PRIMARY KEY,
-      run_id                TEXT NOT NULL,
-      agent_invocation_id   TEXT NOT NULL,
-      tool_name             TEXT NOT NULL,
-      args_json             TEXT NOT NULL,
-      result_json           TEXT NOT NULL,
-      source_id             TEXT,
-      called_at             INTEGER NOT NULL
-    );
-  `);
-  return db;
-}
+const SAMPLE_RUN_ID    = 'run-test-ch5';
+const SAMPLE_INV_ID    = 'run-test-ch5-CFO'; // matches `${runId}-${role}` convention
 
 const SAMPLE_TOOL_CALL = {
-  tool_call_id:         'tc-sf-001',
-  run_id:               'run-test-ch5',
-  agent_invocation_id:  'inv-cfo-001',
-  tool_name:            'salesforce.committedPipelineQuery',
-  args_json:            JSON.stringify({ stagesIn: ['Verbal Agreement', 'Contracting'], activeAm: true }),
-  result_json:          JSON.stringify([
+  call_id:       'tc-sf-001',
+  run_id:        SAMPLE_RUN_ID,
+  invocation_id: SAMPLE_INV_ID,
+  agent_role:    'CFO',
+  tool_name:     'salesforce.committedPipelineQuery',
+  args_json:     JSON.stringify({ stagesIn: ['Verbal Agreement', 'Contracting'], activeAm: true }),
+  result_json:   JSON.stringify([
     { id: 'opp-001', name: 'Acme Renewal', amount: 120000, stageName: 'Contracting', closeDate: '2026-07-15' },
     { id: 'opp-002', name: 'Beta Corp New', amount: 85000,  stageName: 'Verbal Agreement', closeDate: '2026-06-30' },
   ]),
-  source_id:            'sf-pipeline-2026-05-27',
-  called_at:            1748304000, // 2026-05-27 00:00:00 UTC
+  source_id:     'sf-pipeline-2026-05-27',
+  called_at:     1748304000, // 2026-05-27 00:00:00 UTC
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -84,15 +77,28 @@ describe('AC-7 — click-claim → tool-call result (Ch.5 Runtime RED)', () => {
   let db: Database.Database;
 
   beforeEach(() => {
-    db = createTestDb();
+    db = seedFromMigrations();
+
+    // Seed parent rows required by FK constraints (foreign_keys=ON).
+    db.prepare(
+      `INSERT INTO runs (run_id, playbook, question, started_at, current_state)
+       VALUES (?, 'quick_read', 'Pipeline review', ?, 'fan-out')`
+    ).run(SAMPLE_RUN_ID, Date.now());
+
+    db.prepare(
+      `INSERT INTO agent_invocations (invocation_id, run_id, agent_role, started_at, status)
+       VALUES (?, ?, 'CFO', ?, 'completed')`
+    ).run(SAMPLE_INV_ID, SAMPLE_RUN_ID, Date.now() - 5000);
+
     db.prepare(`
       INSERT INTO tool_calls
-        (tool_call_id, run_id, agent_invocation_id, tool_name, args_json, result_json, source_id, called_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (call_id, run_id, invocation_id, agent_role, tool_name, args_json, result_json, source_id, called_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      SAMPLE_TOOL_CALL.tool_call_id,
+      SAMPLE_TOOL_CALL.call_id,
       SAMPLE_TOOL_CALL.run_id,
-      SAMPLE_TOOL_CALL.agent_invocation_id,
+      SAMPLE_TOOL_CALL.invocation_id,
+      SAMPLE_TOOL_CALL.agent_role,
       SAMPLE_TOOL_CALL.tool_name,
       SAMPLE_TOOL_CALL.args_json,
       SAMPLE_TOOL_CALL.result_json,
@@ -107,10 +113,10 @@ describe('AC-7 — click-claim → tool-call result (Ch.5 Runtime RED)', () => {
 
   // ── GREEN — schema tests using raw SQLite (no Runtime needed) ────────────
 
-  it('tool_calls table accepts source_id column (Ch.5 migration-003 schema)', () => {
+  it('tool_calls table accepts source_id column (prod schema via migrations)', () => {
     const row = db.prepare(
-      'SELECT tool_call_id, source_id FROM tool_calls WHERE source_id = ?'
-    ).get('sf-pipeline-2026-05-27') as { tool_call_id: string; source_id: string } | undefined;
+      'SELECT call_id, source_id FROM tool_calls WHERE source_id = ?'
+    ).get('sf-pipeline-2026-05-27') as { call_id: string; source_id: string } | undefined;
 
     expect(row).toBeDefined();
     expect(row!.source_id).toBe('sf-pipeline-2026-05-27');

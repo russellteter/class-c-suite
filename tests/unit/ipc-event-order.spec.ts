@@ -31,9 +31,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import Database from 'better-sqlite3';
+import type Database from 'better-sqlite3';
 import { validateIpc, type IpcMessage } from '@c-suite/shared-types/ipc';
 import { dispatchLens } from '../../apps/utility/src/orchestrator/dispatch.js';
+import { seedFromMigrations } from '../helpers/seedFromMigrations.js';
 
 // ── Expected IPC event order per ADR §3 ─────────────────────────────────────
 const EXPECTED_EVENT_ORDER = [
@@ -46,42 +47,13 @@ const EXPECTED_EVENT_ORDER = [
 type IpcKind = (typeof EXPECTED_EVENT_ORDER)[number];
 
 // ── SQLite setup ─────────────────────────────────────────────────────────────
-
-function createTestDb(): Database.Database {
-  const db = new Database(':memory:');
-  db.pragma('journal_mode = WAL');
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS runs (
-      run_id        TEXT PRIMARY KEY,
-      playbook      TEXT NOT NULL,
-      question      TEXT NOT NULL,
-      started_at    INTEGER NOT NULL,
-      current_state TEXT NOT NULL,
-      status        TEXT NOT NULL DEFAULT 'in_progress'
-    );
-
-    CREATE TABLE IF NOT EXISTS agent_invocations (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      run_id        TEXT NOT NULL REFERENCES runs(run_id),
-      role          TEXT NOT NULL,
-      started_at    INTEGER NOT NULL,
-      completed_at  INTEGER,
-      output_json   TEXT,
-      status        TEXT NOT NULL DEFAULT 'in_progress'
-    );
-
-    CREATE TABLE IF NOT EXISTS tool_calls (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      run_id      TEXT NOT NULL,
-      role        TEXT NOT NULL,
-      tool_name   TEXT NOT NULL,
-      input_json  TEXT NOT NULL,
-      result_json TEXT NOT NULL,
-      ts          INTEGER NOT NULL DEFAULT (unixepoch())
-    );
-  `);
-  return db;
-}
+// Schema comes from the production migrations (db/migrations/NNN_*.sql) via
+// seedFromMigrations(), not a hand-rolled CREATE TABLE. The prior inline DDL had
+// drifted from prod: agent_invocations used role/output_json/id (prod is
+// agent_role/structured_output_json/invocation_id) and tool_calls used
+// role/input_json/id (prod is agent_role/args_json/call_id). This test only writes
+// to runs (a compatible subset of the real runs schema), so aligning the schema
+// source is the fix; no INSERT or assertion changes.
 
 // ── IPC capture sink (mock) ───────────────────────────────────────────────────
 
@@ -114,7 +86,7 @@ describe('AC-6: IPC event order for single-lens dispatch (ADR-0004 §3)', () => 
   let sink: IpcCaptureSink;
 
   beforeEach(() => {
-    db = createTestDb();
+    db = seedFromMigrations();
     sink = new IpcCaptureSink();
 
     db.prepare(`
@@ -175,58 +147,9 @@ describe('AC-6: IPC event order for single-lens dispatch (ADR-0004 §3)', () => 
     expect(() => validateIpc(agentComplete)).not.toThrow();
   });
 
-  it('emits events in order: agent.start → agent.tool.pre → agent.tool.post → agent.complete [RED: Runtime not shipped]', () => {
-    // When Runtime ships:
-    //   // Inject the capture sink before dispatching
-    //   setIpcEmitter(sink.emit.bind(sink));  // or vi.mock approach
-    //
-    //   const ceoBundle = {
-    //     runId: RUN_ID,
-    //     role: 'CEO' as const,
-    //     question: 'IPC order test',
-    //     playbook: 'quick_read',
-    //     contextDocuments: [],
-    //   };
-    //
-    //   await dispatchLens('CEO', ceoBundle, db);
-    //
-    //   const kinds = sink.kinds();
-    //   // At minimum: start, pre, post, complete
-    //   expect(kinds[0]).toBe('agent.start');
-    //   expect(kinds[kinds.length - 1]).toBe('agent.complete');
-    //
-    //   // Pre must come before post
-    //   const preIdx = kinds.indexOf('agent.tool.pre');
-    //   const postIdx = kinds.indexOf('agent.tool.post');
-    //   if (preIdx !== -1 && postIdx !== -1) {
-    //     expect(preIdx).toBeLessThan(postIdx);
-    //   }
-    //
-    //   // agent.complete must come after agent.tool.post
-    //   const completeIdx = kinds.lastIndexOf('agent.complete');
-    //   if (postIdx !== -1) {
-    //     expect(completeIdx).toBeGreaterThan(postIdx);
-    //   }
+  it.todo('emits events in order: agent.start → agent.tool.pre → agent.tool.post → agent.complete — blocked: dispatchLens injectable IpcEmit parameter not yet wired (Ch.3 Runtime)');
 
-    expect(true).toBe(true);
-  });
-
-  it('no event is emitted out-of-order or duplicated for a single-lens dispatch [RED: Runtime not shipped]', () => {
-    // When Runtime ships:
-    //   setIpcEmitter(sink.emit.bind(sink));
-    //   await dispatchLens('CEO', ceoBundle, db);
-    //
-    //   // agent.start must appear exactly once (not duplicated)
-    //   expect(sink.kinds().filter(k => k === 'agent.start')).toHaveLength(1);
-    //   expect(sink.kinds().filter(k => k === 'agent.complete')).toHaveLength(1);
-    //
-    //   // Pre/Post pairs must be balanced (each pre has exactly one corresponding post)
-    //   const preCount = sink.kinds().filter(k => k === 'agent.tool.pre').length;
-    //   const postCount = sink.kinds().filter(k => k === 'agent.tool.post').length;
-    //   expect(preCount).toBe(postCount);
-
-    expect(true).toBe(true);
-  });
+  it.todo('no event is emitted out-of-order or duplicated for a single-lens dispatch — blocked: dispatchLens injectable IpcEmit parameter not yet wired (Ch.3 Runtime)');
 
   it('documents expected hook → IPC kind mapping (ADR §3 reference)', () => {
     // Living documentation of the hook-to-IPC mapping per ADR §3.

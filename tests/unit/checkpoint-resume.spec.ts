@@ -28,49 +28,20 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { resumeRun, loadCompletedInvocations } from '../../apps/utility/src/orchestrator/index.js';
 import { buildLensContextBundleSchema } from '../../packages/shared-types/src/lens-context-bundle.js';
+import { seedFromMigrations } from '../helpers/seedFromMigrations.js';
 
-// ── SQLite schema (mirrors Ch.1 + Ch.3 migration 002 additions) ─────────────
+// ── Test DB: seeded from the REAL production migrations (db/migrations/001..007) ──
+// Replaces the former hand-rolled CREATE TABLE block, which had drifted from prod:
+//   - agent_invocations used `id INTEGER AUTOINCREMENT` + `role` + `output_json`,
+//     but migration 001 uses `invocation_id TEXT PRIMARY KEY` + `agent_role` +
+//     `structured_output_json` (db/migrations/001_initial.sql:31-43).
+//   - the idempotency unique index was on (run_id, role); prod (migration 003) is
+//     on (run_id, agent_role) (db/migrations/003_state_transitions.sql:21-23).
+// seedFromMigrations() applies the production migration runner, so the schema this
+// test exercises is exactly what ships.
 
 function createTestDb(): Database.Database {
-  const db = new Database(':memory:');
-  db.pragma('journal_mode = WAL');
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS runs (
-      run_id        TEXT PRIMARY KEY,
-      playbook      TEXT NOT NULL,
-      question      TEXT NOT NULL,
-      started_at    INTEGER NOT NULL,
-      current_state TEXT NOT NULL,
-      plan_json     TEXT,
-      status        TEXT NOT NULL DEFAULT 'in_progress'
-    );
-
-    CREATE TABLE IF NOT EXISTS agent_invocations (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      run_id        TEXT NOT NULL REFERENCES runs(run_id),
-      role          TEXT NOT NULL,
-      started_at    INTEGER NOT NULL,
-      completed_at  INTEGER,
-      output_json   TEXT,
-      status        TEXT NOT NULL DEFAULT 'in_progress'
-    );
-
-    -- Ch.3 migration 002: idempotency guard (ADR §7.4)
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_run_role
-      ON agent_invocations(run_id, role)
-      WHERE status = 'completed';
-
-    -- Ch.3 migration 002: state transition audit trail (ADR §1.5)
-    CREATE TABLE IF NOT EXISTS state_transitions (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      run_id      TEXT NOT NULL REFERENCES runs(run_id),
-      from_kind   TEXT NOT NULL,
-      to_kind     TEXT NOT NULL,
-      event_json  TEXT NOT NULL,
-      ts          INTEGER NOT NULL DEFAULT (unixepoch())
-    );
-  `);
-  return db;
+  return seedFromMigrations();
 }
 
 // ── Seed helpers ──────────────────────────────────────────────────────────────
@@ -92,10 +63,10 @@ function seedRunInFanOut(db: Database.Database, runId: string, completedLenses: 
 
   for (const role of completedLenses) {
     db.prepare(`
-      INSERT INTO agent_invocations (run_id, role, started_at, completed_at, output_json, status)
-      VALUES (?, ?, ?, ?, ?, 'completed')
+      INSERT INTO agent_invocations (invocation_id, run_id, agent_role, started_at, completed_at, structured_output_json, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'completed')
     `).run(
-      runId, role, Date.now() - 5000, Date.now() - 1000,
+      `${runId}-${role}`, runId, role, Date.now() - 5000, Date.now() - 1000,
       JSON.stringify({ role, runId, summary: `${role} analysis`, positions: [], citations: [], confidence: 0.8 }),
     );
   }
@@ -124,94 +95,13 @@ describe('AC-4: resumeRun re-dispatches only incomplete lenses (ADR-0004 §7)', 
     expect(typeof buildLensContextBundleSchema).toBe('function');
   });
 
-  it('re-dispatches exactly the 3 incomplete lenses after mid-run crash [RED: Runtime not shipped]', () => {
-    // Setup: 3 of 6 lenses completed (CEO, CFO, CRO). CMO, CPO, COS are in-flight.
-    // When Runtime ships:
-    //   const runId = 'cr-test-mid-fanout';
-    //   seedRunInFanOut(db, runId, COMPLETED_3);
-    //
-    //   // Track new invocations created by resumeRun
-    //   const beforeCount = db.prepare(`SELECT COUNT(*) as n FROM agent_invocations WHERE run_id = ?`).get(runId) as { n: number };
-    //
-    //   await resumeRun(runId, db);
-    //
-    //   const afterCount = db.prepare(`SELECT COUNT(*) as n FROM agent_invocations WHERE run_id = ?`).get(runId) as { n: number };
-    //   const newInvocations = afterCount.n - beforeCount.n;
-    //
-    //   // Exactly 3 new invocations (CMO, CPO, COS) — not 6, not 0
-    //   expect(newInvocations).toBe(3);
-    //
-    //   // Completed lenses' rows are unchanged
-    //   for (const role of COMPLETED_3) {
-    //     const row = db.prepare(`SELECT status FROM agent_invocations WHERE run_id = ? AND role = ? AND status = 'completed'`).get(runId, role) as { status: string };
-    //     expect(row.status).toBe('completed');
-    //   }
+  it.todo('re-dispatches exactly the 3 incomplete lenses after mid-run crash — blocked: resumeRun dispatch not yet implemented (Ch.3 Runtime)');
 
-    expect(true).toBe(true);
-  });
+  it.todo('completed lens output_json is preserved unchanged after resume — blocked: resumeRun dispatch not yet implemented (Ch.3 Runtime)');
 
-  it('completed lens output_json is preserved unchanged after resume [RED: Runtime not shipped]', () => {
-    // When Runtime ships:
-    //   const runId = 'cr-test-output-preserved';
-    //   seedRunInFanOut(db, runId, COMPLETED_3);
-    //
-    //   const ceoOutputBefore = (db.prepare(`SELECT output_json FROM agent_invocations WHERE run_id = ? AND role = 'CEO'`).get(runId) as { output_json: string }).output_json;
-    //
-    //   await resumeRun(runId, db);
-    //
-    //   const ceoOutputAfter = (db.prepare(`SELECT output_json FROM agent_invocations WHERE run_id = ? AND role = 'CEO' AND status = 'completed'`).get(runId) as { output_json: string }).output_json;
-    //   expect(ceoOutputAfter).toBe(ceoOutputBefore);
+  it.todo('re-dispatched lenses receive isolated context bundles (no peer outputs) — blocked: resumeRun + dispatchLens spy wiring not yet implemented (Ch.3 Runtime)');
 
-    expect(true).toBe(true);
-  });
-
-  it('re-dispatched lenses receive isolated context bundles (no peer outputs) [RED: Runtime not shipped]', () => {
-    // Lens isolation holds during resume — ADR §7.3.
-    // The re-dispatched CMO lens must NOT see CEO/CFO/CRO outputs in its context bundle.
-    // When Runtime ships:
-    //   const runId = 'cr-test-isolation-on-resume';
-    //   seedRunInFanOut(db, runId, COMPLETED_3);
-    //
-    //   // Spy on dispatchLens to capture the context bundle passed for CMO
-    //   let capturedCmoBundle: unknown = null;
-    //   vi.spyOn(orchestrator, 'dispatchLens').mockImplementation(async (role, bundle, _db) => {
-    //     if (role === 'CMO') capturedCmoBundle = bundle;
-    //     return { role, runId, summary: 'stub', positions: [], citations: [], confidence: 0.5 };
-    //   });
-    //
-    //   await resumeRun(runId, db);
-    //
-    //   // CMO bundle must not contain any CEO/CFO/CRO output objects
-    //   const bundleJson = JSON.stringify(capturedCmoBundle);
-    //   expect(bundleJson).not.toContain('"role":"CEO"');
-    //   expect(bundleJson).not.toContain('"role":"CFO"');
-    //   expect(bundleJson).not.toContain('"role":"CRO"');
-
-    expect(true).toBe(true);
-  });
-
-  it('fully-complete fan-out: resume skips fan-out and transitions to red-team-steelman [RED: Runtime not shipped]', () => {
-    // When all 6 lenses are done, resumeRun skips the fan-out phase entirely.
-    // When Runtime ships:
-    //   const runId = 'cr-test-full-fanout-complete';
-    //   seedRunInFanOut(db, runId, ALL_6_LENSES);
-    //
-    //   await resumeRun(runId, db);
-    //
-    //   // No new agent_invocations rows for lens roles
-    //   const lensNewRows = db.prepare(`
-    //     SELECT COUNT(*) as n FROM agent_invocations
-    //     WHERE run_id = ? AND role IN ('CEO','CFO','CRO','CMO','CPO','COS') AND status != 'completed'
-    //   `).get(runId) as { n: number };
-    //   expect(lensNewRows.n).toBe(0);
-    //
-    //   // Current state advanced to 'red-team-steelman'
-    //   const runRow = db.prepare(`SELECT current_state FROM runs WHERE run_id = ?`).get(runId) as { current_state: string };
-    //   const state = JSON.parse(runRow.current_state);
-    //   expect(state.kind).toBe('red-team-steelman');
-
-    expect(true).toBe(true);
-  });
+  it.todo('fully-complete fan-out: resume skips fan-out and transitions to red-team-steelman — blocked: resumeRun state-machine advance not yet implemented (Ch.3 Runtime)');
 });
 
 // ── AC-9 Tests: idempotency guard ─────────────────────────────────────────────
@@ -227,54 +117,29 @@ describe('AC-9: Idempotency guard — completed lens never re-dispatched (ADR-00
     db.close();
   });
 
-  it('calling resumeRun on a fully-complete run creates zero new agent_invocations [RED: Runtime not shipped]', () => {
-    // When Runtime ships:
-    //   const runId = 'cr-test-idempotent-complete';
-    //   seedRunInFanOut(db, runId, ALL_6_LENSES);  // all 6 complete
-    //
-    //   const countBefore = (db.prepare(`SELECT COUNT(*) as n FROM agent_invocations WHERE run_id = ?`).get(runId) as { n: number }).n;
-    //
-    //   await resumeRun(runId, db);
-    //
-    //   const countAfter = (db.prepare(`SELECT COUNT(*) as n FROM agent_invocations WHERE run_id = ?`).get(runId) as { n: number }).n;
-    //   expect(countAfter).toBe(countBefore);  // zero new rows
+  it.todo('calling resumeRun on a fully-complete run creates zero new agent_invocations — blocked: resumeRun dispatch not yet implemented (Ch.3 Runtime)');
 
-    expect(true).toBe(true);
-  });
-
-  it('SQLite unique index on (run_id, role) WHERE completed rejects duplicate completed rows', () => {
+  it('SQLite unique index on (run_id, agent_role) WHERE completed rejects duplicate completed rows', () => {
     // This test exercises the idempotency constraint at the DB level — no Runtime needed.
+    // Real schema (migration 003): unique index is on (run_id, agent_role) WHERE status='completed'.
+    // Distinct invocation_id values on both rows ensure the rejection comes from the unique
+    // index (not the invocation_id primary key).
     const runId = 'cr-test-unique-idx';
     db.prepare(`INSERT INTO runs (run_id, playbook, question, started_at, current_state) VALUES (?, 'quick_read', 'Q', ?, 'fan-out')`).run(runId, Date.now());
 
     db.prepare(`
-      INSERT INTO agent_invocations (run_id, role, started_at, completed_at, output_json, status)
-      VALUES (?, 'CEO', ?, ?, ?, 'completed')
-    `).run(runId, Date.now() - 3000, Date.now() - 1000, JSON.stringify({ role: 'CEO' }));
+      INSERT INTO agent_invocations (invocation_id, run_id, agent_role, started_at, completed_at, structured_output_json, status)
+      VALUES (?, ?, 'CEO', ?, ?, ?, 'completed')
+    `).run(`${runId}-CEO-1`, runId, Date.now() - 3000, Date.now() - 1000, JSON.stringify({ role: 'CEO' }));
 
-    // Second insert with same (run_id, role, status='completed') must fail.
+    // Second insert with same (run_id, agent_role, status='completed') must fail.
     expect(() => {
       db.prepare(`
-        INSERT INTO agent_invocations (run_id, role, started_at, completed_at, output_json, status)
-        VALUES (?, 'CEO', ?, ?, ?, 'completed')
-      `).run(runId, Date.now() - 2000, Date.now() - 500, JSON.stringify({ role: 'CEO', duplicate: true }));
+        INSERT INTO agent_invocations (invocation_id, run_id, agent_role, started_at, completed_at, structured_output_json, status)
+        VALUES (?, ?, 'CEO', ?, ?, ?, 'completed')
+      `).run(`${runId}-CEO-2`, runId, Date.now() - 2000, Date.now() - 500, JSON.stringify({ role: 'CEO', duplicate: true }));
     }).toThrow();
   });
 
-  it('calling resumeRun twice on same run is safe — second call is a no-op [RED: Runtime not shipped]', () => {
-    // When Runtime ships:
-    //   const runId = 'cr-test-double-resume';
-    //   seedRunInFanOut(db, runId, ['CEO', 'CFO']);
-    //
-    //   await resumeRun(runId, db);
-    //   const countAfterFirst = (db.prepare(`SELECT COUNT(*) as n FROM agent_invocations WHERE run_id = ?`).get(runId) as { n: number }).n;
-    //
-    //   await resumeRun(runId, db);
-    //   const countAfterSecond = (db.prepare(`SELECT COUNT(*) as n FROM agent_invocations WHERE run_id = ?`).get(runId) as { n: number }).n;
-    //
-    //   // No additional rows created on second call
-    //   expect(countAfterSecond).toBe(countAfterFirst);
-
-    expect(true).toBe(true);
-  });
+  it.todo('calling resumeRun twice on same run is safe — second call is a no-op — blocked: resumeRun dispatch not yet implemented (Ch.3 Runtime)');
 });

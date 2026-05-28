@@ -26,6 +26,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { startRun, type FinalRunState } from '../../apps/utility/src/orchestrator/run-loop.js';
+import { seedFromMigrations } from '../helpers/seedFromMigrations.js';
 
 // ── All 14 RunState kind values per ADR §1.1 ────────────────────────────────
 const ALL_14_STATES = [
@@ -55,53 +56,12 @@ const ALL_12_ROLES = [
   'Handoff', 'RunCritic',
 ] as const;
 
-// ── SQLite setup (mirrors Ch.1 schema subset needed by orchestrator) ─────────
-
-function createTestDb(): Database.Database {
-  const db = new Database(':memory:');
-  db.pragma('journal_mode = WAL');
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS runs (
-      run_id        TEXT PRIMARY KEY,
-      playbook      TEXT NOT NULL,
-      question      TEXT NOT NULL,
-      started_at    INTEGER NOT NULL,
-      current_state TEXT NOT NULL,
-      plan_json     TEXT,
-      status        TEXT NOT NULL DEFAULT 'in_progress'
-    );
-
-    CREATE TABLE IF NOT EXISTS agent_invocations (
-      invocation_id TEXT PRIMARY KEY,
-      run_id        TEXT NOT NULL REFERENCES runs(run_id),
-      role          TEXT NOT NULL,
-      started_at    INTEGER NOT NULL,
-      completed_at  INTEGER,
-      output_json   TEXT,
-      status        TEXT NOT NULL DEFAULT 'in_progress'
-    );
-
-    CREATE TABLE IF NOT EXISTS tool_calls (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      run_id      TEXT NOT NULL,
-      role        TEXT NOT NULL,
-      tool_name   TEXT NOT NULL,
-      input_json  TEXT NOT NULL,
-      result_json TEXT NOT NULL,
-      ts          INTEGER NOT NULL DEFAULT (unixepoch())
-    );
-
-    CREATE TABLE IF NOT EXISTS state_transitions (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      run_id      TEXT NOT NULL REFERENCES runs(run_id),
-      from_kind   TEXT NOT NULL,
-      to_kind     TEXT NOT NULL,
-      event_json  TEXT NOT NULL,
-      ts          INTEGER NOT NULL DEFAULT (unixepoch())
-    );
-  `);
-  return db;
-}
+// ── SQLite setup ─────────────────────────────────────────────────────────────
+// Schema comes from the real migrations (db/migrations/001..007) via the shared
+// seedFromMigrations() helper — the single source of truth for test schema. The
+// orchestrator writes runs/agent_invocations/tool_calls/state_transitions against
+// the production column names (agent_role, structured_output_json, call_id,
+// invocation_id, args_json, called_at), so the test DB must match them exactly.
 
 // ── AC-1 Tests ────────────────────────────────────────────────────────────────
 
@@ -113,7 +73,7 @@ describe('AC-1: Full E2E run-loop on stub harness (ADR-0004 §8 AC-1)', () => {
   let db: Database.Database;
 
   beforeEach(() => {
-    db = createTestDb();
+    db = seedFromMigrations();
   });
 
   afterEach(() => {

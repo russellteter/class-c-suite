@@ -46,16 +46,18 @@ describe('runMigrations — idempotency + schema correctness (§9 row 4)', () =>
   it('creates schema_version row on first run', () => {
     runMigrations(db);
     const row = db.prepare('SELECT COUNT(*) AS n FROM schema_version').get() as { n: number };
-    // Ch.2 002_conflicts.sql + Ch.3 003_state_transitions.sql + Ch.2-polish 004_vault_commit_failures.sql = 4 migrations.
-    expect(row.n).toBe(4);
+    // 001_initial + 002_conflicts + 003_state_transitions + 004_vault_commit_failures
+    // + 005_writebacks + 006_credentials + 007_scheduled_jobs = 7 migrations.
+    expect(row.n).toBe(7);
   });
 
   it('is idempotent — second run produces no duplicate schema_version rows', () => {
     runMigrations(db);
     runMigrations(db);
     const row = db.prepare('SELECT COUNT(*) AS n FROM schema_version').get() as { n: number };
-    // Ch.2 002_conflicts.sql + Ch.3 003_state_transitions.sql + Ch.2-polish 004_vault_commit_failures.sql = 4 migrations.
-    expect(row.n).toBe(4);
+    // 001_initial + 002_conflicts + 003_state_transitions + 004_vault_commit_failures
+    // + 005_writebacks + 006_credentials + 007_scheduled_jobs = 7 migrations.
+    expect(row.n).toBe(7);
   });
 
   it('second run produces no SQL errors', () => {

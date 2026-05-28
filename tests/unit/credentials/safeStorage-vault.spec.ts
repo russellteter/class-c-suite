@@ -9,6 +9,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { SafeStorageVault } from '../../../apps/utility/src/credentials/safeStorageVault.js';
 import type { SafeStorageAdapter } from '../../../apps/utility/src/credentials/safeStorageVault.js';
+import { seedFromMigrations } from '../../helpers/seedFromMigrations.js';
 
 // ── Fake SafeStorageAdapter ───────────────────────────────────────────────────
 // XOR-shifts the bytes as a deterministic "encryption" — enough to verify the
@@ -34,18 +35,9 @@ function openTestDb(): { db: Database.Database; tmpDir: string } {
   const dir = mkdtempSync(join(tmpdir(), 'c-suite-vault-'));
   const db = new Database(join(dir, 'test.db'));
 
-  // Apply the credentials migration inline.
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS credentials (
-      service_id         TEXT    PRIMARY KEY,
-      encrypted_blob     BLOB    NOT NULL,
-      credential_type    TEXT    NOT NULL,
-      expires_at         INTEGER,
-      last_refreshed_at  INTEGER NOT NULL,
-      metadata_json      TEXT
-    );
-    CREATE INDEX IF NOT EXISTS idx_credentials_service_id ON credentials (service_id);
-  `);
+  // Apply the full production schema via the real migration runner — single
+  // source of truth for the credentials table (db/migrations/006_credentials.sql).
+  seedFromMigrations(db);
   return { db, tmpDir: dir };
 }
 

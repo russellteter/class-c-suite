@@ -10,9 +10,9 @@ import type Database from 'better-sqlite3';
 
 /** Full tool_calls row shape returned by queryToolCallBySourceId */
 export interface ToolCallRow {
-  tool_call_id: string;
+  call_id: string;
   run_id: string;
-  agent_invocation_id: string;
+  invocation_id: string;
   tool_name: string;
   args_json: string;
   result_json: string;
@@ -37,7 +37,7 @@ export function queryToolCallBySourceId(
   sourceId: string,
 ): ToolCallRow | null {
   const row = db.prepare(`
-    SELECT tool_call_id, run_id, agent_invocation_id, tool_name,
+    SELECT call_id, run_id, invocation_id, tool_name,
            args_json, result_json, source_id, called_at
     FROM tool_calls
     WHERE source_id = ?
@@ -59,12 +59,12 @@ export function insertToolCall(
 ): void {
   db.prepare(`
     INSERT INTO tool_calls
-      (tool_call_id, run_id, agent_invocation_id, tool_name, args_json, result_json, source_id, called_at)
+      (call_id, run_id, invocation_id, tool_name, args_json, result_json, source_id, called_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    toolCall.tool_call_id,
+    toolCall.call_id,
     toolCall.run_id,
-    toolCall.agent_invocation_id,
+    toolCall.invocation_id,
     toolCall.tool_name,
     toolCall.args_json,
     toolCall.result_json,

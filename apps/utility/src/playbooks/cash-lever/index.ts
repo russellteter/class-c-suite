@@ -78,9 +78,9 @@ async function fetchSalesforcePipeline(
     const res = await deps.salesforce.query(soql);
     if (db) {
       insertToolCall(db, {
-        tool_call_id: `tc-sf-${Date.now()}`,
+        call_id: `tc-sf-${Date.now()}`,
         run_id: runId,
-        agent_invocation_id: `inv-cfo-${runId}`,
+        invocation_id: `inv-cfo-${runId}`,
         tool_name: 'salesforce.query',
         args_json: JSON.stringify({ soql }),
         result_json: JSON.stringify(res.records),
@@ -120,9 +120,9 @@ async function fetchAwsSpend(
     const res = await aws.getCombinedCost({ start: fmt(start), end: fmt(end) });
     if (db) {
       insertToolCall(db, {
-        tool_call_id: `tc-aws-${Date.now()}`,
+        call_id: `tc-aws-${Date.now()}`,
         run_id: runId,
-        agent_invocation_id: `inv-cfo-${runId}`,
+        invocation_id: `inv-cfo-${runId}`,
         tool_name: 'aws.getCombinedCost',
         args_json: JSON.stringify({ start: fmt(start), end: fmt(end), profiles: ['class', 'collab'] }),
         result_json: JSON.stringify(res),
@@ -175,9 +175,9 @@ async function fetchNetSuiteCash(
     }
     if (db) {
       insertToolCall(db, {
-        tool_call_id: `tc-ns-${Date.now()}`,
+        call_id: `tc-ns-${Date.now()}`,
         run_id: runId,
-        agent_invocation_id: `inv-cfo-${runId}`,
+        invocation_id: `inv-cfo-${runId}`,
         tool_name: 'netsuite.runSuiteQL',
         args_json: JSON.stringify({ query: suiteQl }),
         result_json: JSON.stringify(res.items),
@@ -221,9 +221,9 @@ async function stubCashModelQuery(
 
   if (db) {
     insertToolCall(db, {
-      tool_call_id: `tc-xlsx-${Date.now()}`,
+      call_id: `tc-xlsx-${Date.now()}`,
       run_id: runId,
-      agent_invocation_id: `inv-cfo-${runId}`,
+      invocation_id: `inv-cfo-${runId}`,
       tool_name: 'cashModel.readXlsxLeverRows',
       args_json: JSON.stringify({ vaultPath: 'UNKNOWN — pending Russell confirmation (ADR-0006 §9)' }),
       result_json: JSON.stringify(result),

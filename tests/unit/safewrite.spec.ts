@@ -503,6 +503,7 @@ describe('SafeWrite AC-9 — per-path lock serializes concurrent writes', () => 
 // emitted as IPC event, and persisted to vault_commit_failures sqlite table.
 
 import Database from 'better-sqlite3';
+import { seedFromMigrations } from '../helpers/seedFromMigrations.js';
 
 describe('SafeWrite B39 — git-commit failure is logged + IPC + sqlite (non-fatal)', () => {
   let vaultDir: string;
@@ -519,20 +520,10 @@ describe('SafeWrite B39 — git-commit failure is logged + IPC + sqlite (non-fat
     await git.add('.');
     await git.commit('vault: seed POS-B39');
 
-    db = new Database(':memory:');
-    db.exec(`
-      CREATE TABLE vault_commit_failures (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        run_id TEXT NOT NULL,
-        path TEXT NOT NULL,
-        agent TEXT,
-        playbook TEXT,
-        error TEXT NOT NULL,
-        ts INTEGER NOT NULL DEFAULT (unixepoch()),
-        retried_at INTEGER,
-        retry_status TEXT
-      );
-    `);
+    // Schema source: db/migrations/*.sql via the production migration runner.
+    // 004_vault_commit_failures.sql owns vault_commit_failures — no hand-rolled
+    // CREATE TABLE here, so the test can never drift from production schema.
+    db = seedFromMigrations();
   });
 
   afterEach(async () => {

@@ -27,41 +27,21 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import Database from 'better-sqlite3';
+import type Database from 'better-sqlite3';
 import {
   transition,
   type RunEvent,
 } from '../../apps/utility/src/orchestrator/state-machine.js';
 import type { RunState, RunFailedError } from '../../packages/shared-types/src/run-state.js';
+import { seedFromMigrations } from '../helpers/seedFromMigrations.js';
 
-// ── SQLite schema (Ch.1 + Ch.3 migration 002 additions) ─────────────────────
+// ── SQLite schema ───────────────────────────────────────────────────────────
+// Seed the real production schema by applying db/migrations/*.sql via the
+// production runner. runs comes from 001_initial.sql; state_transitions +
+// idx_st_run_id come from 003_state_transitions.sql. No hand-rolled CREATE TABLE.
 
 function createTestDb(): Database.Database {
-  const db = new Database(':memory:');
-  db.pragma('journal_mode = WAL');
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS runs (
-      run_id        TEXT PRIMARY KEY,
-      playbook      TEXT NOT NULL,
-      question      TEXT NOT NULL,
-      started_at    INTEGER NOT NULL,
-      current_state TEXT NOT NULL,
-      plan_json     TEXT,
-      status        TEXT NOT NULL DEFAULT 'in_progress'
-    );
-
-    -- Ch.3 migration 002 — state_transitions table (ADR §1.5)
-    CREATE TABLE IF NOT EXISTS state_transitions (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      run_id      TEXT NOT NULL REFERENCES runs(run_id),
-      from_kind   TEXT NOT NULL,
-      to_kind     TEXT NOT NULL,
-      event_json  TEXT NOT NULL,
-      ts          INTEGER NOT NULL DEFAULT (unixepoch())
-    );
-    CREATE INDEX IF NOT EXISTS idx_st_run_id ON state_transitions(run_id, ts);
-  `);
-  return db;
+  return seedFromMigrations();
 }
 
 // ── Seed helpers ──────────────────────────────────────────────────────────────

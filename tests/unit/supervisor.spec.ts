@@ -19,6 +19,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
 import Database from 'better-sqlite3';
+import { seedFromMigrations } from '../helpers/seedFromMigrations.js';
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -62,22 +63,13 @@ vi.mock('electron', () => {
 import { startSupervision } from '../../apps/main/src/supervisor.js';
 import type { SupervisionState, IpcSender } from '../../apps/main/src/supervisor.js';
 
-// ── DB setup: minimal process_events table ───────────────────────────────────
+// ── DB setup: seed the real production schema from db/migrations ──────────────
+// Was a hand-rolled CREATE TABLE for process_events (drift risk vs prod). Now
+// applies every migration via the production runner so the test asserts against
+// the same schema the supervisor's INSERT runs against in production.
 
 function createTestDb(): Database.Database {
-  const db = new Database(':memory:');
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS process_events (
-      event_id      TEXT PRIMARY KEY,
-      occurred_at   INTEGER NOT NULL,
-      process       TEXT NOT NULL,
-      event_type    TEXT NOT NULL,
-      exit_code     INTEGER,
-      stack_trace   TEXT,
-      restart_count INTEGER
-    );
-  `);
-  return db;
+  return seedFromMigrations();
 }
 
 // ── §9 row 2 — Supervised restart timing ─────────────────────────────────────

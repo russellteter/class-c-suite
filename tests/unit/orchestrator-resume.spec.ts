@@ -26,37 +26,9 @@ import Database from 'better-sqlite3';
 
 import { resumeRun, loadCompletedInvocations } from '../../apps/utility/src/orchestrator/index.js';
 import type { AgentInvocationRecord } from '../../apps/utility/src/orchestrator/index.js';
+import { seedFromMigrations } from '../helpers/seedFromMigrations.js';
 
-// ── Test helpers: seed in-memory SQLite with the Ch.1 schema subset ─────────
-
-function createTestDb(): Database.Database {
-  const db = new Database(':memory:');
-  db.pragma('journal_mode = WAL');
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS runs (
-      run_id        TEXT PRIMARY KEY,
-      playbook      TEXT NOT NULL,
-      question      TEXT NOT NULL,
-      started_at    INTEGER NOT NULL,
-      current_state TEXT NOT NULL,
-      plan_json     TEXT,
-      status        TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS agent_invocations (
-      invocation_id          TEXT PRIMARY KEY,
-      run_id                 TEXT NOT NULL REFERENCES runs(run_id),
-      agent_role             TEXT NOT NULL,
-      started_at             INTEGER NOT NULL,
-      completed_at           INTEGER,
-      structured_output_json TEXT,
-      tokens_in              INTEGER,
-      tokens_out             INTEGER,
-      status                 TEXT
-    );
-  `);
-  return db;
-}
+// ── Test helpers: seed in-memory SQLite with the production migration schema ─
 
 function seedScenario(db: Database.Database, runId: string): void {
   db.prepare(`
@@ -89,7 +61,7 @@ describe('loadCompletedInvocations — skips in_progress rows (§9 row 12)', () 
   const RUN_ID = 'run-resume-001';
 
   beforeEach(() => {
-    db = createTestDb();
+    db = seedFromMigrations();
     seedScenario(db, RUN_ID);
   });
 
@@ -128,7 +100,7 @@ describe('resumeRun — in_progress agent is re-dispatched, completed agents ski
   const RUN_ID = 'run-resume-002';
 
   beforeEach(() => {
-    db = createTestDb();
+    db = seedFromMigrations();
     seedScenario(db, RUN_ID);
   });
 

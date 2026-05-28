@@ -139,15 +139,21 @@ export function createHooks(ctx: HookContext): {
     });
 
     // Insert tool_calls row — full audit trail (B3 requirement)
+    // Production schema: db/migrations/001_initial.sql lines 47-58.
+    // call_id = `${role}-${toolUseId}` (deterministic, matches callId in IPC payload).
+    // invocation_id = `${runId}-${role}` — the deterministic id onSubagentStart inserts.
     db.prepare(
-      `INSERT INTO tool_calls (run_id, role, tool_name, input_json, result_json, ts)
-       VALUES (?, ?, ?, json(?), json(?), unixepoch())`
+      `INSERT INTO tool_calls (call_id, run_id, invocation_id, agent_role, tool_name, args_json, result_json, source_id, called_at)
+       VALUES (?, ?, ?, ?, ?, json(?), json(?), ?, unixepoch())`
     ).run(
+      callId,
       runId,
+      `${runId}-${role}`,
       role,
       evt.tool_name,
       JSON.stringify(evt.tool_input),
       JSON.stringify(evt.tool_response),
+      role,
     );
 
     return {};

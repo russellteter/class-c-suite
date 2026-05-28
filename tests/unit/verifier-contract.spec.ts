@@ -24,45 +24,7 @@ import {
   buildVerifierInput,
   VerifierInputContractViolation,
 } from '../../apps/utility/src/verifier-assembler.js';
-
-// ── SQLite schema for tests ───────────────────────────────────────────────────
-
-function createTestDb(): Database.Database {
-  const db = new Database(':memory:');
-  db.pragma('journal_mode = WAL');
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS runs (
-      run_id        TEXT PRIMARY KEY,
-      playbook      TEXT NOT NULL,
-      question      TEXT NOT NULL,
-      started_at    INTEGER NOT NULL,
-      current_state TEXT NOT NULL,
-      status        TEXT NOT NULL DEFAULT 'in_progress'
-    );
-
-    CREATE TABLE IF NOT EXISTS agent_invocations (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      run_id        TEXT NOT NULL REFERENCES runs(run_id),
-      role          TEXT NOT NULL,
-      started_at    INTEGER NOT NULL,
-      completed_at  INTEGER,
-      output_json   TEXT,
-      status        TEXT NOT NULL DEFAULT 'in_progress',
-      UNIQUE(run_id, role) -- ADR §7.4 idempotency guard
-    );
-
-    CREATE TABLE IF NOT EXISTS tool_calls (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      run_id      TEXT NOT NULL,
-      role        TEXT NOT NULL,
-      tool_name   TEXT NOT NULL,
-      input_json  TEXT NOT NULL,
-      result_json TEXT NOT NULL,
-      ts          INTEGER NOT NULL DEFAULT (unixepoch())
-    );
-  `);
-  return db;
-}
+import { seedFromMigrations } from '../helpers/seedFromMigrations.js';
 
 // ── Seed helpers ──────────────────────────────────────────────────────────────
 
@@ -77,10 +39,10 @@ function seedRun(db: Database.Database, runId: string): void {
 
 function seedLensOutput(db: Database.Database, runId: string, role: string): void {
   db.prepare(`
-    INSERT INTO agent_invocations (run_id, role, started_at, completed_at, output_json, status)
-    VALUES (?, ?, ?, ?, ?, 'completed')
+    INSERT INTO agent_invocations (invocation_id, run_id, agent_role, started_at, completed_at, structured_output_json, status)
+    VALUES (?, ?, ?, ?, ?, ?, 'completed')
   `).run(
-    runId, role, Date.now() - 5000, Date.now() - 1000,
+    `inv-${runId}-${role}`, runId, role, Date.now() - 5000, Date.now() - 1000,
     JSON.stringify({
       role,
       runId,
@@ -105,17 +67,17 @@ function seedSynthesizerOutput(db: Database.Database, runId: string, withPositio
       : [],
   };
   db.prepare(`
-    INSERT INTO agent_invocations (run_id, role, started_at, completed_at, output_json, status)
-    VALUES (?, 'Synthesizer', ?, ?, ?, 'completed')
-  `).run(runId, Date.now() - 3000, Date.now() - 500, JSON.stringify(output));
+    INSERT INTO agent_invocations (invocation_id, run_id, agent_role, started_at, completed_at, structured_output_json, status)
+    VALUES (?, ?, 'Synthesizer', ?, ?, ?, 'completed')
+  `).run(`inv-${runId}-Synthesizer`, runId, Date.now() - 3000, Date.now() - 500, JSON.stringify(output));
 }
 
 function seedRedTeamOutput(db: Database.Database, runId: string): void {
   db.prepare(`
-    INSERT INTO agent_invocations (run_id, role, started_at, completed_at, output_json, status)
-    VALUES (?, 'RedTeam', ?, ?, ?, 'completed')
+    INSERT INTO agent_invocations (invocation_id, run_id, agent_role, started_at, completed_at, structured_output_json, status)
+    VALUES (?, ?, 'RedTeam', ?, ?, ?, 'completed')
   `).run(
-    runId, Date.now() - 4000, Date.now() - 800,
+    `inv-${runId}-RedTeam`, runId, Date.now() - 4000, Date.now() - 800,
     JSON.stringify({
       role: 'RedTeam', runId,
       challenges: [{ targetRole: 'CEO', claim: 'Risky', counterargument: 'Market volatility', severity: 'high' }],
@@ -127,10 +89,10 @@ function seedRedTeamOutput(db: Database.Database, runId: string): void {
 
 function seedSteelmanOutput(db: Database.Database, runId: string): void {
   db.prepare(`
-    INSERT INTO agent_invocations (run_id, role, started_at, completed_at, output_json, status)
-    VALUES (?, 'Steelman', ?, ?, ?, 'completed')
+    INSERT INTO agent_invocations (invocation_id, run_id, agent_role, started_at, completed_at, structured_output_json, status)
+    VALUES (?, ?, 'Steelman', ?, ?, ?, 'completed')
   `).run(
-    runId, Date.now() - 4000, Date.now() - 700,
+    `inv-${runId}-Steelman`, runId, Date.now() - 4000, Date.now() - 700,
     JSON.stringify({
       role: 'Steelman', runId,
       steelmen: [{ targetRole: 'CEO', bestCaseArgument: 'Strong upside', evidenceSupport: ['Market data'] }],
@@ -156,7 +118,7 @@ describe('AC-3: buildVerifierInput() fails closed on missing required fields (AD
   let db: Database.Database;
 
   beforeEach(() => {
-    db = createTestDb();
+    db = seedFromMigrations();
   });
 
   afterEach(() => {
