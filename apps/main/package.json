@@ -1,28 +1,18 @@
 {
   "name": "@c-suite/main",
   "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "main": "dist/index.js",
-  "scripts": {
-    "typecheck": "tsc --noEmit",
-    "lint": "echo 'lint: no linter configured in Ch.0'",
-    "test:unit": "echo 'no unit tests in apps/main at Ch.0'",
-    "test:integration": "echo 'no integration tests in apps/main at Ch.0'",
-    "build": "tsc",
-    "dev": "pnpm --filter @c-suite/utility build && tsc && VITE_DEV=1 NODE_ENV=development electron .",
-    "dev:debug": "pnpm --filter @c-suite/utility build && tsc && VITE_DEV=1 NODE_ENV=development electron . --inspect=5858"
-  },
   "dependencies": {
     "@c-suite/shared-types": "workspace:*",
+    "@c-suite/vault-watcher": "workspace:*",
     "better-sqlite3": "^12.10.0",
-    "chokidar": "^3.6.0",
-    "js-yaml": "^4.1.1",
-    "pino": "^10.3.1"
+    "electron": "^38.2.1"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
-    "electron": "^33.4.11",
-    "typescript": "^5.8.0"
+    "@types/better-sqlite3": "^12.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @c-suite/utility build && tsc && VITE_DEV=1 NODE_ENV=development electron .",
+    "dev:full": "pnpm --filter @c-suite/utility build && tsc && VITE_DEV=1 NODE_ENV=development electron .",
+    "typecheck": "tsc"
   }
 }
