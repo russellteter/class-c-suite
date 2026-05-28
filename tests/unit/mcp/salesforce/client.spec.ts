@@ -18,6 +18,9 @@ import type { SafeStorageVault } from '../../../../apps/utility/src/credentials/
 vi.mock('../../../../apps/utility/src/mcp/salesforce/sfdx-auth.js', () => ({
   getSfdxAuth: vi.fn(async () => null),
   hasSfdxAuth: vi.fn(async () => false),
+  // probeAuth() (TRACK 4) falls through to the SFDX probe when the vault is empty;
+  // mock it to "no CLI" so the no-auth-anywhere path resolves to state 'neither'.
+  probeSfdxAuth: vi.fn(async () => ({ state: 'no_cli', reason: 'sf binary not on PATH' })),
 }));
 
 // Set Connected App env vars so token-refresh path doesn't throw

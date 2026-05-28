@@ -428,91 +428,26 @@ process.stdin.on('end', () => {
 smoke_netsuite() {
   section "NetSuite"
 
-  # 1. Check TBA token env vars (only used for smoke — runtime uses safeStorage).
-  if [ -z "${NETSUITE_TBA_TOKEN_ID:-}" ] || \
-     [ -z "${NETSUITE_TBA_TOKEN_SECRET:-}" ] || \
-     [ -z "${NETSUITE_CONSUMER_KEY:-}" ] || \
-     [ -z "${NETSUITE_CONSUMER_SECRET:-}" ] || \
-     [ -z "${NETSUITE_ACCOUNT_ID:-}" ]; then
-    blocked "TBA env vars not set — paste NETSUITE_TBA_TOKEN_ID / NETSUITE_TBA_TOKEN_SECRET / NETSUITE_CONSUMER_KEY / NETSUITE_CONSUMER_SECRET / NETSUITE_ACCOUNT_ID then re-run. See scripts/send-tba-request.md."
-    record_state "netsuite" "BLOCKED" "TBA env vars not set (awaiting Brian's TBA enablement — B1)"
+  # NetSuite migrated from TBA to OAuth 2.0 + PKCE against the hosted MCP server
+  # (ADR-0015, 2026-05-28). The refresh token lives in Electron safeStorage and is
+  # minted by an INTERACTIVE browser-consent flow, so live table access cannot be
+  # verified in an unattended batch smoke. This section therefore reports config
+  # state only; live verification is the interactive probe or the in-app Connect flow.
+
+  # 1. OAuth config present?
+  if [ -z "${NETSUITE_OAUTH_CLIENT_ID:-}" ] || \
+     [ -z "${NETSUITE_ACCOUNT_ID:-}" ] || \
+     [ -z "${NETSUITE_MCP_SERVER_URL:-}" ]; then
+    blocked "OAuth env not configured — set NETSUITE_OAUTH_CLIENT_ID, NETSUITE_ACCOUNT_ID, NETSUITE_MCP_SERVER_URL in apps/main/.env.local (public client + PKCE, no secret). Register a NetSuite OAuth 2.0 Integration Record with redirect http://localhost:8765/oauth/callback and scope 'mcp'."
+    record_state "netsuite" "BLOCKED" "OAuth env not configured (NETSUITE_OAUTH_CLIENT_ID/ACCOUNT_ID/MCP_SERVER_URL)"
     return 0
   fi
 
-  # 2. Check that the utility dist is built.
-  UTILITY_DIST="/Users/russellteter/Claude Code Projects/c-suite/apps/utility/dist"
-  if [ ! -d "$UTILITY_DIST" ]; then
-    blocked "utility dist not built — run: pnpm --filter utility build"
-    record_state "netsuite" "BLOCKED" "utility dist not built"
-    return 0
-  fi
-
-  # 3. Run cashGLBalanceQuery via Node and assert non-zero rows.
-  #    Auth is validated implicitly (TBA header is generated + accepted).
-  #    Permission errors (HTTP 400 "Record not found") classify as DEGRADED:
-  #    auth is OK, but the token role lacks the required table permission.
-  NS_OUTPUT=$(node - 2>&1 <<'JSEOF'
-const { cashGLBalanceQuery } = require('/Users/russellteter/Claude Code Projects/c-suite/apps/utility/dist/mcp/netsuite/typed-queries.js');
-const { buildTBAAuthHeader } = require('/Users/russellteter/Claude Code Projects/c-suite/apps/utility/dist/mcp/netsuite/tba-auth.js');
-
-const creds = {
-  accountId: process.env.NETSUITE_ACCOUNT_ID,
-  consumerKey: process.env.NETSUITE_CONSUMER_KEY,
-  consumerSecret: process.env.NETSUITE_CONSUMER_SECRET,
-  tokenId: process.env.NETSUITE_TBA_TOKEN_ID,
-  tokenSecret: process.env.NETSUITE_TBA_TOKEN_SECRET,
-};
-
-const query = cashGLBalanceQuery({});
-const url = `https://${creds.accountId}.suitetalk.api.netsuite.com/services/rest/query/v1/suiteql`;
-const { Authorization } = buildTBAAuthHeader(creds, 'POST', url);
-
-fetch(url, {
-  method: 'POST',
-  headers: { Authorization, 'Content-Type': 'application/json', Prefer: 'transient' },
-  body: JSON.stringify({ q: query }),
-})
-  .then(r => r.json())
-  .then(data => {
-    if (data['o:errorDetails']) {
-      const detail = JSON.stringify(data['o:errorDetails']);
-      // Classify: INVALID_PARAMETER + "Record was not found" = role permission gap = DEGRADED
-      if (detail.includes('INVALID_PARAMETER') || detail.includes('was not found')) {
-        console.log('__DEGRADED__: ' + detail);
-        console.log('Hint: cashGLBalanceQuery joins the `account` table — the token role likely lacks Lists>Accounts permission. Fix via NetSuite UI: Setup > Users/Roles > Manage Roles > [token role] > Permissions.');
-      } else {
-        console.error('__FAIL__: NetSuite error: ' + detail);
-      }
-      process.exit(1);
-    }
-    const count = data.count ?? data.items?.length ?? 0;
-    if (count === 0) {
-      console.error('__FAIL__: cashGLBalanceQuery returned 0 rows — unexpected for Class production. Raw: ' + JSON.stringify(data).slice(0, 300));
-      process.exit(1);
-    }
-    console.log('cashGLBalanceQuery: ' + count + ' row(s) — PASS');
-  })
-  .catch(err => { console.error('__FAIL__: ' + err.message); process.exit(1); });
-JSEOF
-)
-
-  local EXIT_CODE=$?
-  if [ $EXIT_CODE -eq 0 ]; then
-    green "$NS_OUTPUT"
-    green "smoke: PASS"
-    COUNT=$(echo "$NS_OUTPUT" | grep -oE '[0-9]+ row' | head -1 || echo "?")
-    record_state "netsuite" "PASS" "TBA auth OK; cashGLBalanceQuery returned ${COUNT}(s)"
-  elif echo "$NS_OUTPUT" | grep -q '__DEGRADED__'; then
-    # Auth OK (TBA header accepted), but role lacks table permission
-    DETAIL=$(echo "$NS_OUTPUT" | grep '__DEGRADED__' | sed 's/__DEGRADED__: //')
-    degraded "auth OK (TBA accepted) but token role lacks table permissions for cashGLBalanceQuery — $DETAIL"
-    degraded "Fix: Setup > Users/Roles > Manage Roles > [token role] > Permissions > add Lists>Accounts, Lists>Departments, Lists>Classes, Lists>Employees, Setup>Manage Accounting Periods"
-    record_state "netsuite" "DEGRADED" "TBA auth OK; role lacks table perms (Lists>Accounts etc.) — external NetSuite admin action required"
-  else
-    FAIL_MSG=$(echo "$NS_OUTPUT" | grep '__FAIL__' | sed 's/__FAIL__: //' || echo "$NS_OUTPUT" | tail -1)
-    fail "cashGLBalanceQuery failed: $FAIL_MSG"
-    record_state "netsuite" "FAIL" "cashGLBalanceQuery error: $FAIL_MSG"
-  fi
+  # 2. Config present, but live access needs interactive consent — do NOT auto-open
+  #    a browser in a batch run. Surface the manual verification path.
+  blocked "OAuth configured. Live table access is verified interactively (browser consent), not in this batch smoke. Run manually:  source apps/main/.env.local && npx tsx scripts/netsuite-smoke-which-tables-work.ts  (opens browser; select the custom MCP role). Expected: 9 PASS / 0 BLOCKED (transaction, subsidiary, account, department, classification, employee, accountingperiod, customer, vendor). Or complete Settings -> Connectors -> NetSuite -> Connect in the app."
+  record_state "netsuite" "BLOCKED" "OAuth configured; live verification is interactive (in-app Connect or tsx probe) — not runnable in unattended smoke"
+  return 0
 }
 
 # ── §AWS ─────────────────────────────────────────────────────────────────────
