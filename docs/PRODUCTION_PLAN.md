@@ -49,13 +49,16 @@ On-Mac steps the cloud cannot self-certify (OAuth browser consent, native notifi
 
 ## Phases (each closes on the APP-PROOF GATE + independent audit)
 
-### Phase 0 — Anti-drift foundation (test layer tells the truth)
-**Goal:** the enforcement layer works, so nothing else can silently drift.
-- Make the 12 DB-backed test files **actually execute** under the real ABI (run vitest under Electron's Node via `ELECTRON_RUN_AS_NODE`, or split the binary copies so root=Node ABI for vitest while app=Electron ABI). Test audit Option A/B.
-- Delete or replace all 37 theater placeholders with real assertions (or mark `it.todo`).
-- Wire a real e2e config (`tests/e2e/**`) into a runnable script + CI; replace the `test:integration` no-op.
-- Add the standing **integration-smoke** script: assembled app → click action → observe real result. Document the APP-PROOF gate in DOCTRINE.
-**Close gate:** DB-backed suite runs green under the real ABI with real assertions; e2e runs in CI; one non-mocked renderer↔main↔utility round-trip passes.
+### Phase 0 — Anti-drift foundation (the test layer tells the truth about the REAL schema)
+**Goal:** the enforcement layer fails when prod would fail — so nothing else can silently drift.
+**Root insight (advisor correction):** the schema bugs did NOT ship because tests don't run — CI runs the DB tests under Node ABI. They shipped because DB-backed tests build their OWN hand-rolled schema (inline `CREATE TABLE` with `role`/`output_json`), so they pass against a fictional schema while prod throws. **ABI is secondary; seed-from-migrations is the real fix.**
+- **Seed-from-migrations, not inline DDL.** All DB-backed tests open `:memory:` and apply `db/migrations/*.sql` via a shared helper. No test invents its own schema. ABI-agnostic.
+- **Real coverage for the zero-coverage persistence paths.** Add tests exercising `hooks.ts` `agent_invocations` + `tool_calls` INSERT and `verifier-assembler.ts` reads against the migration-seeded schema (the exact paths whose absence let the P0 bugs ship).
+- **Verify-the-verifier (drift-fails-a-test).** Deliberately rename a migration/hooks column; confirm a test goes RED; restore. If nothing fails, the foundation is still theater.
+- **Kill theater.** Replace the 37 `expect(true).toBe(true)` placeholders (verifier-canary 8, named-entity-registry 10, checkpoint-resume 7, + others) with real assertions or `it.todo`.
+- **ABI story:** enforcing run = Node ABI (CI already; local via `pnpm rebuild better-sqlite3`); app + e2e proofs = Electron ABI (`pnpm rebuild:electron`). Script the two-mode dance so it is not a footgun. (`ELECTRON_RUN_AS_NODE` vitest tried → `ERR_REQUIRE_ESM` under Electron 33 + vitest 3; not worth the rabbit-hole.) Invariant that matters: **same migrations seed both tests and app.**
+- Wire `tests/e2e/**` into a runnable script + CI; replace the `test:integration` no-op. Document the APP-PROOF gate in DOCTRINE.
+**Close gate:** DB suite green, seeded-from-migrations, with REAL assertions; a deliberate column rename turns a test RED; the previously-hidden P0 schema bugs (tool_calls, resumeRun) are each now caught by a test; e2e wired into CI.
 
 ### Phase 1 — Data integrity (zero fabrication, real schema)
 **Goal:** no fabricated data can reach a memo; persistence matches the real schema.
