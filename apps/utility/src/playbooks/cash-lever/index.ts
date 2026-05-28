@@ -25,10 +25,8 @@ const log = createLogger();
 // Re-exported from @c-suite/shared-types/playbook for back-compat.
 // The canonical type lives in shared-types (ch.7 move); this alias preserves existing imports.
 
-import type { DegradedSource as _DegradedSource } from '@c-suite/shared-types/playbook';
-export type { DegradedSource } from '@c-suite/shared-types/playbook';
-// Local alias so the rest of this file can use DegradedSource without re-importing.
-type DegradedSource = _DegradedSource;
+import type { DegradedSource } from '@c-suite/shared-types/playbook';
+export type { DegradedSource }; // re-export for back-compat
 
 export interface CashLeverRunResult {
   /** Lens outputs keyed by role */
