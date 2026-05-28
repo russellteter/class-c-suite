@@ -79,14 +79,46 @@ app.whenReady().then(() => {
   const win = createRendererWindow();
 
   // Load renderer entry point.
-  // dev: __dirname = apps/main/dist → 2 levels up = apps/ → apps/renderer/index.html
-  // packaged: renderer assets ship under main's resources dir
-  const rendererEntry = app.isPackaged
-    ? path.join(__dirname, '..', 'renderer', 'index.html')
-    : path.join(__dirname, '..', '..', 'renderer', 'index.html');
-  win.loadFile(rendererEntry).catch((err) => {
-    log.error({ message: 'failed to load renderer', err: String(err) });
-  });
+  // dev: Vite dev server on port 5173 (set via NODE_ENV=development or VITE_DEV)
+  // prod/packaged: load built dist/index.html
+  const isDev = !app.isPackaged && (process.env.NODE_ENV === 'development' || process.env.VITE_DEV === '1');
+  if (isDev) {
+    win.loadURL('http://localhost:5173').catch((err) => {
+      log.error({ message: 'failed to load renderer dev server', err: String(err) });
+    });
+  } else {
+    const rendererEntry = app.isPackaged
+      ? path.join(__dirname, '..', 'renderer', 'index.html')
+      : path.join(__dirname, '..', '..', 'renderer', 'dist', 'index.html');
+    win.loadFile(rendererEntry).catch((err) => {
+      log.error({ message: 'failed to load renderer', err: String(err) });
+    });
+  }
+
+  // Screenshot mode: --screenshot=<path> captures Home screen after mount and exits.
+  const screenshotArg = process.argv.find((a) => a.startsWith('--screenshot='));
+  if (screenshotArg) {
+    const screenshotPath = screenshotArg.split('=')[1];
+    win.webContents.once('did-finish-load', () => {
+      // Show window first (normally gated on ready-to-show), then wait for paint.
+      win.show();
+      // Wait 2.5s for React to mount, fixture data to hydrate, and GPU to flush paint.
+      setTimeout(async () => {
+        try {
+          const image = await win.webContents.capturePage();
+          const { writeFileSync, mkdirSync } = await import('fs');
+          const { dirname } = await import('path');
+          mkdirSync(dirname(screenshotPath), { recursive: true });
+          writeFileSync(screenshotPath, image.toPNG());
+          log.info({ message: 'screenshot captured', path: screenshotPath });
+        } catch (err) {
+          log.error({ message: 'screenshot failed', err: String(err) });
+        } finally {
+          app.quit();
+        }
+      }, 2500);
+    });
+  }
 
   // System tray — minimal for Ch.1 (Ch.5 adds full menu).
   const iconPath = path.join(__dirname, '..', 'assets', 'tray-icon.png');

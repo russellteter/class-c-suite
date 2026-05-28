@@ -4,6 +4,12 @@ artifactName: "${productName}-${version}-${arch}.${ext}"
 directories:
   output: dist
 
+files:
+  - "apps/main/dist/**"
+  - "apps/renderer/dist/**"
+  - "apps/main/assets/**"
+  - "package.json"
+
 mac:
   category: public.app-category.productivity
   target:

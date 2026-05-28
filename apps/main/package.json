@@ -10,8 +10,8 @@
     "test:unit": "echo 'no unit tests in apps/main at Ch.0'",
     "test:integration": "echo 'no integration tests in apps/main at Ch.0'",
     "build": "tsc",
-    "dev": "pnpm --filter @c-suite/utility build && tsc && electron .",
-    "dev:debug": "pnpm --filter @c-suite/utility build && tsc && electron . --inspect=5858"
+    "dev": "pnpm --filter @c-suite/utility build && tsc && VITE_DEV=1 NODE_ENV=development electron .",
+    "dev:debug": "pnpm --filter @c-suite/utility build && tsc && VITE_DEV=1 NODE_ENV=development electron . --inspect=5858"
   },
   "dependencies": {
     "@c-suite/shared-types": "workspace:*",
