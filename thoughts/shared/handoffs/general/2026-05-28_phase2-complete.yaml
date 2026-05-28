@@ -1,0 +1,122 @@
+---
+session: general
+date: 2026-05-28
+status: complete
+outcome: PHASE_2_COMPLETE
+---
+
+goal: Phase 2 Ch.10 (scheduler autonomy) + emit PHASE 2 COMPLETE. Hard stop before Ch.11.
+now: PHASE 2 COMPLETE. All build chapters Ch.0→Ch.10 closed. C-Suite is code-complete for V1. Ch.11 (on-Mac packaging + 8 outcome demos) is a HARD GATE only Russell can run. /goal halts here.
+
+test: cd "/Users/russellteter/Claude Code Projects/c-suite" && pnpm vitest run
+
+done_this_session:
+  - task: Ch.10 SPEC — ADR-0012 (scheduler + 5 jobs + LaunchAgent + retry/catch-up verbatim Phase R Decision 5/7 + native notifications + 16 ACs)
+    files: [docs/decisions/0012-ch10-scheduler-autonomy.md, tasks/ch10-runtime-brief.md, tasks/ch10-renderer-brief.md, tasks/ch10-audit-brief.md]
+  - task: Ch.10 Runtime (a488d) — scheduler infra + 5 job runners + LaunchAgent + macNotify + --scheduler-only + migration 007 + 5 IPC variants + 86 specs
+    files: [packages/shared-types/src/scheduled-job.ts, packages/shared-types/src/ipc.ts, db/migrations/007_scheduled_jobs.sql, apps/utility/src/scheduler/{jobRegistry,cron,catchUp,retry}.ts, apps/utility/src/jobs/{mondayTripwire,mondayStakeholder,sundayRenewal,sundayWorkstream,dailyMorningBrief}.ts, apps/utility/src/notifications/macNotify.ts, apps/main/src/notifications.ts, apps/main/src/main.ts, apps/main/build/launch-agent.plist.template, scripts/install-launchagent.sh, scripts/uninstall-launchagent.sh]
+  - task: Ch.10 Renderer (a7fb3, cc9db73) — JobsStrip live + SettingsScheduler + NotificationSettings + CatchupToast + TripwireBanner + 86 specs
+    files: [apps/renderer/src/components/{JobsStrip,CatchupToast,TripwireBanner}.tsx, apps/renderer/src/screens/{SettingsScheduler,NotificationSettings,Home}.tsx, apps/renderer/src/components/HomeTypes.ts, apps/renderer/src/App.tsx]
+  - task: Ch.10 final audit (a0c71) — REOPEN on AC-2 (utility→main→renderer MessagePort bridge missing); 13 PASS / 1 CONCERN (AC-15)
+    files: [docs/reviews/ch10-final-audit-qa-report.md]
+  - task: Ch.10 AC-2 audit-fix (a40ddcd) — port.on('message') bridge in supervisor.ts + mainBoundHandler routing + dead ipcMain.on removed + 4 regression specs
+    files: [apps/main/src/supervisor.ts, apps/main/src/main.ts, tests/unit/supervisor.spec.ts]
+  - task: Ch.10 AC-2 independent re-verification (same auditor) — RESOLVED confirmed
+    files: [docs/reviews/ch10-final-audit-qa-report.md]
+  - task: Salesforce SFDX-CLI fallback — C-Suite rides existing sf CLI session vs requiring own Connected App (Russell-decision 2026-05-28)
+    files: [apps/utility/src/mcp/salesforce/sfdx-auth.ts, apps/utility/src/mcp/salesforce/client.ts, packages/shared-types/src/mcp.ts, tests/unit/mcp/salesforce/{sfdx-auth,client}.spec.ts]
+  - task: Credential staging — Google OAuth (from Desktop json) + Chorus key + NetSuite Account ID 603734 into apps/main/.env.local (gitignored)
+    files: [apps/main/.env.local.template, apps/main/.env.local]
+  - task: PowerBI customer-dashboard venv bootstrap (~50 packages; CLI verified)
+    files: ["/Users/russellteter/Claude Code Projects/customer-dashboard/.venv/ (external project)"]
+  - task: ROADMAP Ch.11 notarization-drop amendment — unsigned-local-install pattern; B14 DOWNGRADED P2→P3
+    files: [ROADMAP.md, BLOCKERS.md, docs/build-log.md]
+  - task: Phase 2 COMPLETE emission — build-log ledger + state.json + this handoff
+    files: [docs/build-log.md, .claude/project-state.json, thoughts/shared/handoffs/general/2026-05-28_phase2-complete.yaml]
+
+phase_2_ledger:
+  - ch: 0-5
+    verdict: CLOSE (Ch.5 CLOSE-pending-ultrareview)
+  - ch: 6
+    verdict: CONCERN-CLOSE
+    specs: 68
+  - ch: 7
+    verdict: PASS
+    specs: +372
+  - ch: 8
+    verdict: CONCERN-CLOSE
+    specs: +625
+  - ch: 9
+    verdict: CONCERN-CLOSE
+    specs: +156
+  - ch: 10
+    verdict: CONCERN-CLOSE
+    specs: +179
+  total_specs_passing: ~2040
+  pre_existing_failures: ~80 (all better-sqlite3 ABI under plain-Node vitest + intentional [RED] stubs; zero introduced by Phase 2)
+
+russell_actions_for_ch11:
+  - id: build
+    action: pnpm build → unsigned .app → `xattr -dr com.apple.quarantine /Applications/C-Suite.app` → right-click Open (ROADMAP §Ch.11 amendment; no notarization).
+  - id: salesforce
+    status: DONE (SFDX CLI fallback; sf.operations@classedu.com session). Verify with `bash scripts/mcp-live-smoke.sh salesforce` after build.
+  - id: gmail
+    status: DONE (creds in .env.local; OAuth on first launch — add Gmail as test user on consent screen if not done).
+  - id: chorus
+    status: DONE (key in .env.local).
+  - id: netsuite
+    status: PENDING — run `python3 ~/Desktop/extract-netsuite-creds.py`, paste 4 TBA values into .env.local. Token-absent fallback ships; non-blocking.
+  - id: aws
+    action: `aws sso login --profile class && aws sso login --profile collab` (tokens expired).
+  - id: powerbi
+    status: DONE (venv bootstrapped).
+  - id: launchagent
+    action: `bash scripts/install-launchagent.sh` to schedule the 5 cron jobs.
+  - id: day-zero
+    action: `~/Desktop/csuite-ch8-dayzero-form/launch.sh` — B6 covenant terms + B19 committed-pipeline (needs Barclays agreement).
+  - id: demos
+    action: Run the 8 PRD §4 outcome demos on the Mac. This IS the Ch.11 acceptance gate.
+
+known_ch11_followups:
+  - AC-15 — AWS SSO preflight check in dailyMorningBrief (degrade-on-expiry). Non-blocking; auditor deferred.
+  - B1 — NetSuite TBA tokens from Brian. Token-absent fallback ships.
+  - B6 + B19 — Day-Zero covenant terms + committed-pipeline. Conservative defaults flagged "directional" until submitted.
+  - Live E2E IPC bridge test — utility→main→renderer over a real MessagePort. Only verifiable under Electron at Ch.11. The bridge was latently broken across Ch.6/9/10 (no chapter wired the forward); Ch.10 audit caught + fixed it; 4 unit specs added but a real-Electron E2E remains.
+  - better-sqlite3 ABI — confirm packaged Electron build loads the native module (B45 validated dev; Ch.11 confirms packaged DMG/.app).
+
+decisions:
+  - salesforce_sfdx_fallback_over_connected_app: Russell already has an authenticated SFDX CLI session against the Class org. Rather than create a dedicated Connected App, the C-Suite SalesforceClient now falls back to reading the sf CLI session (via `sf org display --json` for a fresh token, or ~/.sfdx/<user>.json directly). Vault credential still takes precedence if a Connected App is ever configured. Zero new Salesforce admin work.
+  - ipc_bridge_is_load_bearing_across_chapters: the utility→main→renderer MessagePort forward (supervisor.ts port.on('message')) is the single delivery path for ALL utility-emitted IPC. It was missing entirely until Ch.10's audit. Now carries scheduler + writeback + handoff variants.
+  - phase2_close_at_concern_close_acceptable: 4 of 5 build chapters (6/8/9/10) closed CONCERN-CLOSE, Ch.7 PASS. The CONCERNs are all non-blocking known-followups (live-data verification, Day-Zero defaults, AWS preflight). Consistent with the auto-mode decide-and-log doctrine. Phase 2 emits COMPLETE; Ch.11 on-Mac gate is the real acceptance.
+
+worked:
+  - independent_re_verification_via_sendmessage: rather than self-certify the AC-2 fix at the Phase 2 close gate, resumed the same audit agent via SendMessage for a focused bridge re-check (~45s, 5 tool calls). Cheaper than a fresh audit, more rigorous than a self-note. Pattern for close-gate fixes.
+  - two_wave_and_single_audit_sizing: Ch.10 (one feature surface) used 2 parallel sub-agents + 1 final audit — right-sized. Ch.7/Ch.8 (N independent surfaces) needed intermediate audits. Match audit cadence to fan-out width.
+  - credential_staging_in_idle_time: while Ch.10 agents ran, staged 4 of 7 integration credentials. Classifier blocked cross-app credential reads (Claude Desktop config, Contact Enrichment secrets) even with user authorization — standalone scripts handed to Russell instead.
+
+failed:
+  - latent_ipc_bridge_gap_survived_3_chapters: Ch.6 writeback.proposed + Ch.9 handoff.preview.ready + Ch.10 scheduler variants all assumed a utility→renderer forward that never existed. Every chapter's renderer specs mocked IPC, so none caught it. Only Ch.10's audit (which traced the full production path) found it. Lesson logged: integration tests must exercise the real bridge, not mock both ends.
+  - classifier_blocks_cross_app_credential_reads: even with explicit "find it" authorization, the auto-mode classifier refused to read Claude Desktop's config + Contact Enrichment secrets. Correct safety behavior; worked around with standalone scripts Russell runs himself.
+
+next:
+  - HARD STOP. Ch.11 is Russell's on-Mac gate. /goal does not proceed.
+  - When Russell is ready for Ch.11: he builds the .app, completes credential setup (NetSuite + AWS + Day-Zero remain), installs the LaunchAgent, and runs the 8 outcome demos. Any demo failure → file as a Ch.11 fix and address.
+  - Optional Ch.12 (rigor-threshold tuning + 70-84 audit queue) is post-V1; not required for ship.
+
+files:
+  created:
+    - docs/decisions/0012-ch10-scheduler-autonomy.md
+    - docs/reviews/ch10-final-audit-qa-report.md
+    - apps/utility/src/mcp/salesforce/sfdx-auth.ts
+    - apps/main/.env.local.template
+    - thoughts/shared/handoffs/general/2026-05-28_phase2-complete.yaml
+    - (Ch.10 Runtime + Renderer files per phase_2_ledger above)
+  modified:
+    - ROADMAP.md (Ch.11 notarization-drop)
+    - BLOCKERS.md (B14 DOWNGRADED)
+    - docs/build-log.md (Ch.10 close + PHASE 2 COMPLETE)
+    - .claude/project-state.json (phase-2-complete)
+    - apps/main/src/{supervisor,main}.ts (IPC bridge)
+    - apps/utility/src/mcp/salesforce/client.ts (SFDX fallback)
+    - packages/shared-types/src/mcp.ts (authMode + sfdx)
+  deleted: []

@@ -1369,3 +1369,79 @@ The gap between "architecture proven" and "first usable product" is the 3 NW ite
 - ~~Apple Developer Program membership~~ — no longer needed.
 
 **Carryforward note.** If single-user assumption ever breaks (Russell distributes to a second machine or another person), B14 re-opens at full scope. Document this assumption explicitly so the next conversation about Mac distribution doesn't rebuild a notarization plan from scratch.
+
+---
+
+## Ch.10 — Scheduled Jobs Autonomy (2026-05-28)
+
+**Verdict.** REOPEN → REOPEN-RESOLVED → effective CONCERN-CLOSE. AC-2 bridge gap fixed + independently re-verified. 14 PASS / 1 CONCERN (AC-15 AWS SSO preflight, deferred to Ch.11).
+
+**Sequence.**
+1. ADR-0012 (`b25400f`) — job contract + cron + catch-up + retry (Decision 5 verbatim) + native notifications + 5 per-job specs + LaunchAgent + home wiring + 16 ACs.
+2. Runtime sub-agent (`a488d…`) — scheduler infra + 5 jobs + LaunchAgent install/uninstall + macNotify + `--scheduler-only` + migration 007 + 5 IPC variants + 86 specs.
+3. Renderer sub-agent (`a7fb3…`, `cc9db73`) — JobsStrip live + SettingsScheduler + NotificationSettings + CatchupToast + TripwireBanner + 86 specs.
+4. Final audit (`a0c71…`) — REOPEN on AC-2: utility→main→renderer MessagePort bridge missing (port1 held but no `port.on('message')`). 4 scheduler IPC variants silently dropped in production.
+5. Audit-fix (`a40ddcd`) — `port.on('message')` bridge in supervisor.ts; `mainBoundHandler` routes `main.show-notification` → fireNotification; all else → renderer; dead `ipcMain.on` removed. 4 regression specs.
+6. Independent re-verification (same auditor) — AC-2 RESOLVED confirmed.
+
+**Cross-chapter benefit.** The bridge fix didn't just unblock Ch.10 — it's the path that ALSO carries Ch.6 `writeback.proposed` + Ch.9 `handoff.preview.ready` to the renderer. Those were latently broken too (no chapter had wired the utility→renderer forward); Ch.10's audit surfaced it.
+
+**Side work this session (Russell credential setup):**
+- PowerBI customer-dashboard venv bootstrapped (~50 packages; CLI verified).
+- Google OAuth + Chorus key → `apps/main/.env.local` (gitignored).
+- **Salesforce SFDX fallback** (`sfdx-auth.ts`) — C-Suite rides the existing `sf` CLI session against the Class org; no Connected App needed. 85/85 SF specs green. Russell-decision 2026-05-28.
+- NetSuite Account ID 603734 set; 4 TBA values pending Russell (Claude Desktop config extraction blocked by classifier — standalone script provided).
+
+### Blocker deltas
+| ID | Action | New status | Note |
+|---|---|---|---|
+| (Salesforce auth) | new path | n/a | SFDX CLI fallback eliminates the Connected App pre-condition. |
+
+### Hard gates surfaced
+- **Phase 2 COMPLETE — next gate is Ch.11 (Russell on-Mac demos). HARD STOP.**
+
+### Learnings for the next loop
+- **The utility→renderer IPC bridge was a latent gap across 3 chapters (Ch.6/9/10).** Each chapter's renderer specs mocked IPC, so none caught that production had no forwarding path. Lesson: an integration test that drives a REAL MessagePort end-to-end (utility emit → main bridge → renderer receive) should exist. Added 4 bridge specs; a full E2E remains a Ch.11 on-Mac verification item.
+- **better-sqlite3 ABI (NODE_MODULE_VERSION 130 vs 137) blocks any test that opens a real DB** under plain-Node vitest. Pattern: tests that don't need DB state should inject a mock DB (`{ prepare: () => ({ run: () => ({}) }) }`) rather than `new Database()`.
+
+---
+
+[CH-10 COMPLETE 2026-05-28] 5 scheduled jobs + LaunchAgent + native notifications + home-screen wiring shipped. IPC bridge fix unblocks Ch.6/9/10 renderer surfaces.
+
+---
+
+# ███  PHASE 2 COMPLETE — 2026-05-28  ███
+
+**All build chapters (Ch.0 → Ch.10) closed.** The C-Suite is code-complete for V1. Remaining: Ch.11 (on-Mac packaging + the 8 outcome demos) — a HARD GATE that only Russell can run on his Mac.
+
+## Phase 2 chapter ledger
+| Ch | Verdict | Net new specs (approx) |
+|---|---|---|
+| Ch.0 Foundations | CLOSE | — |
+| Ch.1 Process arch | CLOSE | — |
+| Ch.2 SafeWrite | CLOSE | — |
+| Ch.3 Runtime spine | CLOSE | — |
+| Ch.4 Prompts + rigor | CLOSE | — |
+| Ch.5 Cash-lever slice | CLOSE-pending-ultrareview | — |
+| Ch.6 Writebacks | CONCERN-CLOSE | 68 |
+| Ch.7 8 playbooks + home | PASS | +372 |
+| Ch.8 5 MCPs + PowerBI | CONCERN-CLOSE | +625 |
+| Ch.9 Cowork handoff | CONCERN-CLOSE | +156 |
+| Ch.10 Scheduler autonomy | CONCERN-CLOSE | +179 |
+
+**Test suite:** ~2,040 passing across the suite. 80-ish pre-existing failures are all the better-sqlite3 ABI mismatch under plain-Node vitest (production runs under Electron ABI 130 where it's fine) + a handful of intentional `[RED]` cross-chapter stubs. Zero failures introduced by Phase 2 chapter work.
+
+## What Ch.11 requires of Russell (the hard gate)
+1. `pnpm build` → unsigned `.app` → `xattr -dr com.apple.quarantine` → right-click Open (per ROADMAP §Ch.11 amendment — no notarization).
+2. Integration credentials (most staged this session): Salesforce (SFDX — done), Gmail (done), Chorus (done), NetSuite TBA (4 values pending), AWS SSO refresh, PowerBI venv (done), Day-Zero form.
+3. `bash scripts/install-launchagent.sh` to schedule the 5 cron jobs.
+4. Run the 8 PRD §4 outcome demos on the Mac.
+
+## Known Ch.11 follow-ups (carried, non-blocking)
+- AC-15: AWS SSO preflight check in `dailyMorningBrief` (degrade-on-expiry).
+- B1: NetSuite TBA tokens from Brian (token-absent fallback ships).
+- B6 + B19: Day-Zero covenant terms + committed-pipeline definition (conservative defaults flagged "directional" until submitted).
+- A real end-to-end IPC bridge test (utility→main→renderer over a live MessagePort) — verifiable only under Electron at Ch.11.
+- better-sqlite3 ABI: confirm production Electron build loads the native module (B45 validated dev; Ch.11 confirms packaged).
+
+**/goal halts here per the Phase 2 hard-stop. Ch.11 awaits Russell.**
