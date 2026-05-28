@@ -247,7 +247,7 @@ function JobSettingRow({ job, selectedJobId, onToggle, onSelect, history }: JobS
                 onClick={() => {
                   // TODO ch10-runtime-ship: invoke per-service auth reconnect IPC from Ch.8
                   if (typeof window !== 'undefined' && window.ipc) {
-                    window.ipc.send({ kind: 'auth.reconnect', payload: { service: job.authExpiredService } }).catch?.(() => {});
+                    window.ipc.send({ kind: 'auth.reconnect', payload: { service: job.authExpiredService } });
                   }
                 }}
               >

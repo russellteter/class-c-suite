@@ -160,7 +160,8 @@ describe('SettingsScheduler — run history (ch10-renderer-brief §5)', () => {
 
   it('history table shows "succeeded" status text', () => {
     render(<SettingsScheduler jobSettings={FIXTURE_JOBS} selectedJobId="daily_cash_snapshot" jobHistoryMap={HISTORY_MAP} />);
-    expect(screen.getByText('succeeded')).toBeInTheDocument();
+    // HISTORY_FIXTURE has 2 "succeeded" rows — use getAllByText
+    expect(screen.getAllByText('succeeded').length).toBeGreaterThanOrEqual(1);
   });
 
   it('history table shows duration in seconds format', () => {

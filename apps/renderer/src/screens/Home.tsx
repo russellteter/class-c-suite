@@ -277,50 +277,48 @@ export function Home({ onTileClick, onOpenQASubmit, onWritebacksClick, onJobClic
             )}
           </div>
 
-          {/* Settings nav entries (Ch.10) */}
-          <div style={{ padding: '0 var(--space-3)' }}>
+          {/* Settings nav entries (Ch.10) — buttons inside the outer rail <nav>, no nested nav */}
+          <div style={{ padding: '0 var(--space-3)' }} aria-label="Settings navigation" role="group">
             <RailSectionLabel>Settings</RailSectionLabel>
-            <nav aria-label="Settings navigation">
-              <button
-                type="button"
-                onClick={onSettingsScheduler}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  textAlign: 'left',
-                  background: 'none',
-                  border: 'none',
-                  padding: '4px var(--space-2)',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: 'var(--text-xs)',
-                  color: 'var(--color-text-secondary)',
-                  cursor: 'pointer',
-                  marginBottom: 'var(--space-1)',
-                }}
-                aria-label="Open Scheduler settings"
-              >
-                Scheduler
-              </button>
-              <button
-                type="button"
-                onClick={onSettingsNotifications}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  textAlign: 'left',
-                  background: 'none',
-                  border: 'none',
-                  padding: '4px var(--space-2)',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: 'var(--text-xs)',
-                  color: 'var(--color-text-secondary)',
-                  cursor: 'pointer',
-                }}
-                aria-label="Open Notifications settings"
-              >
-                Notifications
-              </button>
-            </nav>
+            <button
+              type="button"
+              onClick={onSettingsScheduler}
+              style={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                background: 'none',
+                border: 'none',
+                padding: '4px var(--space-2)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--color-text-secondary)',
+                cursor: 'pointer',
+                marginBottom: 'var(--space-1)',
+              }}
+              aria-label="Open Scheduler settings"
+            >
+              Scheduler
+            </button>
+            <button
+              type="button"
+              onClick={onSettingsNotifications}
+              style={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                background: 'none',
+                border: 'none',
+                padding: '4px var(--space-2)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--color-text-secondary)',
+                cursor: 'pointer',
+              }}
+              aria-label="Open Notifications settings"
+            >
+              Notifications
+            </button>
           </div>
         </nav>
 
