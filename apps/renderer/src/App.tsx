@@ -122,15 +122,32 @@ function initialScreen(): Screen {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * Build a minimal Ch5RunPlan stub from a tile click.
- * Real plan building is Runtime's job (Phase B); this lets the plan-approval
- * screen render with correct shape while the IPC round-trip isn't wired yet.
+ * Default framing question per playbook. A tile click opens PlanApproval pre-filled
+ * with this (editable there); the run needs a non-empty question to dispatch. These
+ * are starting prompts, not canned answers — the user refines before approving.
+ * TODO ch7-phase-b: replace stub plans with the real run.plan.ready IPC event.
+ */
+const DEFAULT_QUESTION: Record<PlaybookId, string> = {
+  cash_lever: 'Where are our highest-leverage cash moves over the next 90 days, and what should we pull first?',
+  gtm_realloc: 'How should we reallocate GTM spend across segments to maximize pipeline this quarter?',
+  strategic_option: 'Evaluate our top strategic options and recommend which to pursue and why.',
+  stakeholder_1_1: 'Prepare me for my next 1:1 with this stakeholder — what matters to them and what should I raise?',
+  board_narrative: 'Draft the narrative for the next board update — what is the story and the proof?',
+  restructure_decision: 'Should we restructure, and if so, what is the most defensible option?',
+  pre_mortem: 'Run a pre-mortem on this initiative — how could it fail and how do we de-risk it?',
+  quick_read: 'Give me a fast multi-lens read on the current state of the business.',
+  open_qa: '',
+};
+
+/**
+ * Build a minimal Ch5RunPlan stub from a tile click, pre-filled with the playbook's
+ * default framing question (editable in PlanApproval before approval).
  * TODO ch7-phase-b: replace with real plan from run.plan.ready IPC event.
  */
 function stubPlanFromPlaybook(playbookId: PlaybookId): Ch5RunPlan {
   return {
     playbook: playbookId,
-    question: '',
+    question: DEFAULT_QUESTION[playbookId] ?? '',
     lenses: [],
     mcps: [],
     tokenEstimate: 0,

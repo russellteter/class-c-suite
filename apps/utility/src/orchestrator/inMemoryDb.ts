@@ -12,22 +12,29 @@
 import Database from 'better-sqlite3';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * Resolve the migrations dir. Mirrors dispatch.ts's cwd-relative fixture resolution
- * (utility runs with cwd = repo root in dev/headless). Falls back to the packaged
- * resources path when running inside a packaged app.
+ * Resolve the migrations dir robustly (do NOT rely on process.cwd() — the utility
+ * inherits main's cwd, which is apps/main in the dev app, not the repo root).
+ * Mirrors apps/main/src/db/migrate.ts: module-relative in dev, resourcesPath when packaged.
  */
 function migrationsDir(): string {
-  const cwdDir = path.join(process.cwd(), 'db', 'migrations');
-  if (fs.existsSync(cwdDir)) return cwdDir;
-  // Packaged app: db/migrations ships under resourcesPath (see electron-builder config).
+  // Module-relative: dist/orchestrator/inMemoryDb.js → ../../../../db/migrations = repo/db/migrations.
+  const moduleDir = path.join(__dirname, '..', '..', '..', '..', 'db', 'migrations');
+  if (fs.existsSync(moduleDir)) return moduleDir;
+  // Packaged app: db/migrations ships under resourcesPath (electron-builder extraResources).
   const resBase = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
   if (resBase) {
     const packaged = path.join(resBase, 'db', 'migrations');
     if (fs.existsSync(packaged)) return packaged;
   }
-  return cwdDir; // surface the dev path in the error if it doesn't exist
+  // Last resort: cwd-relative (covers the headless spine-proof run from repo root).
+  const cwdDir = path.join(process.cwd(), 'db', 'migrations');
+  if (fs.existsSync(cwdDir)) return cwdDir;
+  return moduleDir; // surface the module path in the error if nothing resolved
 }
 
 /**

@@ -134,11 +134,13 @@ export function startSupervision(
 
   proc.stderr?.on('data', (chunk: Buffer) => {
     stderrBuf += chunk.toString();
+    if (process.env.UTILITY_FORWARD_LOGS === '1') process.stderr.write('[util] ' + chunk.toString());
   });
 
   // Pipe stdout too — some ESM resolution errors emit to stdout under certain Electron builds.
   proc.stdout?.on('data', (chunk: Buffer) => {
     stdoutBuf += chunk.toString();
+    if (process.env.UTILITY_FORWARD_LOGS === '1') process.stdout.write('[util] ' + chunk.toString());
   });
 
   proc.on('exit', (code) => {
