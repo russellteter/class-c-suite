@@ -42,8 +42,13 @@ app.whenReady().then(() => {
   runMigrations(db);
   log.info({ message: 'database open + migrations applied' });
 
-  // Register IPC handlers before creating the window.
-  registerIpcHandlers(db);
+  // Supervision state is created here (before IPC handlers) so the renderer→utility
+  // relay can read the live port via the getter once the supervisor sets it.
+  const state: SupervisionState = { restarts: [], proc: null, port: null };
+
+  // Register IPC handlers before creating the window. The port getter lets
+  // registerIpcHandlers relay run.start (and handoff.preview.requested) to the utility.
+  registerIpcHandlers(db, () => state.port);
 
   // --scheduler-only: write lock file; skip renderer window.
   if (SCHEDULER_ONLY) {
@@ -142,7 +147,7 @@ app.whenReady().then(() => {
   // mainBoundHandler routes utility's 'main.show-notification' → native notification.
   // All other utility IPC variants are forwarded to the renderer by the supervisor's
   // port.on('message') bridge (Ch.10 audit-fix).
-  const state: SupervisionState = { restarts: [], proc: null, port: null };
+  // `state` is declared earlier so the IPC relay can read state.port once set here.
   startSupervision(state, db, win.webContents, (msg) => {
     if (msg.kind === 'main.show-notification') {
       fireNotification(

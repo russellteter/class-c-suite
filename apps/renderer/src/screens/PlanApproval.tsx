@@ -6,6 +6,7 @@
 // Renders RunPlan for user approval before MCP fan-out.
 
 import React, { useState, useEffect, useRef } from 'react';
+import type { PlaybookId } from '@c-suite/shared-types/playbook';
 import { sendIpc } from '../ipc-client.js';
 
 // Per-playbook auto-approve countdown (seconds). null = universal manual approval.
@@ -78,10 +79,14 @@ export function PlanApproval({ plan, onApprove, onEdit, onCancel }: PlanApproval
     // AC-10: No MCP calls fire before run.plan.approved IPC is received.
     // IPC is fire-and-forget — never let it block navigation (the bridge may
     // be absent in dev, or validation may reject the shape). Navigate regardless.
+    // One runId ties the approval to the run; run.start kicks off the orchestrator
+    // (main relays it to the utility, which drives startRun → memo SafeWrite).
+    const runId = crypto.randomUUID();
     try {
-      sendIpc({ kind: 'run.plan.approved', payload: { runId: crypto.randomUUID() } });
+      sendIpc({ kind: 'run.plan.approved', payload: { runId } });
+      sendIpc({ kind: 'run.start', payload: { runId, playbook: plan.playbook as PlaybookId, question: plan.question } });
     } catch (err) {
-      console.error('[PlanApproval] run.plan.approved IPC failed (continuing):', err);
+      console.error('[PlanApproval] approve IPC failed (continuing):', err);
     }
     onApprove?.();
   }

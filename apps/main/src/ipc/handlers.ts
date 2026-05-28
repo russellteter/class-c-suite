@@ -16,7 +16,21 @@ interface RunRow {
   status: string | null;
 }
 
-export function registerIpcHandlers(db: Database.Database): void {
+/** Structural type for the utility MessagePort (Electron.MessagePortMain in prod). */
+type UtilityPort = { postMessage(msg: unknown): void };
+
+/**
+ * @param getUtilityPort Returns the live utility MessagePort (set asynchronously by
+ *   the supervisor after fork). Renderer messages bound for the utility (run.start,
+ *   handoff.preview.requested) are relayed through it. Omitted in tests.
+ */
+export function registerIpcHandlers(
+  db: Database.Database,
+  getUtilityPort?: () => UtilityPort | null,
+): void {
+  // Kinds the renderer emits that the utility process handles. Relayed below.
+  const UTILITY_BOUND = new Set(['run.start', 'handoff.preview.requested']);
+
   // List all runs — read-only SQLite view.
   ipcMain.handle('runs:list', (_event) => {
     const rows = db.prepare(
@@ -60,12 +74,25 @@ export function registerIpcHandlers(db: Database.Database): void {
       );
     } else if (raw) {
       // Validate all other incoming messages.
+      let valid = false;
       try {
         validateIpc(raw);
+        valid = true;
       } catch {
         process.stderr.write(
           JSON.stringify({ level: 'warn', message: 'invalid IPC message dropped', raw: String(raw) }) + '\n'
         );
+      }
+      // Relay utility-bound kinds to the utility process (run.start → orchestrator).
+      if (valid && UTILITY_BOUND.has((raw as { kind: string }).kind)) {
+        const port = getUtilityPort?.();
+        if (port) {
+          port.postMessage(raw);
+        } else {
+          process.stderr.write(
+            JSON.stringify({ level: 'warn', message: 'utility port not ready — dropping', kind: (raw as { kind: string }).kind }) + '\n'
+          );
+        }
       }
     }
   });
