@@ -60,9 +60,9 @@ export function DrawUpCTA({
         padding: '4px 10px',
         fontSize: 'var(--text-xs)',
         fontWeight: 600,
-        color: 'var(--color-gold-500)',
-        background: 'rgba(201,161,75,0.10)',
-        border: '1px solid rgba(201,161,75,0.30)',
+        color: 'var(--gold)',
+        background: 'rgba(255,186,0,0.10)',
+        border: '1px solid rgba(255,186,0,0.30)',
         borderRadius: 'var(--radius-base)',
         cursor: 'pointer',
         whiteSpace: 'nowrap',
@@ -70,12 +70,12 @@ export function DrawUpCTA({
         // :focus-visible handled globally by tokens.css — uses --focus-ring
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(201,161,75,0.18)';
-        (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(201,161,75,0.55)';
+        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,186,0,0.18)';
+        (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,186,0,0.55)';
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(201,161,75,0.10)';
-        (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(201,161,75,0.30)';
+        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,186,0,0.10)';
+        (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,186,0,0.30)';
       }}
     >
       <SendIcon size={iconSize} />
