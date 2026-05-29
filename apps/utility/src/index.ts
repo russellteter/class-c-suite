@@ -107,6 +107,11 @@ process.parentPort.once('message', (e) => {
           // Do NOT close it here — closing after run #1 would kill every subsequent run.
           const sharedDb = getSharedDb();
           const result = await startRun(runId, playbook, question, sharedDb, emit);
+          // Mark the run finished so checkAndResumeInProgressRun (which queries
+          // status='in_progress') does not re-trigger a completed run on next startup.
+          const runStatus = result.finalState.kind === 'failed' ? 'failed'
+            : result.finalState.kind === 'shipped-draft' ? 'shipped_draft' : 'shipped_clean';
+          sharedDb.prepare(`UPDATE runs SET status = ?, finished_at = unixepoch() WHERE run_id = ?`).run(runStatus, runId);
           if (result.memoMarkdown && result.memoPath) {
             const absPath = join(getVaultPath(), result.memoPath);
             const writeResult = await safeWrite({
@@ -128,6 +133,9 @@ process.parentPort.once('message', (e) => {
           log.info({ runId, message: `run.start complete — final state ${result.finalState.kind}` });
         } catch (err) {
           log.error({ runId, message: 'run.start failed', err: String(err) });
+          try {
+            getSharedDb().prepare(`UPDATE runs SET status = 'failed', finished_at = unixepoch() WHERE run_id = ?`).run(runId);
+          } catch { /* shared DB may be unavailable; the run.failed IPC still fires below */ }
           ipcPort!.postMessage({ kind: 'run.failed', payload: { runId, reason: String(err), stage: 'run-loop' } });
         }
         return;
