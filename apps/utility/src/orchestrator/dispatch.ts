@@ -105,12 +105,16 @@ export async function dispatchLens<R extends LensRole>(
   );
 
   // invoke(definition, context) — two-arg signature matching StubClaudeClient and RealClaudeClient.
-  const rawOutput = await client.invoke(
+  // invoke() returns the envelope {structuredOutput, tokensIn, tokensOut}. onSubagentStop
+  // safeParses its argument against the lens output schema, so it must receive the UNWRAPPED
+  // structuredOutput — passing the raw envelope fails the schema and throws on EVERY live/record
+  // invocation (O1). Mirrors the correct unwrap in verifier-runner.ts:69-71.
+  const envelope = await client.invoke(
     { role: def.role, systemPrompt: def.systemPrompt },
     bundle,
   );
 
-  const output = await onSubagentStop(rawOutput);
+  const output = await onSubagentStop(envelope.structuredOutput);
   return output as LensOutput;
 }
 
@@ -198,11 +202,12 @@ export async function dispatchSynthesizer(
     {},
   );
 
-  const rawOutput = await client.invoke(
+  const envelope = await client.invoke(
     { role: def.role, systemPrompt: def.systemPrompt },
     { runId, question, playbook: playbookId, lensOutputs },
   );
 
-  const output = (await onSubagentStop(rawOutput)) as SynthesizerOutput;
+  // Unwrap structuredOutput from the envelope before schema validation in onSubagentStop (O1).
+  const output = (await onSubagentStop(envelope.structuredOutput)) as SynthesizerOutput;
   return { ...output, role: 'Synthesizer', runId };
 }

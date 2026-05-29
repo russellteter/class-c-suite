@@ -186,10 +186,21 @@ export async function startRun(
       : 'shipped-clean'; // All Phase A paths ship — Verifier threshold handled inside playbook
 
     visitedStates.push('bootstrap', 'plan-approval', 'fan-out', finalKind);
+    // M1: propagate memoMarkdown + a real memoPath to the caller (index.ts run.start) so it
+    // SafeWrites the memo. The early-return previously returned neither at the top level, so
+    // index.ts:115 (`if (result.memoMarkdown && result.memoPath)`) always skipped → every Ch.7
+    // playbook computed a memo that was silently dropped. memoPath gets the .draft.md suffix when
+    // the Verifier ship-stamp is DRAFT (mirrors the Ch.5 buildMemoPath(!passed) convention).
+    const earlyIsDraft = playbookResult.stamps.includes('DRAFT');
+    const earlyMemoPath = playbookResult.memoMarkdown
+      ? buildMemoPath(playbookId, runId, earlyIsDraft)
+      : undefined;
     return {
-      finalState: { kind: 'shipped-clean', runId, memoPath: `/vault/memos/${runId}.md`, rigorScore: playbookResult.rigorScore ?? 0 } as RunState,
+      finalState: { kind: 'shipped-clean', runId, memoPath: earlyMemoPath ?? `/vault/memos/${runId}.md`, rigorScore: playbookResult.rigorScore ?? 0 } as RunState,
       visitedStates,
       agentRolesInvoked: Object.keys(playbookResult.lensOutputs),
+      memoMarkdown: playbookResult.memoMarkdown,
+      memoPath: earlyMemoPath,
     };
   }
   // ── End Ch.7 early-return ────────────────────────────────────────────────────
