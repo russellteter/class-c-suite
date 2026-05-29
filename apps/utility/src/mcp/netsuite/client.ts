@@ -23,8 +23,9 @@ import type {
   NetSuiteClient as INetSuiteClient,
   McpHealth,
   NetSuiteQueryResult,
+  QueryExpectOptions,
 } from '@c-suite/shared-types/mcp';
-import { NetSuiteQueryResultSchema } from '@c-suite/shared-types/mcp';
+import { NetSuiteQueryResultSchema, SCHEMA_DRIFT_ADVISORY_NS } from '@c-suite/shared-types/mcp';
 import type { DegradationWarning } from '@c-suite/shared-types/playbook';
 import type { SafeStorageVault } from '../../credentials/safeStorageVault.js';
 import { OAuthTokenStore } from '../oauth/tokenStore.js';
@@ -179,8 +180,10 @@ export class NetSuiteClient implements INetSuiteClient {
   /**
    * Execute a SuiteQL query via the ns_runCustomSuiteQL MCP tool.
    * Credential-absent mode: returns null and sets degraded = true (never throws).
+   * opts.expectRows: when true, a zero-item result attaches a schemaDriftAdvisory
+   *   (possible renamed column/account type) rather than silently returning empty.
    */
-  async runSuiteQL(query: string): Promise<NetSuiteQueryResult | null> {
+  async runSuiteQL(query: string, opts?: QueryExpectOptions): Promise<NetSuiteQueryResult | null> {
     if (!(await this.hasCredential())) {
       this.degraded = true;
       this.lastError = 'No NetSuite OAuth credential — degraded mode';
@@ -198,14 +201,23 @@ export class NetSuiteClient implements INetSuiteClient {
     this.lastSuccessAt = new Date();
     this.lastError = undefined;
     this.degraded = false;
+
+    if (opts?.expectRows && parsed.items.length === 0) {
+      console.warn(
+        '[NetSuiteClient] schema-drift advisory: runSuiteQL returned 0 items with expectRows=true — ' +
+        'possible renamed column/account type. Query:', query
+      );
+      return { ...parsed, schemaDriftAdvisory: SCHEMA_DRIFT_ADVISORY_NS };
+    }
     return parsed;
   }
 
   /**
    * Run a NetSuite Saved Search via the ns_runSavedSearch MCP tool.
    * Credential-absent mode: returns null and sets degraded = true (never throws).
+   * opts.expectRows: when true, a zero-item result attaches a schemaDriftAdvisory.
    */
-  async runSavedSearch(id: string): Promise<NetSuiteQueryResult | null> {
+  async runSavedSearch(id: string, opts?: QueryExpectOptions): Promise<NetSuiteQueryResult | null> {
     if (!(await this.hasCredential())) {
       this.degraded = true;
       this.lastError = 'No NetSuite OAuth credential — degraded mode';
@@ -228,6 +240,14 @@ export class NetSuiteClient implements INetSuiteClient {
     this.lastSuccessAt = new Date();
     this.lastError = undefined;
     this.degraded = false;
+
+    if (opts?.expectRows && parsed.items.length === 0) {
+      console.warn(
+        '[NetSuiteClient] schema-drift advisory: runSavedSearch returned 0 items with expectRows=true — ' +
+        'possible renamed column or permission block. Saved Search ID:', id
+      );
+      return { ...parsed, schemaDriftAdvisory: SCHEMA_DRIFT_ADVISORY_NS };
+    }
     return parsed;
   }
 

@@ -10,8 +10,9 @@ import type {
   McpHealth,
   SalesforceQueryResult,
   SalesforceDescribeResult,
+  QueryExpectOptions,
 } from '@c-suite/shared-types/mcp';
-import { SalesforceQueryResultSchema } from '@c-suite/shared-types/mcp';
+import { SalesforceQueryResultSchema, SCHEMA_DRIFT_ADVISORY_SF } from '@c-suite/shared-types/mcp';
 import type { SafeStorageVault } from '../../credentials/safeStorageVault.js';
 import { refreshAccessToken } from './oauth-flow.js';
 import { getSfdxAuth, hasSfdxAuth, probeSfdxAuth } from './sfdx-auth.js';
@@ -143,11 +144,19 @@ export class SalesforceClient implements ISalesforceClient {
 
   // ── Query methods ───────────────────────────────────────────────────────────
 
-  async query(soql: string): Promise<SalesforceQueryResult> {
-    return this.executeQuery(soql);
+  async query(soql: string, opts?: QueryExpectOptions): Promise<SalesforceQueryResult> {
+    const result = await this.executeQuery(soql);
+    if (opts?.expectRows && result.records.length === 0) {
+      console.warn(
+        '[SalesforceClient] schema-drift advisory: query returned 0 records with expectRows=true — ' +
+        'possible renamed stage/field. SOQL:', soql
+      );
+      return { ...result, schemaDriftAdvisory: SCHEMA_DRIFT_ADVISORY_SF };
+    }
+    return result;
   }
 
-  async queryAll(soql: string): Promise<SalesforceQueryResult> {
+  async queryAll(soql: string, opts?: QueryExpectOptions): Promise<SalesforceQueryResult> {
     // queryAll follows pagination until done = true.
     const first = await this.executeQuery(soql);
     const allRecords = [...first.records];
@@ -159,7 +168,15 @@ export class SalesforceClient implements ISalesforceClient {
       current = next;
     }
 
-    return { ...first, records: allRecords, done: true };
+    const assembled: SalesforceQueryResult = { ...first, records: allRecords, done: true };
+    if (opts?.expectRows && allRecords.length === 0) {
+      console.warn(
+        '[SalesforceClient] schema-drift advisory: queryAll returned 0 records with expectRows=true — ' +
+        'possible renamed stage/field. SOQL:', soql
+      );
+      return { ...assembled, schemaDriftAdvisory: SCHEMA_DRIFT_ADVISORY_SF };
+    }
+    return assembled;
   }
 
   async describeObject(name: string): Promise<SalesforceDescribeResult> {

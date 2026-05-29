@@ -82,7 +82,7 @@ async function fetchSalesforcePipeline(
     `FROM Opportunity WHERE StageName IN (${stageList}) AND IsClosed = false ` +
     `ORDER BY CloseDate ASC`;
   try {
-    const res = await deps.salesforce.query(soql);
+    const res = await deps.salesforce.query(soql, { expectRows: true });
     if (db) {
       insertToolCall(db, {
         call_id: `tc-sf-bn-${Date.now()}`,
@@ -117,7 +117,7 @@ async function fetchNetSuiteFinancials(
     return { result: null, degraded: true };
   }
   try {
-    const res = await deps.netsuite.runSuiteQL(NS_FINANCIALS_SOQL);
+    const res = await deps.netsuite.runSuiteQL(NS_FINANCIALS_SOQL, { expectRows: true });
     if (res === null) {
       log.info({ runId, message: 'board_narrative: NetSuite returned null (no OAuth credential) — degraded' });
       return { result: null, degraded: true };

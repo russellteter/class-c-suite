@@ -75,7 +75,7 @@ async function fetchSalesforcePipeline(
   }
   const soql = committedPipelineSoql();
   try {
-    const res = await deps.salesforce.query(soql);
+    const res = await deps.salesforce.query(soql, { expectRows: true });
     if (db) {
       insertToolCall(db, {
         call_id: `tc-sf-${Date.now()}`,
@@ -168,7 +168,7 @@ async function fetchNetSuiteCash(
     return { result: null, degraded: true };
   }
   try {
-    const res = await deps.netsuite.runSuiteQL(suiteQl);
+    const res = await deps.netsuite.runSuiteQL(suiteQl, { expectRows: true });
     if (res === null) {
       log.info({ runId, message: 'NetSuite returned null (no OAuth credential — degraded mode)' });
       return { result: null, degraded: true };

@@ -67,19 +67,25 @@ export interface McpClient {
 // ── Typed client interfaces (real shapes — replaces stubs in playbook.ts) ────
 // playbook.ts re-exports these for back-compat. Stubs are retired in Ch.8.
 
+/** Options for query methods that are expected to return rows. */
+export interface QueryExpectOptions {
+  /** When true, a zero-row result attaches a schemaDriftAdvisory. */
+  expectRows?: boolean;
+}
+
 export interface SalesforceClient extends McpClient {
   serviceId: 'salesforce';
-  query(soql: string): Promise<SalesforceQueryResult>;
-  queryAll(soql: string): Promise<SalesforceQueryResult>;
+  query(soql: string, opts?: QueryExpectOptions): Promise<SalesforceQueryResult>;
+  queryAll(soql: string, opts?: QueryExpectOptions): Promise<SalesforceQueryResult>;
   describeObject(name: string): Promise<SalesforceDescribeResult>;
 }
 
 export interface NetSuiteClient extends McpClient {
   serviceId: 'netsuite';
   /** Returns null + sets degraded=true when TBA credentials are absent (token-absent mode). */
-  runSuiteQL(query: string): Promise<NetSuiteQueryResult | null>;
+  runSuiteQL(query: string, opts?: QueryExpectOptions): Promise<NetSuiteQueryResult | null>;
   /** Returns null + sets degraded=true when TBA credentials are absent (token-absent mode). */
-  runSavedSearch(id: string): Promise<NetSuiteQueryResult | null>;
+  runSavedSearch(id: string, opts?: QueryExpectOptions): Promise<NetSuiteQueryResult | null>;
   degraded: boolean;
   /**
    * Returns true if the role can read the given SuiteQL table.
@@ -116,6 +122,21 @@ export interface PowerBiClient extends McpClient {
   getAccountUsage(args: { accountId18: string }): Promise<unknown>;
 }
 
+// ── Schema-drift advisory ─────────────────────────────────────────────────────
+// Attached to query results that returned zero rows when rows were expected.
+// Signals possible schema drift (renamed stage/field/column) rather than
+// authoritative "no data". The lens/memo layer should render this as an
+// uncertainty flag, not assert an empty result as a factual claim.
+//
+// Canonical message — import and compare to avoid hard-coding the string in tests.
+export const SCHEMA_DRIFT_ADVISORY_SF =
+  '0 rows — verify SOQL stage labels / field names against the live Salesforce org; ' +
+  'may be schema drift (renamed stage/field), not truly empty pipeline/data';
+
+export const SCHEMA_DRIFT_ADVISORY_NS =
+  '0 rows — verify SuiteQL column names / account types against the live NetSuite org; ' +
+  'may be schema drift (renamed column/type) or permission block, not truly empty cash/payroll data';
+
 // ── Salesforce wire shapes ────────────────────────────────────────────────────
 
 export interface SalesforceQueryResult {
@@ -123,6 +144,8 @@ export interface SalesforceQueryResult {
   done: boolean;
   records: Record<string, unknown>[];
   nextRecordsUrl?: string;
+  /** Present when expectRows=true was set and zero records were returned. */
+  schemaDriftAdvisory?: string;
 }
 
 export interface SalesforceDescribeResult {
@@ -143,6 +166,8 @@ export interface NetSuiteQueryResult {
   items: Record<string, unknown>[];
   count: number;
   hasMore: boolean;
+  /** Present when expectRows=true was set and zero items were returned. */
+  schemaDriftAdvisory?: string;
 }
 
 // ── Gmail wire shapes ─────────────────────────────────────────────────────────
@@ -196,10 +221,12 @@ export const SalesforceQueryResultSchema = z.object({
   done: z.boolean(),
   records: z.array(z.record(z.string(), z.unknown())),
   nextRecordsUrl: z.string().optional(),
+  schemaDriftAdvisory: z.string().optional(),
 });
 
 export const NetSuiteQueryResultSchema = z.object({
   items: z.array(z.record(z.string(), z.unknown())),
   count: z.number(),
   hasMore: z.boolean(),
+  schemaDriftAdvisory: z.string().optional(),
 });
