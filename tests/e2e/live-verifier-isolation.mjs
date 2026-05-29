@@ -23,18 +23,32 @@ delete process.env.ANTHROPIC_API_KEY;
 const { RealClaudeClient, ClaudeOutputParseError } = await import(join(root, 'apps', 'utility', 'dist', 'agents', 'realClaudeClient.js'));
 const systemPrompt = readFileSync(join(root, 'apps', 'utility', 'dist', 'prompts', 'Verifier.prompt.md'), 'utf8');
 
-// Representative pre_mortem (adversarial-only) verifier input: empty arrays + a draft to grade.
-const context = {
-  playbook: 'pre_mortem',
-  stamp: 'ADVERSARIAL ONLY — no six-lens fan-out',
-  memo_draft:
-    '# Pre-mortem: Q3 Platform Migration\n\n## Top failure modes\n1. Capacity: 3 workstreams already at-risk; migration competes for the same 2 senior engineers.\n2. Org friction: data team was not consulted on the cutover window.\n\n## De-risking\n- Sequence migration into the natural pause points in the next 6 weeks.\n- Pre-brief the data team before locking the window.',
-  lens_outputs: [],
+// FAITHFUL mirror of runVerifier's userMessage (verifier-runner.ts:105-114) wrapped exactly as
+// StubVerifierInvoker passes it (verifier-runner.ts:62-69): {question, playbook, runId, userMessage}.
+// Simulates a NON-ADVERSARIAL playbook (stakeholder_1_1): every contract input present EXCEPT
+// red_team_output / steelman_output (absent — single-lens playbooks produce no adversarial stage).
+// The goal: read the Verifier's `missing[]` array to learn EXACTLY what it flags as the violation.
+const userMessage = JSON.stringify({
+  memo_markdown:
+    '# Stakeholder 1:1 Prep: Jane Doe (VP Engineering)\n\n## COS Summary\nJane prioritizes platform reliability and is sensitive to roadmap churn; she responds well to sequencing commitments.\n\n## Key Positions\n- Reliability investment should precede new feature commitments [^p1]\n\n## Sources\n- [^p1]: stakeholder file (jane-doe.md)',
+  lens_outputs: [
+    {
+      role: 'COS',
+      summary: 'Jane prioritizes reliability; wary of roadmap churn.',
+      positions: [{ claim: 'Reliability before features', confidence: 0.6, citations: [{ id: 'p1', source: 'stakeholders/jane-doe.md', text: 'reliability focus' }] }],
+      citations: [{ id: 'p1', source: 'stakeholders/jane-doe.md', text: 'reliability focus' }],
+      confidence: 0.6,
+    },
+  ],
   tool_call_audit_trail: [],
   position_metadata: [],
-};
+  // red_team_output / steelman_output INTENTIONALLY ABSENT (non-adversarial playbook).
+  run_playbook: 'stakeholder_1_1',
+  run_question: 'Prep for my 1:1 with Jane Doe',
+});
+const context = { question: 'Prep for my 1:1 with Jane Doe', playbook: 'stakeholder_1_1', runId: 'iso-nonadversarial', userMessage };
 
-console.log('[verif] invoking REAL Verifier (claude-opus-4-7) with representative input…');
+console.log('[verif] invoking REAL Verifier (claude-opus-4-7) — faithful non-adversarial mirror (no red-team/steelman)…');
 const t0 = Date.now();
 try {
   const out = await new RealClaudeClient().invoke({ role: 'Verifier', systemPrompt }, context);
@@ -44,6 +58,9 @@ try {
   const expected = ['rigor_score', 'ship_status', 'dimensions', 'failure_reasons', 'verifier_notes'];
   const hasAll = expected.every((k) => keys.includes(k));
   console.log('[verif] extracted top-level keys:', JSON.stringify(keys));
+  if (so && typeof so === 'object' && 'error' in so) {
+    console.log('[verif] *** CONTRACT-VIOLATION RESPONSE *** error:', so.error, '| missing:', JSON.stringify(so.missing));
+  }
   console.log('[verif] matches VerifierOutput shape (has all 5 required keys):', hasAll, hasAll ? '→ scenario OK/B-ok' : '→ scenario A (parser grabbed wrong object) OR B (wrong shape)');
   console.log('[verif] extracted object:', JSON.stringify(so, null, 2).slice(0, 2500));
   process.exit(hasAll ? 0 : 3);

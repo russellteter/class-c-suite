@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import {
   VerifierOutputSchema,
+  VerifierContractViolationSchema,
   type VerifierOutput,
 } from '@c-suite/shared-types/verifier-output';
 import type { VerifierInput } from '@c-suite/shared-types/verifier-input';
@@ -84,6 +85,21 @@ export class VerifierOutputContractViolation extends Error {
   }
 }
 
+/**
+ * Thrown when the Verifier DELIBERATELY refused to grade — its designed {error,missing} response
+ * (prompt lines 18-19/115-116) emitted when it judges a required input missing. Distinct from
+ * VerifierOutputContractViolation (genuinely malformed/unparseable output): a refusal is
+ * fail-closed-BY-DESIGN, carries the specific missing inputs, and must NOT be retried (a re-invoke
+ * sees the same input). Surfacing it as a clear named error replaces the prior confusing
+ * "malformed output" zod dump that ignored the existing VerifierResponseSchema union.
+ */
+export class VerifierRefusedError extends Error {
+  constructor(public readonly missing: string[]) {
+    super(`Verifier refused to grade — declared missing required input(s): ${missing.join(', ')}`);
+    this.name = 'VerifierRefusedError';
+  }
+}
+
 // ── runVerifier ───────────────────────────────────────────────────────────────
 
 export type RunVerifierOpts = {
@@ -123,17 +139,33 @@ export async function runVerifier(
     modelHint: opts.modelHint ?? 'opus-4-7',
   });
 
-  const parsed = VerifierOutputSchema.safeParse(rawResponse);
-  if (!parsed.success) {
-    // Permanent production diagnostic: log WHAT the invoker handed us so a recurrence on Russell's
-    // Mac is classifiable (parser grabbed the wrong object vs the model emitted the wrong shape)
-    // without re-running. Paired with RealClaudeClient's raw-text `sample` warn on the same run.
+  // Validate against the FULL response contract (ADR-0005): either a graded VERDICT or the
+  // Verifier's DESIGNED input-contract refusal {error,missing} (prompt lines 18-19/115-116).
+  // runVerifier previously checked ONLY the verdict schema, so a designed refusal crashed the run
+  // with a confusing "malformed output" zod dump — ignoring the VerifierResponseSchema union that
+  // exists for exactly this (live-verify finding, build-log 2026-05-29).
+  const verdict = VerifierOutputSchema.safeParse(rawResponse);
+  if (verdict.success) return verdict.data;
+
+  const refusal = VerifierContractViolationSchema.safeParse(rawResponse);
+  if (refusal.success) {
+    // Fail closed, clearly. The Verifier refused because it judged a required input missing; a
+    // re-invoke would see the same input, so this is NOT retried.
     vlog.error({
-      message: 'Verifier output failed VerifierOutputSchema — failing the run (no fabricated fallback)',
-      extractedKeys: rawResponse && typeof rawResponse === 'object' ? Object.keys(rawResponse) : [],
-      extracted: JSON.stringify(rawResponse).slice(0, 1500),
+      message: 'Verifier refused to grade (designed contract-violation response)',
+      missing: refusal.data.missing,
     });
-    throw new VerifierOutputContractViolation(parsed.error);
+    throw new VerifierRefusedError(refusal.data.missing);
   }
-  return parsed.data;
+
+  // Neither a verdict nor a designed refusal → genuinely malformed/truncated output. Fail loud (no
+  // fabricated fallback). The RAW model-text sample is logged by RealClaudeClient's recovery warn
+  // (commit 9516ede); the extracted object's keys are logged here so the failure is classifiable
+  // WITHOUT re-running (truncation vs full-verdict-the-parser-missed vs leak-path refusal).
+  vlog.error({
+    message: 'Verifier output matched neither the verdict nor the contract-violation shape — failing the run',
+    extractedKeys: rawResponse && typeof rawResponse === 'object' ? Object.keys(rawResponse) : [],
+    extracted: JSON.stringify(rawResponse).slice(0, 1500),
+  });
+  throw new VerifierOutputContractViolation(verdict.error);
 }

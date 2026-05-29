@@ -2055,3 +2055,53 @@ STUB_MODE=live run with a FORBID string-absence check on the real memo. Order ch
 first; O3 saw 628s, suspected throttling). Verifier-prompt "Chasen" strip DEFERRED to its own session (P0
 trust anchor; entity list is instructional — stripping risks weakening detection; no observed live failure
 attributable to it — run the planted-claim canary live before+after when done).
+
+### Live-verify pass — surfaced a P0: the live Verifier refuses non-adversarial playbooks
+
+Ran the WF-1 live-verify gate (STUB_MODE=live, assembled app). Two findings, both PRE-EXISTING (not the
+WF-1 batch-2 changes), both block the DONE gate. The catastrophic-risk core was only ever proven live via
+**pre_mortem** (adversarial) — so these went unseen until a non-adversarial playbook ran live.
+
+**FINDING 1 (live Verifier robustness — `[intermittent malformed verdict crashes the run]`):** a live
+`stakeholder_1_1` run got all the way through — skeleton SafeWritten + git-committed, COS lens succeeded live
+(sonnet, real 5852-char output) — then the Opus Verifier returned a malformed/short response (rawLength 1464,
+"recovered trailing JSON object", none of the 5 required verdict keys), and `runVerifier`
+(verifier-runner.ts:123) — which validates ONLY `VerifierOutputSchema`, NEVER the `VerifierResponseSchema`
+UNION that already exists in shared-types (verifier-output.ts:59) — threw `VerifierOutputContractViolation`
+and crashed the whole run. No memo written.
+
+**HYPOTHESIS FALSIFIED (DOCTRINE #9).** My first hypothesis — "the Verifier systematically refuses
+non-adversarial playbooks because the prompt requires Red-Team/Steelman (inputs 5,6) and stakeholder_1_1
+supplies neither" — was tested and DISPROVEN. A faithful mirror of runVerifier's exact userMessage (all 8
+fields, red-team/steelman ABSENT = non-adversarial) via the live-verifier-isolation harness returned a FULLY
+VALID verdict (all 5 keys, matches=true) in 183s. So absence of red-team/steelman is NOT a refusal trigger;
+non-adversarial playbooks CAN be graded live. The earlier `{error,missing}` I saw was a HARNESS ARTIFACT
+(the pre-fix harness sent `memo_draft` not `memo_markdown` + omitted run_playbook/run_question — the Verifier
+correctly flagged a genuinely malformed input). The advisor's insistence on reading the real `missing[]`
+before touching the P0 prompt prevented a wrong fix that would have relaxed the anti-rubber-stamp contract.
+
+ROOT CAUSE (corrected): the 1464-char failure was an INTERMITTENT bad/truncated Opus generation (a full
+verdict is several KB; 1464 is too short). maxTurns:1 is NOT the systematic culprit (the faithful mirror
+produced a full verdict under maxTurns:1). FIX, split by what the evidence supports (advisor):
+- **LANDED:** `runVerifier` now validates the `VerifierResponseSchema` UNION — a designed `{error,missing}`
+  refusal throws a clear named `VerifierRefusedError` (fail-closed, no retry — a re-invoke sees the same
+  input); a genuinely malformed verdict fails loud with extracted-keys + raw logged. verifier-runner 11/11
+  replay-green; no prompt/grading change. This is the proximate-crash fix, correct regardless of root cause.
+- **PENDING the actual raw (do NOT fix blind):** whether to add retry-once (transient truncation),
+  schema-directed candidate selection (a full verdict was present but the parser grabbed a fragment), or
+  leak-path handling (the Verifier flagged auto-skeleton content woven into the memo as un-sourced info per
+  prompt lines 16-19) is UNDECIDED until the 1464-char raw is read via a REAL-input stakeholder live re-run.
+  "Transient" is NOT established — the faithful mirror and the real failure had DIFFERENT inputs (clean mock
+  COS vs real 5852-char COS + skeleton memo), so the mock passing only proves the input shape is gradeable.
+  DIAGNOSTICS (9516ede) make the next real failure self-classifying.
+
+**FINDING 2 (process gap):** `tests/unit/verifier-canary.spec.ts` is REPLAY-based (canned Ch.4 fixture) — a
+Verifier PROMPT change CANNOT move it (false green). Any Verifier-prompt edit (this fix AND the deferred
+"Chasen" strip) needs a LIVE planted-claim canary as its guard. AC-7b (the live $43M planted-claim
+assertion) may not be active yet — verify.
+
+**LIVE-PATH PROFILE (durable, not a blocker yet):** under current load, a SINGLE Opus Verifier call took
+132s; quick_read's 6-way PARALLEL lens fan-out hit `API Error: Overloaded` (Max concurrency limit) while a
+single isolated inference succeeded in 11.9s. The generic run-loop dispatches lenses SEQUENTIALLY for this
+reason; quick_read's Promise.all(6) is overload-prone — may need a concurrency cap / retry. Build + replay-
+test the Verifier fix OFFLINE; batch ONE live confirm (Verifier fix + WF-1 FORBID checks) when load eases.
