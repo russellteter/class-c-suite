@@ -2299,3 +2299,65 @@ the `*.set` IPC writes, connector.netsuite.connect OAuth, and Gap D (app connect
 NOTE: did NOT run `npx vitest` this session (it flips better-sqlite3 to Node ABI 137 and breaks the app per the
 ABI rule); the changes are tsc-clean (main + utility builds green) and proven via the real-app e2e harnesses.
 ABI left at Electron-130 (app-runnable).
+
+### Phase 1c DONE — the RENDERING LEG: a produced memo is now VISIBLE in the app (2026-05-29, commit pending)
+
+The leg the last three entries kept deferring. Two real blockers were closed and the full chain
+proven on the real Electron window with screenshots.
+
+**Blockers found + fixed (code-cited):**
+- `runs:list` (`apps/main/src/ipc/handlers.ts:36`) returned only 6 columns — no `memo_path`/`rigor_score`.
+  Extended the SELECT + `RunRow` to include `memo_path, rigor_score, finished_at` so the renderer can
+  render + route a completed run without N per-row reads.
+- No channel could read a memo file's body by path; `App.tsx`'s `onViewMemo` sent a dead one-way
+  `vault.openFile` (no handler) with a stale TODO ("add a memo-viewer Screen variant" — which already
+  existed since TRACK 6). New **`memo:read`** handler (`handlers.ts`): takes a vault-relative path,
+  resolves it against the vault root, **path-traversal-guarded** (must stay inside the vault) + `.md`-only,
+  reads the file, looks up the owning run row (`WHERE memo_path = ?`) for `runId`/`rigor`, derives
+  clean/draft from the `.draft.md` suffix, returns a ready `MemoViewerMemo` payload (or `null` → renderer
+  does not navigate).
+  - **Vault-root correctness (the one that silently breaks prod):** `memo:read`'s root is replicated
+    *textually identical* to the authoritative writer `getVaultPath()` (`apps/utility/src/safewrite/index.ts:22`
+    — `process.env.VAULT_PATH ?? path.join(os.homedir(),'Documents','Claude','Projects','Business Planning')`),
+    not imported (avoids a main→utility layering dep). If these drift, `memo:read` 404s in prod while the
+    harness (shared `VAULT_PATH`) passes — so they are kept in sync deliberately.
+
+**Renderer wiring:**
+- `apps/renderer/src/hooks/useRuns.ts` (new) — invokes `runs:list`, maps rows (seconds→ms Date), re-fetches
+  on `agent.start`/`agent.complete`/`run.failed` (the signals that flow utility→renderer; there is no
+  run-level success event). Explicit reload is the authoritative read.
+- `Home.tsx` — replaced the `lastRunAt: null` hardcode with real per-playbook last-run timestamps
+  (freshness dots now reflect the 26 real runs); added a **Recent Runs** rail surface (always-visible,
+  below Token Meter, above Scheduled Jobs) listing completed runs with memos → click calls the existing
+  `onViewMemo(memo_path)`. (Layout note: a deliberate addition to the Russell-confirmed Variant A rail,
+  matching the existing stacked-card pattern; the hero playbook grid is untouched.)
+- `App.tsx` — `handleViewMemo(path)`: `await invokeIpc('memo:read', path)` → navigate to the existing
+  `memo-viewer` Screen variant; removed the dead `vault.openFile` send. Shared by Recent Runs + TripwireBanner
+  + JobsStrip (all pass a path).
+
+**PROVEN end-to-end** — `tests/e2e/render-leg-proof.mjs` (new), real Electron app, STUB_MODE=replay,
+**persistent** temp vault (kept alive through the click so `memo:read` resolves). 6/6 steps green:
+app up → Cash Lever→Approve → memo SafeWritten (`memos/2026-05-29-cash_lever-<id>.md`, 280B) →
+`runs:list` returns the row WITH `memo_path` → Recent Runs lists it → click → MemoViewer renders the
+memo body (assertion: rendered text contains the file's first heading; renderedLen 341). Screenshots:
+`tests/e2e/screenshots/render-leg-home-recent-runs.png` (rail "RECENT RUNS" w/ "JUST NOW · 85 · VIEW →")
+and `render-leg-memo-viewer.png` ("Seed Memo · CLEAN", "RIGOR 85/100", full body). typecheck green across
+all 9 workspaces; main rebuilt via `tsc` (ABI untouched — no vitest). The proof is **self-cleaning**:
+deletes the run row it created (FK-safe: PRAGMA off + child tables + runs) and rm's its vault; verified
+the real `runtime.db` has no leftover rows from this session.
+
+**HONEST CAVEATS (do not let the green harness overstate it):**
+- Memo content is the replay **SEED PLACEHOLDER** ("This is a seed memo placeholder for testing…"). The
+  rendering leg is proven; **real grounded content** (STUB_MODE=live inference + `buildLensBundle`
+  `contextDocuments:[]`) remains the open thread.
+- The proof runs with `VAULT_PATH`=temp vault. In Russell's **real** app (`VAULT_PATH` unset → real vault),
+  the 2 pre-existing test rows (`d979b72c`, `3357ed48`) point at memo files that **do not exist** in the
+  real vault (0 memos there) → they show in Recent Runs but click is a no-op (`memo:read`→null, correctly
+  no-navs). So on-Mac the surface works but is **empty/dead until a real-vault run produces an aligned
+  memo**. Cleaning those 2 dead rows + whether to seed one real-vault demo memo is a pending decision
+  (gated: writing to Russell's real Obsidian vault). The harness proves the mechanism; it is NOT a
+  substitute for Russell clicking on his Mac.
+
+STILL OPEN (unchanged from prior entries): real memo content (live+grounded run); Gap A2 (Ch.7 in-memory
+`visitedStates` → no persisted transitions); `*.set` IPC writes + `app_settings` table; `connector.netsuite.connect`
+OAuth; Gap D (app connector credential provisioning).
