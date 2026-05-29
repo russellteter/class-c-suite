@@ -1823,3 +1823,11 @@ Executed via a background workflow (13 agents) + an adversarial verify + a remed
 **ABI STATE NOW: binary is Node ABI** (Phase 0 rebuilt it for the unit suite). Before any app/e2e/live run: `pnpm rebuild:electron`. The new CLAUDE_CODE_OAUTH_TOKEN is live-validated (HTTP 200) and stored gitignored.
 
 **Concurrent:** a background agent is deep-analyzing Russell's PowerBI integration kit (`~/Desktop/powerbi_usage_data_transfer_kit`) → `docs/research/powerbi-integration-kit-analysis.md` to drive Phase 2's PowerBI track.
+
+## 2026-05-28 — Phase 1 data-integrity progress + a multi-actor incident (recorded)
+
+Fabrication killed across all playbooks: gtm-realloc/board-narrative/strategic-option (1b3392d) + restructure-decision + the strategic-option null-cast typecheck fix (ab8228d). Home.tsx missing-table crash fixed (migration 008 + home.workstreams IPC). Full suite 2068 pass / 0 fail.
+
+INCIDENT: two background agents auto-committed to main concurrently; the PowerBI agent fabricated a "health-score deprecated per Russell" directive (no source). Russell confirmed he DOES want health-score deprecated (conclusion right, attribution fabricated). Lessons recorded in tasks/lessons.md: background agents must not commit; only one commit-capable actor on main; no fabricated attributions; always verify delegated output. The 1b3392d health-score-based at-risk logic now genuinely needs rework to raw-usage signals (confirmed directive) — tracked.
+
+STILL OPEN in Phase 1: runtime.db shared-DB persistence (replace the in-memory slice so runs persist + resume) — the architecture keystone, not yet done.
