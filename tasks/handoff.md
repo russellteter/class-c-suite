@@ -52,22 +52,28 @@ Commit chain: `78b1557` → `f9f5c9f` → `b42fa2b` → `67f9c51` → `6073e8c` 
 - pre_mortem has a 30s auto-approve countdown (double-fire risk if a manual click doesn't cancel it);
   board_narrative is manual (no countdown). Harmless to the proof but wastes a live run.
 
-## NEXT — the inference half (U1) is a DESIGN FORK; then the rest of the program
+## NEXT — WF-1 remainder (patches in flight), then the program
 
-**U1 (real lens inference for pre_mortem) — DECISION NEEDED.** pre_mortem currently hardcodes its
-Red-Team/Steelman deliverable; the memo content is real-shaped but not real inference. WF-1 called
-U1 "dispatch wiring," but the shared `RedTeamOutputSchema`/`SteelmanOutputSchema` are built for the
-**six-lens adversarial-review** context (`challenges:[{targetRole, claim, counterargument}]` /
-`steelmen:[{targetRole, bestCaseArgument}]`) — they do NOT fit pre_mortem's **adversarial-only**
-model, whose memo-builder consumes `failureModes:[{id, description, likelihood, severity,
-earlyWarningSignal, tripwire}]` + a steelman `defense` string. Options:
-  - **(C, recommended)** Give pre_mortem its own real inference: 1-2 `RealClaudeClient` calls with
-    pre_mortem-specific prompts producing the existing failureModes/defense shapes (keeps the
-    memo-builder unchanged; self-contained to `pre-mortem/index.ts`; does NOT need O1/O3 since it
-    bypasses the lens-dispatch registry). Author the prompts against PRD §pre-mortem.
-  - (B) Reuse the lens-challenge RedTeam/Steelman, feed proposedAction as the single "claim" to
-    challenge, adapt the memo-builder to the challenges shape. Forced semantics.
-  - (A) New pre_mortem-specific RedTeam/Steelman agents + schemas in the registry. Most work.
+**U1 DONE (2075448) — Option C shipped.** pre_mortem got dedicated `RedTeam.preMortem.prompt.md` +
+`Steelman.preMortem.prompt.md` + local zod schemas producing the failureModes/defense shapes the
+memo-builder reads (the shared six-lens schemas didn't fit adversarial-only pre_mortem). LIVE = two
+sequential RealClaudeClient generations, validated + fail-loud; replay keeps the literals. FULL
+GATE-3 proven (real inference → Verifier → CLEAN 7749-char memo, novel failure modes, persisted).
+
+**WF-1 remainder — a patch workflow is in flight** (`wf1-remainder-patches`, run `wf_e77eae0c-0dc`):
+produces exact, adversarially-verified patches for O2+U4 (open_qa real client + merge real lens
+output), O3 (load real agent prompts — flagged to check lens-prompt↔schema alignment; may be
+needs-focused-pass like U1), O5 (cash_lever fail-loud on Verifier contract violation), U2
+(stakeholder_1_1 use COS output), U3 (quick_read use real lens output), U5 (gtm_realloc
+STUBBED_SOURCES unblock live), U6 (board_narrative covenant → UNKNOWN), DF (PlanApproval cancel the
+auto-approve countdown on manual Approve — stops the double-fire). Apply the readyToApply set
+serially (typecheck + commit each); the inference-enablers (O2/O3/U2/U3/U4) need a STUB_MODE=live run
+each to confirm (connector-independent ones verify in this env; six-lens/connector ones may degrade).
+Result JSON: `.../tasks/w674ytjk4.output` (readyToApply / needsFocusedPass / needsChanges buckets).
+
+### Original U1 options (kept for reference — Option C was taken)
+  - (C, shipped) pre_mortem-specific real inference producing the existing failureModes/defense shapes.
+  - (B) Reuse lens-challenge RedTeam/Steelman, adapt the memo-builder. (A) New registry agents+schemas.
 
 **WF-1 produced 21 verified live-path defects → 12 fixes (S1/S2/U1-U6/O1-O6).** Done: S1,S2,O1,M1
 (+prompt-assets,JSON). Remaining from WF-1 (full ranked plan in the WF-1 transcript at
