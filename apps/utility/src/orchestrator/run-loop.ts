@@ -24,6 +24,7 @@ import { routeToPlaybook } from '../playbooks/lib/playbookRouter.js';
 import { runPlaybookGuarded } from './stubGuard.js';
 import { scorePlaybookRigor, applyShipStamp } from './playbookVerifier.js';
 import { buildDeps } from '../playbooks/lib/buildDeps.js';
+import { buildCashLeverGrounding, type ContextDoc } from './groundingContext.js';
 // Ch.9: handoff brief generation (explicit-trigger only — NOT auto on every accepted decision)
 import { generateHandoffBrief } from '../agents/handoff/index.js';
 import type { HandoffGeneratorInput } from '@c-suite/shared-types/handoff';
@@ -230,9 +231,24 @@ export async function startRun(
   visitedStates.push(state.kind);
 
   // fan-out: dispatch all 6 lens agents, capturing their outputs for the Synthesizer.
+  // Ch.5 grounding (ADR-0006 §1.3): for cash_lever, ground the lenses on REAL cash-model lever
+  // rows read live from the vault xlsx. buildLensBundle() ships contextDocuments:[] by design; we
+  // spread the grounding onto each role's bundle (stakeholder-1-1 idiom). Grounding NEVER blocks
+  // the run — on any failure it degrades to [] and the lenses honestly report low confidence.
+  let groundingDocs: ContextDoc[] = [];
+  if (playbookId === 'cash_lever') {
+    try {
+      groundingDocs = buildCashLeverGrounding();
+    } catch {
+      groundingDocs = [];
+    }
+  }
   const lensOutputs: Record<string, unknown> = {};
   for (const role of LENS_ROLES) {
     const bundle = buildLensBundle(role, runId, question, playbookId);
+    if (groundingDocs.length > 0) {
+      (bundle as { contextDocuments: ContextDoc[] }).contextDocuments = groundingDocs;
+    }
     lensOutputs[role] = await dispatchLens(role, bundle, db, emit);
     agentRolesInvoked.push(role);
 
