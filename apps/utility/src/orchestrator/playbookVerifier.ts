@@ -55,6 +55,11 @@ export const REPLAY_FALLBACK_RIGOR: Record<PlaybookId, number> = {
   cash_lever: 0, // generic-path playbook — not scored here
 };
 
+// Ch.7 early-return playbooks that RUN a Red-Team + Steelman adversarial stage (their lensOutputs
+// carry 'RedTeam'/'Steelman'). Every OTHER playbook routed through buildPlaybookVerifierInput has no
+// such stage — see the red_team/steelman N/A sentinel in buildPlaybookVerifierInput.
+const ADVERSARIAL_PLAYBOOKS = new Set<PlaybookId>(['pre_mortem', 'restructure_decision', 'strategic_option']);
+
 /**
  * Adapt an in-memory PlaybookResult into a VerifierInput.
  *
@@ -71,8 +76,22 @@ export function buildPlaybookVerifierInput(
   db: Database.Database,
 ): VerifierInput {
   const lensMap = (result.lensOutputs ?? {}) as Record<string, unknown>;
-  const redTeamOutput = lensMap['RedTeam'];
-  const steelmanOutput = lensMap['Steelman'];
+  // Red-Team / Steelman: JSON.stringify (in runVerifier) DROPS undefined-valued keys, so leaving
+  // these undefined makes the keys VANISH from the Verifier's input. The Verifier reads a vanished
+  // required key as "the assembler failed to populate a slot" and REFUSES to grade
+  // (VerifierInputContractViolation) — which crashed every non-adversarial playbook's live run
+  // (build-log 2026-05-29). Fix: for non-adversarial playbooks (no Red-Team/Steelman stage), inject
+  // an explicit present-but-N/A sentinel so the key EXISTS and the Verifier grades the available
+  // dimensions (scoring red_team 0/N-A) instead of refusing. Adversarial playbooks keep the real
+  // output — or, if genuinely absent, stay undefined so the fail-closed clause still catches a real
+  // assembler bug. Assembler-only fix: the anti-rubber-stamp PROMPT is untouched.
+  const nonAdversarial = !ADVERSARIAL_PLAYBOOKS.has(playbookId);
+  const redTeamOutput: unknown = lensMap['RedTeam'] ?? (nonAdversarial
+    ? 'N/A — non-adversarial playbook; no Red-Team stage ran. Score the red_team dimension 0 and note it not-applicable; do NOT treat this absence as a VerifierInputContractViolation.'
+    : undefined);
+  const steelmanOutput: unknown = lensMap['Steelman'] ?? (nonAdversarial
+    ? 'N/A — non-adversarial playbook; no Steelman stage ran. Not a contract violation.'
+    : undefined);
   // Everything that is not RedTeam/Steelman is a lens output.
   const lensOutputs = Object.entries(lensMap)
     .filter(([role]) => role !== 'RedTeam' && role !== 'Steelman')

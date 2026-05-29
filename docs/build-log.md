@@ -2070,30 +2070,37 @@ WF-1 batch-2 changes), both block the DONE gate. The catastrophic-risk core was 
 UNION that already exists in shared-types (verifier-output.ts:59) — threw `VerifierOutputContractViolation`
 and crashed the whole run. No memo written.
 
-**HYPOTHESIS FALSIFIED (DOCTRINE #9).** My first hypothesis — "the Verifier systematically refuses
-non-adversarial playbooks because the prompt requires Red-Team/Steelman (inputs 5,6) and stakeholder_1_1
-supplies neither" — was tested and DISPROVEN. A faithful mirror of runVerifier's exact userMessage (all 8
-fields, red-team/steelman ABSENT = non-adversarial) via the live-verifier-isolation harness returned a FULLY
-VALID verdict (all 5 keys, matches=true) in 183s. So absence of red-team/steelman is NOT a refusal trigger;
-non-adversarial playbooks CAN be graded live. The earlier `{error,missing}` I saw was a HARNESS ARTIFACT
-(the pre-fix harness sent `memo_draft` not `memo_markdown` + omitted run_playbook/run_question — the Verifier
-correctly flagged a genuinely malformed input). The advisor's insistence on reading the real `missing[]`
-before touching the P0 prompt prevented a wrong fix that would have relaxed the anti-rubber-stamp contract.
+**ROOT CAUSE — CONFIRMED by reading the real raw (after a falsify-then-reconfirm loop, DOCTRINE #9).** A
+REAL-input stakeholder live re-run (with the 9516ede `sample` diagnostic) captured the Verifier's actual
+reasoning: it noted `tool_call_audit_trail: []` and `position_metadata: []` are PRESENT-but-empty ("ran,
+nothing to report") while `red_team_output`/`steelman_output` are ABSENT AS KEYS, judged that as "the
+assembler failing to populate two required contract slots," and emitted
+`{"error":"VerifierInputContractViolation","missing":["Red-Team output","Steelman output"]}`. So the original
+hypothesis (red-team/steelman absence triggers the refusal) is CORRECT. The interim faithful-mirror run that
+returned a valid verdict was NONDETERMINISM: both runs omitted red-team/steelman; Opus resolved the
+absent-key ambiguity differently (graded once, refused once). NOT truncation, NOT a parser-fragment, NOT
+maxTurns. The advisor's discipline (read the real `missing[]`; don't conflate two different inputs) was what
+forced the re-run that produced this — and the union fix landed first means the failure is now a clear
+`VerifierRefusedError`, not a zod dump.
 
-ROOT CAUSE (corrected): the 1464-char failure was an INTERMITTENT bad/truncated Opus generation (a full
-verdict is several KB; 1464 is too short). maxTurns:1 is NOT the systematic culprit (the faithful mirror
-produced a full verdict under maxTurns:1). FIX, split by what the evidence supports (advisor):
+FIX, split by what the evidence supports (advisor):
 - **LANDED:** `runVerifier` now validates the `VerifierResponseSchema` UNION — a designed `{error,missing}`
   refusal throws a clear named `VerifierRefusedError` (fail-closed, no retry — a re-invoke sees the same
   input); a genuinely malformed verdict fails loud with extracted-keys + raw logged. verifier-runner 11/11
   replay-green; no prompt/grading change. This is the proximate-crash fix, correct regardless of root cause.
-- **PENDING the actual raw (do NOT fix blind):** whether to add retry-once (transient truncation),
-  schema-directed candidate selection (a full verdict was present but the parser grabbed a fragment), or
-  leak-path handling (the Verifier flagged auto-skeleton content woven into the memo as un-sourced info per
-  prompt lines 16-19) is UNDECIDED until the 1464-char raw is read via a REAL-input stakeholder live re-run.
-  "Transient" is NOT established — the faithful mirror and the real failure had DIFFERENT inputs (clean mock
-  COS vs real 5852-char COS + skeleton memo), so the mock passing only proves the input shape is gradeable.
-  DIAGNOSTICS (9516ede) make the next real failure self-classifying.
+- **LANDED (assembler-only — no prompt change, so the replay-canary problem is moot):** root cause is that
+  `JSON.stringify` (runVerifier) DROPS undefined-valued keys, so `red_team_output`/`steelman_output` VANISH
+  for non-adversarial playbooks (`lensMap['RedTeam']` is undefined) and the Verifier reads the vanished
+  required keys as "the assembler failed to populate a slot" → refuses. `buildPlaybookVerifierInput` now
+  injects an explicit present-but-N/A sentinel for non-adversarial playbooks (steering the Verifier to score
+  the red_team dimension 0/N-A, NOT omit it), while `ADVERSARIAL_PLAYBOOKS = {pre_mortem,
+  restructure_decision, strategic_option}` keep the real output — or, if genuinely absent, stay undefined so
+  fail-closed still catches a real assembler bug. tsc clean; playbook-verifier 9/9 + verifier-runner 11/11
+  replay-green; the anti-rubber-stamp PROMPT is untouched (so the replay-only canary is unaffected).
+- **ONE live smoke pending (then checkpoint, do NOT grind):** success criterion = the Verifier GRADES instead
+  of refusing AND the verdict VALIDATES (a DRAFT against an empty auto-skeleton is the correct outcome —
+  success ≠ CLEAN). Nondeterminism + ~8-min/run throttle: smoke once for direction; N-run live hardening +
+  the FORBID U2 check ride a later, less-throttled batch. DIAGNOSTICS (9516ede) self-classify any recurrence.
 
 **FINDING 2 (process gap):** `tests/unit/verifier-canary.spec.ts` is REPLAY-based (canned Ch.4 fixture) — a
 Verifier PROMPT change CANNOT move it (false green). Any Verifier-prompt edit (this fix AND the deferred
