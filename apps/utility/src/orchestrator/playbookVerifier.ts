@@ -83,9 +83,13 @@ export function buildPlaybookVerifierInput(
   try {
     const rows = db
       .prepare(
-        `SELECT id as toolCallId, role, tool_name as toolName,
-                input_json as inputJson, result_json as resultJson, ts
-         FROM tool_calls WHERE run_id = ? ORDER BY ts ASC`,
+        // Column names must match db/migrations/001_initial.sql tool_calls (call_id, agent_role,
+        // args_json, called_at) — mirrors the proven SELECT in verifier-assembler.ts:84-86. The
+        // prior `id, role, input_json, ts` aliases threw `no such column: id`, the catch swallowed
+        // it, and the live Verifier scored every playbook on an EMPTY tool-call audit trail (S2).
+        `SELECT call_id as toolCallId, agent_role as role, tool_name as toolName,
+                args_json as inputJson, result_json as resultJson, called_at as ts
+         FROM tool_calls WHERE run_id = ? ORDER BY called_at ASC`,
       )
       .all(runId) as Array<{
       toolCallId: number;

@@ -1855,3 +1855,51 @@ hoisted/absent at root).
   → copied to customer-dashboard/.secrets/ → fetch pulled 688 sheet rows / 668 accounts / real names + CSVs.
   No consent needed (token self-contained). Solved without Russell's browser intervention.
 - Handoff written (tasks/handoff.md). Phase 3 is the batched live-Electron pass (fix ABI rebuild tooling first).
+
+## 2026-05-29 — Phase 3 live pass: ABI gate dissolved, live engine partially proven, WF-1 mapped the real scope
+
+**ABI reality (handoff was stale):** the better-sqlite3 binary is ALREADY at Electron ABI 130 —
+proven loading in BOTH main and the utilityProcess (`UTILITY_DIAG modulesAbi:130`). The "binary is
+on Node ABI, fix tooling first" gate was wrong. The app boots; renderer is assembled (the
+CLAUDE.md "placeholder" note is also stale); the run.start→memo round-trip works; a run row
+persists in runtime.db and survives process death. Live inference works on the Max subscription
+(Agent SDK + CLAUDE_CODE_OAUTH_TOKEN). Rebuild tooling fixed anyway (b42fa2b) for the two-mode dance.
+
+**Two live-path bugs fixed (78b1557)** — both hidden by replay/CI, surfaced by the assembled-app
+live run: (1) `tsc` dropped `src/prompts/*.md` from `dist/` → real Verifier ENOENT; fixed with
+`scripts/copy-utility-assets.mjs`. (2) Opus Verifier wraps its JSON verdict in reasoning preamble
+→ bare `JSON.parse` threw; fixed with central `extractJsonObject` in `RealClaudeClient` + prompt
+hardening. Live Verifier confirmed producing a real rigor score (44/draft).
+
+**WF-1 (workflow: live-path readiness audit, 39 agents, adversarially verified) corrected the
+Phase-3 premise (DOCTRINE #9).** The live orchestration path is broken end-to-end and NO playbook
+does the full real-inference chain today:
+- **O1 (blocker):** `dispatch.ts` passes the raw `{structuredOutput,...}` envelope to
+  `onSubagentStop`, which `safeParse`s it against the output schema → throws on EVERY live
+  `dispatchLens`/`dispatchSynthesizer`. So real lens/synthesizer dispatch is dead; playbooks ride
+  inline/stubbed lens content.
+- **S2 (blocker, cross-cutting):** `playbookVerifier.ts:86` SELECTs non-existent columns
+  (`id, role, input_json, ts` vs real `call_id, agent_role, args_json, called_at`); throw swallowed
+  → the live Verifier scores EVERY playbook on an empty tool-call audit trail.
+- **S1 (blocker):** `insertToolCall` omits the `agent_role` NOT NULL column + writes orphan
+  `invocation_id`s → board_narrative's connector fetchers throw and discard real SF/NS/PBI data as
+  "degraded".
+- **U1 (blocker):** `pre_mortem` hardcodes its entire adversarial deliverable; real dispatch never
+  wired (my earlier "live" pre_mortem Steelman text was the stub — identical across two runs).
+- Plus U2–U6 / O2–O6: real lens output discarded across quick_read/open_qa/stakeholder_1_1; all 12
+  agent `systemPrompt`s are literal `'STUB — see Ch.4'` (prompts never loaded for the generic path);
+  cash_lever keeps a fabricated `rigorScore=85` on Verifier contract violation. 21 confirmed defects
+  total (4 blocker / 9 high / 4 medium / 4 low); full list + ranked plan in the WF-1 transcript.
+
+**Routing (confirmed, run-loop.ts:103):** all playbooks except cash_lever take the Ch.7 early-return
+path = inline playbook body + REAL Verifier (`scorePlaybookRigor`). cash_lever alone uses the Ch.5
+dispatch path. Therefore the two GATE-3 vehicles have DISJOINT blocker sets:
+- **board_narrative = S1 + S2** (schema only; proves real Verifier + audit trail + connector data +
+  memo + DRAFT/CLEAN; lens reasoning stays templated — proves the grading/data/persistence half).
+- **pre_mortem = O1 + U1 + S2** (proves real lens inference).
+
+**Plan organized into workflows** (`docs/WORKFLOW_PROGRAM.md`): WF-1 (done) → fix serially → GATE-3
+(board_narrative cheap slice first, then pre_mortem) → WF-2 connectors → WF-4 surfaces → WF-5
+autonomy → GATE-6 demos. Control model: workflow agents return findings/edit-in-worktree, never
+commit; main thread commits serially. Fixing forward now in WF-1's serial order: S2 → S1 →
+board_narrative gate → O1 → U1 → pre_mortem gate → remaining quality fixes.

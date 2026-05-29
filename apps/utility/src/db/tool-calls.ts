@@ -13,6 +13,7 @@ export interface ToolCallRow {
   call_id: string;
   run_id: string;
   invocation_id: string;
+  agent_role: string;
   tool_name: string;
   args_json: string;
   result_json: string;
@@ -37,7 +38,7 @@ export function queryToolCallBySourceId(
   sourceId: string,
 ): ToolCallRow | null {
   const row = db.prepare(`
-    SELECT call_id, run_id, invocation_id, tool_name,
+    SELECT call_id, run_id, invocation_id, agent_role, tool_name,
            args_json, result_json, source_id, called_at
     FROM tool_calls
     WHERE source_id = ?
@@ -57,14 +58,26 @@ export function insertToolCall(
   db: Database.Database,
   toolCall: Omit<ToolCallRow, 'called_at'> & { called_at?: number },
 ): void {
+  // tool_calls.invocation_id is NOT NULL REFERENCES agent_invocations(invocation_id) and
+  // tool_calls.agent_role is NOT NULL (001_initial.sql:50-51). Inline-assembly playbooks
+  // (board_narrative/gtm_realloc/cash_lever) call this helper directly without going through
+  // the dispatch path that seeds agent_invocations — so seed the parent row idempotently here,
+  // or the INSERT fails the NOT NULL (agent_role) then the FK (invocation_id). S1 fix: seed
+  // parent, never relax the FK — the claim->tool-call->invocation chain IS V1 outcome #2.
+  db.prepare(`
+    INSERT OR IGNORE INTO agent_invocations (invocation_id, run_id, agent_role, started_at)
+    VALUES (?, ?, ?, unixepoch())
+  `).run(toolCall.invocation_id, toolCall.run_id, toolCall.agent_role);
+
   db.prepare(`
     INSERT INTO tool_calls
-      (call_id, run_id, invocation_id, tool_name, args_json, result_json, source_id, called_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (call_id, run_id, invocation_id, agent_role, tool_name, args_json, result_json, source_id, called_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     toolCall.call_id,
     toolCall.run_id,
     toolCall.invocation_id,
+    toolCall.agent_role,
     toolCall.tool_name,
     toolCall.args_json,
     toolCall.result_json,
