@@ -2254,3 +2254,23 @@ genuine runs that simply never persisted their outputs (A) and whose UI surfaces
 IPC channels per ADR — unblocks 4 screens) → A1 (persist memo_path+rigor at index.ts:114) → B baseline emit (un-stick
 the meter) → A2 (Ch.7 state persistence) → then prove with ONE run (stub first, then live) that a memo file +
 memo_path + rigor + transitions land AND the app renders them in History.
+
+### Phase 1a DONE + PROVEN (2026-05-29, commit `80e9163`) — "screens first" per Russell
+
+Gaps 1 + 4 fixed and verified on the real Electron app (`electron-renderer-smoke`):
+- **Gap 1 (IPC half-wired):** `apps/main/src/ipc/handlers.ts` now registers the 5 read-only channels the
+  renderer invoked with no handler — `connector.netsuite.status` (credentials read), `scheduler.history.get`
+  (scheduled_jobs read), `tool-call:get` (tool_calls read), `scheduler.settings.get` + `notification.settings.get`
+  (return {} defaults; no settings table yet). PROVEN: ipc-bridge-roundtrip `scheduler.settings.get → {ok:true}`
+  (was "No handler registered"). main `tsc` clean; ABI untouched (tsc-only).
+- **Gap 4 (stuck token meter):** `useHomeData` seeded `windowPct=0` (honest 0% — cost_ledger empty) instead of
+  null, so the header shows "WINDOW 0%" + the rail shows "0% WINDOW USED" instead of permanent "USAGE LOADING…".
+  PROVEN: `usageStuckLoading=false` (was true). Live `cost.usage` push still overrides the seed.
+- DEFERRED (noted, not done): the `*.set` writes + an `app_settings` table; `connector.netsuite.connect` (OAuth,
+  utility-owned). The screens `.catch` the missing set channels, so they tolerate this.
+- HONEST CAVEAT: the meter will read 0% until a completed run calls `scheduler.recordUsage` (Gap B / the engine
+  not completing a run) — the un-stick is real; live token tracking still depends on the memo-pipeline work.
+
+NEXT (Phase 1b, the meaningful one): Gap 2 — make `index.ts:114` persist memo_path+rigor on ship; prove a real
+memo lands end-to-end (try `tests/e2e/run-path-proof.mjs`, stub mode if it avoids throttling) and find where the
+app renders a produced memo (MemoViewer).
