@@ -2200,3 +2200,51 @@ handle/path? is the Ch.7 early-return bypassing the transition-persisting machin
 seeded fixtures (POS-001)? — do this FIRST, it is unproven which it is, (b) make `index.ts` persist
 memo_path+rigor on ship, (c) wire one real source into `contextDocuments` so the memo has content, (d) surface
 runs in History + fix the stuck token meter, (e) record tool_calls+cost so the audit trail is real.
+
+### Root-cause TRACE (2026-05-29, code-verified — Russell greenlit "start the root-cause trace")
+
+It is NOT one bug. The pieces were unit-tested in isolation and never wired together end-to-end (the
+`wire-new-helpers` / `verify-live-endpoints` failure mode). Five distinct, code-cited gaps:
+
+**A. The run engine doesn't persist its outputs.**
+- `apps/utility/src/index.ts:114` on completion runs `UPDATE runs SET status=?, finished_at=unixepoch()` —
+  it NEVER writes `memo_path` or `rigor_score`, even though rigor IS computed at `run-loop.ts:163-178`.
+  So the runs row is hollow by construction. FIX: include memo_path + rigor_score in that UPDATE.
+- Ch.7 playbooks (everything except cash_lever) take the early-return at `run-loop.ts:103-205`. It pushes
+  state names to an IN-MEMORY `visitedStates` array (`run-loop.ts:188`) and returns; it never calls
+  `transition()`, the only thing that persists `current_state` + `state_transitions` (`state-machine.ts:367`).
+  → `current_state` stays at the bootstrap creation snapshot (`run-loop.ts:88-95`) with 0 transitions. THIS is
+  why status=shipped_clean coexists with current_state=bootstrap. NOT a freeze. FIX: persist on the early-return
+  path, or stop treating current_state as a progress signal (status is authoritative).
+- Memo file SafeWrite (`index.ts:115`) runs only `if (result.memoMarkdown && result.memoPath)`. Post-M1 the
+  Ch.7 early-return DOES return both when the playbook produced memoMarkdown — but the 23 historical rows left
+  no file (pre-M1 code and/or stub/replay/blocked, no memoMarkdown). Needs a fresh run to confirm current behavior.
+
+**B. The cost/token meter is never fed.** `cost_ledger` has ZERO writers anywhere. The meter is a PUSH model:
+the renderer waits for a `cost.usage` event (`apps/renderer/src/ipc/subscriptions.ts:130`, `Home.tsx:145`
+"USAGE LOADING…"). `cost.usage` is emitted ONLY by the scheduler after a run reconciles actual tokens
+(`scheduler.ts:152`); no run reaches that AND there is no startup baseline emit → meter hangs forever. FIX:
+emit a baseline cost.usage on init (full window) + reconcile per inference + write cost_ledger.
+
+**C. Renderer↔main IPC is half-wired (the big one).** `apps/main/src/ipc/handlers.ts` registers ONLY
+`runs:list`, `runs:get`, `db:query` (+ `ipc:message` relay to utility). The renderer invokes 8 OTHER channels:
+`scheduler.settings.get/set`, `scheduler.history.get`, `connector.netsuite.status/connect`,
+`notification.settings.get/set`, `tool-call:get` — **none handled in main** (grep confirms). Every one rejects
+"No handler registered" (the e2e report caught `scheduler.settings.get` doing exactly this). So the Scheduler,
+Notifications, Connectors, and tool-call UI surfaces are dead. FIX: register the missing handlers in main.
+
+**D. Connectors aren't provisioned in the app.** `credentials` table = 0 rows; the Connectors UI shows only
+NetSuite ("Not connected"). Salesforce (sf CLI) + PowerBI (separate customer-dashboard project) work only
+outside the app. FIX: the OAuth/onboarding flows need to actually store creds in the vault (and the UI must
+list all 6 connectors).
+
+**E. Grounding empty** (`buildLensBundle` contextDocuments:[]) — per prior handoff, not re-checked this trace.
+
+**The 23 runs are REAL `startRun` invocations** (`run-loop.ts:88-95` inserts on start), NOT a fixture seeder —
+hypothesis "seeded fixtures" REJECTED for runs (POS-001 is a separate positions seed, unrelated). They are
+genuine runs that simply never persisted their outputs (A) and whose UI surfaces never worked (C).
+
+**Recommended fix order (smallest blast radius first, each independently provable):** C (register the missing
+IPC handlers — unblocks 4 screens) → A1 (persist memo_path+rigor at index.ts:114) → B baseline emit (un-stick
+the meter) → A2 (Ch.7 state persistence) → then prove with ONE run (stub first, then live) that a memo file +
+memo_path + rigor + transitions land AND the app renders them in History.
