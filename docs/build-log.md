@@ -2220,7 +2220,9 @@ It is NOT one bug. The pieces were unit-tested in isolation and never wired toge
   Ch.7 early-return DOES return both when the playbook produced memoMarkdown — but the 23 historical rows left
   no file (pre-M1 code and/or stub/replay/blocked, no memoMarkdown). Needs a fresh run to confirm current behavior.
 
-**B. The cost/token meter is never fed.** `cost_ledger` has ZERO writers anywhere. The meter is a PUSH model:
+**B. The cost/token meter is never fed.** The intended writer is the scheduler's `recordUsage()`
+(`scheduler.ts:154`), but no completed run ever calls it, so `cost_ledger` stays empty (0 rows observed).
+The meter is a PUSH model:
 the renderer waits for a `cost.usage` event (`apps/renderer/src/ipc/subscriptions.ts:130`, `Home.tsx:145`
 "USAGE LOADING…"). `cost.usage` is emitted ONLY by the scheduler after a run reconciles actual tokens
 (`scheduler.ts:152`); no run reaches that AND there is no startup baseline emit → meter hangs forever. FIX:
@@ -2231,7 +2233,11 @@ emit a baseline cost.usage on init (full window) + reconcile per inference + wri
 `scheduler.settings.get/set`, `scheduler.history.get`, `connector.netsuite.status/connect`,
 `notification.settings.get/set`, `tool-call:get` — **none handled in main** (grep confirms). Every one rejects
 "No handler registered" (the e2e report caught `scheduler.settings.get` doing exactly this). So the Scheduler,
-Notifications, Connectors, and tool-call UI surfaces are dead. FIX: register the missing handlers in main.
+Notifications, Connectors, and tool-call UI surfaces are dead. The channels use `invoke()` (request-response),
+so the one-way `ipc:message` relay can't answer them. FIX (location UNVERIFIED — check `docs/architecture/
+runtime.md` + ADR-0002 + ADR-0010 first): wire the 8 channels per the intended pattern — some are main-side DB
+reads (`connector.netsuite.status` → credentials, `scheduler.history.get` → scheduled_jobs), others may need an
+invoke-relay to the utility (scheduler/connectors live there). Do NOT assume "implement in main."
 
 **D. Connectors aren't provisioned in the app.** `credentials` table = 0 rows; the Connectors UI shows only
 NetSuite ("Not connected"). Salesforce (sf CLI) + PowerBI (separate customer-dashboard project) work only
@@ -2241,10 +2247,10 @@ list all 6 connectors).
 **E. Grounding empty** (`buildLensBundle` contextDocuments:[]) — per prior handoff, not re-checked this trace.
 
 **The 23 runs are REAL `startRun` invocations** (`run-loop.ts:88-95` inserts on start), NOT a fixture seeder —
-hypothesis "seeded fixtures" REJECTED for runs (POS-001 is a separate positions seed, unrelated). They are
+no separate run-seeder was found (POS-001 is a separate positions seed, unrelated). They appear to be
 genuine runs that simply never persisted their outputs (A) and whose UI surfaces never worked (C).
 
 **Recommended fix order (smallest blast radius first, each independently provable):** C (register the missing
-IPC handlers — unblocks 4 screens) → A1 (persist memo_path+rigor at index.ts:114) → B baseline emit (un-stick
+IPC channels per ADR — unblocks 4 screens) → A1 (persist memo_path+rigor at index.ts:114) → B baseline emit (un-stick
 the meter) → A2 (Ch.7 state persistence) → then prove with ONE run (stub first, then live) that a memo file +
 memo_path + rigor + transitions land AND the app renders them in History.
