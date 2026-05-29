@@ -121,9 +121,10 @@ data-layer already proven; just the UI render). board_narrative needs authed con
 to produce a memo — it degraded to no-memo in this unauthed env (not a bug; environment).
 
 ## Resume recipe
-0. **ABI STATE: the tree is ABI-137 right now** (session 2 ran `npx vitest`). Before ANY app/e2e/live
-   proof run `pnpm rebuild:electron` first, or you'll eat a `firstWindow timeout` (app launches, no
-   window). `pnpm --filter @c-suite/utility build` does NOT flip it.
+0. **ABI STATE: left at ABI-130 (app-runnable, proof-ready)** — session 2 ran `npx vitest` (flips to
+   137) then `pnpm rebuild:electron` back to 130. RULE: `npx vitest` flips better-sqlite3 to Node-137;
+   run `pnpm rebuild:electron` before ANY app/e2e/live proof if you've run vitest since, or you'll eat a
+   `firstWindow timeout` (app launches, no window). `pnpm --filter @c-suite/utility build` does NOT flip it.
 1. `cd "/Users/russellteter/Claude Code Projects/c-suite"` (branch main). Read this file +
    `docs/WORKFLOW_PROGRAM.md` + `docs/build-log.md` 2026-05-29 entries (incl. the "O3 DONE" section) +
    `tasks/lessons.md`. **U1 + O3 are DONE** — resume-recipe step 3 below (U1) is historical.
