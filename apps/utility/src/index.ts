@@ -111,7 +111,14 @@ process.parentPort.once('message', (e) => {
           // status='in_progress') does not re-trigger a completed run on next startup.
           const runStatus = result.finalState.kind === 'failed' ? 'failed'
             : result.finalState.kind === 'shipped-draft' ? 'shipped_draft' : 'shipped_clean';
-          sharedDb.prepare(`UPDATE runs SET status = ?, finished_at = unixepoch() WHERE run_id = ?`).run(runStatus, runId);
+          // Persist memo_path + rigor_score so the run row is not hollow — runs:list, the
+          // History screen, and MemoViewer read these columns. result.memoPath is vault-relative;
+          // rigorScore lives on the terminal state (Ch.7 early-return and verifier.pass both set it).
+          // Either may be absent (failed / no-memo runs) → store null, same as the prior behaviour.
+          const finalRigor = result.rigorScore ?? (result.finalState as { rigorScore?: number | null }).rigorScore;
+          sharedDb.prepare(
+            `UPDATE runs SET status = ?, finished_at = unixepoch(), memo_path = ?, rigor_score = ? WHERE run_id = ?`
+          ).run(runStatus, result.memoPath ?? null, typeof finalRigor === 'number' ? finalRigor : null, runId);
           if (result.memoMarkdown && result.memoPath) {
             const absPath = join(getVaultPath(), result.memoPath);
             const writeResult = await safeWrite({

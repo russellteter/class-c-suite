@@ -47,6 +47,9 @@ export interface FinalRunState {
   memoMarkdown?: string;
   /** Vault-relative memo path the caller SafeWrites to (e.g. memos/2026-05-28-cash_lever-ab12cd34.md). */
   memoPath?: string;
+  /** Final rigor score for run-row persistence. Lives here because the terminal state may be
+   *  'handoff' (which carries no score) even though the Verifier scored the run upstream. */
+  rigorScore?: number | null;
 }
 
 /**
@@ -201,6 +204,7 @@ export async function startRun(
       agentRolesInvoked: Object.keys(playbookResult.lensOutputs),
       memoMarkdown: playbookResult.memoMarkdown,
       memoPath: earlyMemoPath,
+      rigorScore: playbookResult.rigorScore ?? null,
     };
   }
   // ── End Ch.7 early-return ────────────────────────────────────────────────────
@@ -387,7 +391,7 @@ export async function startRun(
   visitedStates.push(state.kind);
   agentRolesInvoked.push('Handoff');
 
-  return { finalState: state, visitedStates, agentRolesInvoked, memoMarkdown, memoPath: computedMemoPath };
+  return { finalState: state, visitedStates, agentRolesInvoked, memoMarkdown, memoPath: computedMemoPath, rigorScore: computedRigorScore };
 }
 
 // ── Ch.9 Handoff preview hook ─────────────────────────────────────────────────
