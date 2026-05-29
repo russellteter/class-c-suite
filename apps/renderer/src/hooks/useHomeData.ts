@@ -15,7 +15,11 @@ export function useHomeData(): HomeData {
   const [workstreams, setWorkstreams] = useState<WorkstreamSummary[]>([]);
   const [decisions, setDecisions] = useState<DecisionSummary[]>([]);
   const [writebackCount, setWritebackCount] = useState<number>(0);
-  const [windowPct, setWindowPct] = useState<number | null>(null);
+  // Seed to 0 (0% of the 5-hr window used) rather than null so the meter shows the real
+  // current usage immediately instead of sticking on "USAGE LOADING…". cost_ledger is empty
+  // until a completed run records token spend (separate gap), at which point the live
+  // cost.usage push below replaces this seed with the reconciled figure.
+  const [windowPct, setWindowPct] = useState<number | null>(0);
   const [todayUsd, setTodayUsd] = useState<number | null>(null);
 
   useEffect(() => {

@@ -63,6 +63,51 @@ export function registerIpcHandlers(
     return stmt.run(...(params as Parameters<typeof stmt.run>));
   });
 
+  // ── Ch.10 runtime-ship: read-only channels the renderer invokes (ADR-0002 §1).
+  // Previously unregistered → every call rejected "No handler registered" and the
+  // Connectors / Scheduler / Notifications / MemoViewer surfaces silently fell back to
+  // defaults. These are main-side DB reads (main owns the handle). connector.netsuite.connect
+  // (OAuth side-effect, utility-owned) and the *.set writes are wired in a later increment.
+
+  // NetSuite connection status — read the credentials vault row (no secret returned).
+  ipcMain.handle('connector.netsuite.status', (_event) => {
+    const row = db.prepare(
+      "SELECT service_id, expires_at FROM credentials WHERE service_id = 'netsuite'"
+    ).get() as { service_id: string; expires_at: number | null } | undefined;
+    return { connected: Boolean(row), expiresAt: row?.expires_at ?? null };
+  });
+
+  // Tool-call detail for the MemoViewer side panel.
+  ipcMain.handle('tool-call:get', (_event, arg: { call_id?: string } | string) => {
+    const callId = typeof arg === 'string' ? arg : arg?.call_id;
+    if (!callId) return null;
+    return db.prepare('SELECT * FROM tool_calls WHERE call_id = ?').get(callId) ?? null;
+  });
+
+  // Scheduler run history for a job — last N runs from scheduled_jobs.
+  ipcMain.handle('scheduler.history.get', (_event, arg: { jobId?: string; limit?: number }) => {
+    const jobId = arg?.jobId;
+    if (!jobId) return [];
+    const limit = Math.min(Math.max(arg?.limit ?? 10, 1), 50);
+    const rows = db.prepare(
+      `SELECT actually_ran_at, scheduled_for, status, duration_ms
+       FROM scheduled_jobs WHERE job_id = ? ORDER BY scheduled_for DESC LIMIT ?`
+    ).all(jobId, limit) as Array<{
+      actually_ran_at: number | null; scheduled_for: number; status: string; duration_ms: number | null;
+    }>;
+    return rows.map((r) => ({
+      runAt: new Date(r.actually_ran_at ?? r.scheduled_for).toISOString(),
+      status: r.status,
+      durationMs: r.duration_ms ?? undefined,
+    }));
+  });
+
+  // Settings reads — no settings table yet (Ch.10 follow-up). Return empty so the screens
+  // render their built-in defaults instead of rejecting. The *.set writes + a backing
+  // app_settings table are the next increment.
+  ipcMain.handle('scheduler.settings.get', (_event) => ({}));
+  ipcMain.handle('notification.settings.get', (_event) => ({}));
+
   // Internal log relay from renderer — outside typed union (ADR §8.3).
   ipcMain.on('ipc:message', (_event, raw) => {
     if (raw && typeof raw === 'object' && (raw as { kind?: string }).kind === '__internal.log') {
