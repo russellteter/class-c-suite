@@ -86,15 +86,23 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
   // 2. Parallel fan-out across all six lenses
   const lensOutputs: Record<string, unknown> = {};
 
+  // U3: use the captured dispatchLens return in LIVE; keep the canned stub in REPLAY/RECORD.
+  // dispatchLens already routes to the real client, unwraps .structuredOutput, validates against
+  // LensOutputSchema (summary is .min(1)), and FAILS LOUD via onSubagentStop on a parse miss (O1) —
+  // so the live summary is real or the run throws (DOCTRINE #1; cron has notifyOnFailure). Previously
+  // the real return was discarded and OVERWRITTEN with stubLensSummary, which the daily-morning-brief
+  // cron then persisted to the vault under a QUICK_READ stamp as if it were real analysis. No stub
+  // fallback in live — that would re-introduce the exact bug. dispatchLens still fires in both modes
+  // (its hooks + agent.complete side effects are relied on); only the persisted summary differs.
+  const isLive = (process.env.STUB_MODE ?? 'replay') === 'live';
+
   await Promise.all(
     LENSES.map(async (role) => {
       const bundle = buildLensBundle(role, runId, input.prompt, 'quick_read');
-      await dispatchLens(role, bundle, db, emit);
-      // Lens output — stub summary for Phase A; production reads from dispatchLens result
-      lensOutputs[role] = {
-        role,
-        summary: stubLensSummary(role, input.prompt),
-      };
+      const output = await dispatchLens(role, bundle, db, emit);
+      lensOutputs[role] = isLive
+        ? { role, summary: output.summary }
+        : { role, summary: stubLensSummary(role, input.prompt) };
     })
   );
 

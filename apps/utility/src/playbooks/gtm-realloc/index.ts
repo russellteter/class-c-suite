@@ -235,10 +235,10 @@ async function runCroLens(ctx: PlaybookContext) {
   return {
     role: 'CRO',
     pipelineHealth: pipelineData,
-    reallocReco: 'Shift 15% of marketing budget to top-of-funnel SDR capacity in the enterprise segment; pipeline velocity in mid-market has plateaued.',
+    reallocReco: 'Shift marketing budget toward top-of-funnel SDR capacity in the enterprise segment; direction supported by CRO lens — magnitude requires live pipeline data.',
     pipelineImpact: sfResult.degraded
       ? 'Pipeline data unavailable (Salesforce degraded) — projection requires live data.'
-      : 'Expected +$1.8M committed pipeline within 90 days; mid-market velocity improves with current team.',
+      : 'UNKNOWN (pipeline impact projection requires real Salesforce data — not computed from live rows)',
     _sfDegraded: sfResult.degraded,
   };
 }
@@ -257,11 +257,11 @@ async function runCfoLens(ctx: PlaybookContext, degraded: DegradedSource[]) {
     gtmCostBase,
     payrollLabel,
     roiByChannel: {
-      sales: 7.2,
-      marketing: 3.1,
-      customerSuccess: 11.4,
+      sales: 'UNKNOWN (requires calibration-source data — not available from current integrations)',
+      marketing: 'UNKNOWN (requires calibration-source data — not available from current integrations)',
+      customerSuccess: 'UNKNOWN (requires calibration-source data — not available from current integrations)',
     },
-    reallocReco: 'Reduce marketing headcount by 1 HC; reinvest into CS capacity — CS ROI is 3.7× higher.',
+    reallocReco: 'Reduce marketing headcount and reinvest into CS capacity — magnitude and relative ROI UNKNOWN (requires real ROI data from a calibration source).',
     degraded_sources: degraded,
     _nsDegraded: nsResult.degraded,
     _nsRows: nsResult.degraded ? null : nsResult.result,
@@ -273,9 +273,13 @@ async function runCmoLens(ctx: PlaybookContext) {
   log.info({ runId, message: 'gtm_realloc: CMO lens running' });
   return {
     role: 'CMO',
-    currentSpendMix: { digital: 0.55, events: 0.25, content: 0.20 },
-    attributedPipeline: 4_800_000,
-    reallocReco: 'Consolidate events budget into digital demand-gen; events attribution is <12% of marketing-sourced pipeline.',
+    currentSpendMix: {
+      digital: 'UNKNOWN (requires marketing analytics source — not available from current integrations)',
+      events: 'UNKNOWN (requires marketing analytics source — not available from current integrations)',
+      content: 'UNKNOWN (requires marketing analytics source — not available from current integrations)',
+    },
+    attributedPipeline: 'UNKNOWN (requires marketing attribution data — not available from current integrations)',
+    reallocReco: 'Consolidate events budget into digital demand-gen; events attribution share UNKNOWN (requires real marketing attribution data).',
   };
 }
 
@@ -303,7 +307,7 @@ async function runCpoLens(ctx: PlaybookContext) {
     // dormantCount: accounts with zero minutes_30d (same as atRiskCount — explicit label for memo clarity)
     dormantCount: pbiMetrics?.dormantCount ?? 'UNKNOWN (powerbi degraded)',
     expansionSignal: 'Accounts in top-usage quartile expand at higher rate — requires real usage data from aws_product_usage (STUBBED).',
-    reallocReco: 'Add 0.5 FTE PLG motion in CS targeting dormant accounts (zero usage last 30d) for expansion plays; product-led expansion signals require real usage data (currently STUBBED).',
+    reallocReco: 'Add a PLG motion in CS targeting dormant accounts (zero usage last 30d) for expansion plays; sizing and product-led expansion signals require real usage data (currently STUBBED).',
     _pbiDegraded: pbiResult.degraded,
   };
 }
@@ -313,7 +317,7 @@ async function runCosLens(ctx: PlaybookContext) {
   log.info({ runId, message: 'gtm_realloc: COS lens running' });
   return {
     role: 'COS',
-    executionRisk: 'medium',
+    executionRisk: 'not independently assessed — qualitative concern is parallel-move execution drag (see sequencing); a severity rating requires real workstream + capacity data',
     workstreamsAffected: ['GTM-Capacity', 'CS-Expansion', 'Marketing-Demand-Gen'],
     reallocReco: 'Sequence: (1) CS expansion hire in M1, (2) marketing consolidation in M2, (3) SDR add in M3. Parallel moves risk execution drag.',
   };
@@ -409,7 +413,7 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     `## Current GTM Cost vs ROI`,
     ``,
     `- **Total GTM payroll (annualized):** ${payrollLabel}`,
-    `- **ROI by function:** Sales 7.2× | Marketing 3.1× | Customer Success 11.4× _(calibration-sourced)_`,
+    `- **ROI by function:** UNKNOWN — requires calibration-source data (not available from current integrations)`,
     `- **NRR:** UNKNOWN (not available from PowerBI — financial metric, source: NetSuite/Salesforce, STUBBED)`,
     `- **Gross churn:** UNKNOWN (not available from PowerBI — financial metric, STUBBED)`,
     `- **Committed pipeline:** ${pipelineLabel}`,
@@ -417,22 +421,22 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     ``,
     `## Recommended Reallocation`,
     ``,
-    `1. **CS expansion (+0.5 FTE PLG motion, M1):** Target at-risk accounts. CS ROI is 3.7× marketing ROI. [^pbi]`,
-    `2. **Marketing consolidation (M2):** Eliminate events budget (12% pipeline attribution); redeploy into digital demand-gen. [^cmo]`,
-    `3. **SDR capacity add (+1 HC enterprise, M3):** Enterprise pipeline velocity is the CRO's primary constraint. [^cro]`,
+    `1. **CS expansion (PLG motion, M1):** Target at-risk accounts (dormant: zero usage last 30d). CS-vs-marketing ROI UNKNOWN (requires real ROI data). [^pbi]`,
+    `2. **Marketing consolidation (M2):** Consolidate events budget into digital demand-gen; events attribution share UNKNOWN (requires real marketing attribution data). [^cmo]`,
+    `3. **SDR capacity add (enterprise, M3):** Enterprise pipeline velocity is the CRO's primary constraint; headcount sizing requires live pipeline data. [^cro]`,
     ``,
     `## Pipeline Impact Projection`,
     ``,
     `- **90-day committed pipeline delta:** ${sfDegraded ? 'UNKNOWN (Salesforce degraded)' : 'requires live pipeline data from Salesforce [^cro]'}`,
     `- **NRR target trajectory:** UNKNOWN — requires financial data from NetSuite/Salesforce (not PowerBI)`,
-    `- **Marketing-attributed pipeline:** Flat near-term; improves in H2 as digital mix matures`,
+    `- **Marketing-attributed pipeline:** UNKNOWN — requires real marketing attribution data (not available from current integrations)`,
     ``,
     `## Risks`,
     ``,
-    `- **Execution drag (medium):** Parallel moves risk overextending COS bandwidth. Mitigation: COS sequencing per above.`,
-    `- **Marketing attribution drop (low):** Events consolidation may temporarily reduce pipeline; digital ramp takes 60–90 days.`,
-    `- **CS capacity stretch (low):** PLG motion adds 0.5 FTE equivalent scope to existing CS; monitor utilization.`,
-    `- **Data gap (medium):** Active-account % and NRR unavailable from current integrations — reallocation decision made with incomplete signal.`,
+    `- **Execution drag:** Parallel moves risk overextending COS bandwidth (severity not assessed — no real workstream data). Mitigation: COS sequencing per above.`,
+    `- **Marketing attribution drop:** Events consolidation may temporarily reduce pipeline; ramp timeline UNKNOWN (no source for this projection).`,
+    `- **CS capacity stretch:** PLG motion adds scope to existing CS; monitor utilization.`,
+    `- **Data gap:** Active-account % and NRR unavailable from current integrations — reallocation decision made with incomplete signal.`,
     ``,
     `## Workstream-Update Proposals`,
     ``,

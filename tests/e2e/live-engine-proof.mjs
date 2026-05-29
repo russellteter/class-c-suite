@@ -109,6 +109,15 @@ try {
     const content = readFileSync(memoFile, 'utf8');
     const shortId = (base.match(/-([0-9a-f]{8})\.(draft\.)?md$/) || [])[1];
     if (!runId && shortId) runId = shortId;
+    // Preserve the memo before the throwaway vault is rm'd in finally, so the orchestrator can run
+    // string-absence checks on the real live output (the only DONE gate for the WF-1 honesty fixes).
+    const memoCopy = `/tmp/live-memo-${PB_KEY}.md`;
+    writeFileSync(memoCopy, content);
+    console.log(`[live] memo preserved → ${memoCopy}`);
+    // FORBID: pipe-delimited substrings that MUST NOT appear in a live memo (stub/fabrication leak).
+    // Unset by default → no behavior change for board_narrative / pre_mortem.
+    const forbid = (process.env.FORBID || '').split('|').map((s) => s.trim()).filter(Boolean);
+    const forbidHits = forbid.filter((f) => content.includes(f));
     console.log(`[live] MEMO: ${base} | stamp: ${isDraft ? 'DRAFT (below threshold)' : 'CLEAN'} | length: ${content.length}`);
 
     // S1+S2 PROOF: the tool-call audit trail the Verifier scored on, from the REAL runtime.db.
@@ -122,7 +131,8 @@ try {
     const rigorLine = content.split('\n').find((l) => /rigor|score/i.test(l));
     if (rigorLine) console.log(`[live] memo rigor line: ${rigorLine.trim().slice(0, 160)}`);
     console.log('[live] memo head:\n' + content.split('\n').slice(0, 16).map((l) => '   ' + l).join('\n'));
-    exitCode = content.length > 0 ? 0 : 1;
+    if (forbidHits.length) console.log(`[live] FORBID HIT — stub/fabrication leaked into the live memo: ${JSON.stringify(forbidHits)}`);
+    exitCode = content.length > 0 && forbidHits.length === 0 ? 0 : 1;
   } else {
     console.log('[live] NO MEMO within 6min — see util log');
   }

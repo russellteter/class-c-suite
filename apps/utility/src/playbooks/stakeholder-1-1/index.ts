@@ -19,6 +19,8 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, StubbedSource } from '@c-suite/shared-types/playbook';
+import { z } from 'zod';
+import { LensOutputSchema, type LensOutput } from '@c-suite/shared-types/lens-output';
 
 // B47 Phase 2: rigorScore now comes from the real Verifier (run-loop / playbookVerifier).
 export const STUBBED_SOURCES: readonly StubbedSource[] = [];
@@ -33,6 +35,20 @@ const log = createLogger();
 
 export const LENSES = ['COS'] as const;
 const RIGOR_THRESHOLD = 70;
+
+// ── U2: real (billed) COS lens output is now WOVEN into the memo + handed to the Verifier ──────
+// Before U2 this playbook dispatched the real COS lens then discarded its return, shipping a memo of
+// five static italic placeholders and a synthetic lensOutputs.COS — so the run-loop Verifier graded a
+// fabricated lens under a CLEAN stamp (DOCTRINE #1). dispatchLens already returns an UNWRAPPED, schema-
+// validated LensOutput (dispatch.ts:117-118, the O1 fix); in LIVE we re-validate belt-and-suspenders
+// and FAIL LOUD on a parse miss — never swallow into a placeholder fallback.
+class StakeholderLensOutputContractViolation extends Error {
+  readonly code = 'STAKEHOLDER_LENS_OUTPUT_CONTRACT_VIOLATION' as const;
+  constructor(public readonly zodError: z.ZodError) {
+    super(`stakeholder_1_1 COS lens returned malformed output: ${zodError.message}`);
+    this.name = 'StakeholderLensOutputContractViolation';
+  }
+}
 
 // ── Stakeholder file helpers ──────────────────────────────────────────────────
 
@@ -162,9 +178,19 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     contextDocuments: [{ id: `stakeholder-${slug}`, title: `Stakeholder: ${targetName}`, content: stakeholderContent }],
   };
 
-  await dispatchLens('COS', augmentedBundle, db, emit);
+  // U2: capture the COS lens return. dispatchLens fires UNCONDITIONALLY (the suite asserts it runs
+  // exactly once); we keep its result for the live weave. In replay the test mock resolves undefined,
+  // so the replay branch below must never dereference cosOutput.
+  const cosOutput = await dispatchLens('COS', augmentedBundle, db, emit);
 
-  // 4. Assemble output per ADR-0009 §6 shape
+  // LIVE: weave the REAL COS lens output into the memo + Verifier hand-off, validated + fail-loud.
+  // REPLAY/RECORD: byte-identical pre-U2 placeholder body + synthetic lensOutputs.COS (keeps the
+  // existing unit suite, which mocks dispatchLens→undefined, green by construction).
+  const isLive = (process.env.STUB_MODE ?? 'replay') === 'live';
+
+  // 4. Assemble output per ADR-0009 §6 shape.
+  // Header/footer are SHARED across both branches so a live run against a skeleton or stale file never
+  // loses its banners; only the memo body differs by mode.
   const staleNote = staleDayCount !== null && staleDayCount > 30
     ? `\n> **Stakeholder file last refreshed ${staleDayCount} days ago.** Data may be stale.\n`
     : '';
@@ -177,30 +203,77 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     ? `\n> **Degraded sources:** ${prereq.flags.join(', ')}. Some context may be incomplete.\n`
     : '';
 
-  const memoMarkdown = [
+  const header = [
     `# Stakeholder 1:1 Prep: ${targetName} (${targetRole})`,
     skeletonNote,
     staleNote,
     prereqNote,
     '',
-    '## Hot Buttons',
-    '_COS lens analysis of key sensitivities and priorities._',
-    '',
-    '## What NOT to Bring Up',
-    '_Topics flagged as friction-causing or out of scope for this session._',
-    '',
-    '## Open Commitments',
-    '_Outstanding commitments to or from this stakeholder._',
-    '',
-    '## Talking Points',
-    '_Suggested points with source citations._',
-    '',
-    '## Strategic Questions',
-    '_2-3 questions to ask in the 1:1._',
+  ];
+  const footer = [
     '',
     '---',
     `_Run ID: ${runId} | Playbook: stakeholder_1_1 | Lens: COS_`,
-  ].join('\n');
+  ];
+
+  let lensOutputs: PlaybookResult['lensOutputs'];
+  let body: string[];
+
+  if (isLive) {
+    // Validate the real lens output and FAIL LOUD on a parse miss — never ship a fabricated placeholder
+    // body under a downstream CLEAN stamp (DOCTRINE #1). dispatchLens already throws on a schema miss
+    // (O1); this is belt-and-suspenders, never wrapped in a swallowing try/catch.
+    const parsed = LensOutputSchema.safeParse(cosOutput);
+    if (!parsed.success) throw new StakeholderLensOutputContractViolation(parsed.error);
+    const cos: LensOutput = parsed.data;
+
+    // The COS LensOutput is generic (summary / positions / citations) — it carries no field tagging a
+    // position as a "hot button" or a "commitment". Render honest headers from the real fields rather
+    // than force-mapping into sections the lens never populated.
+    const positionLines = cos.positions.length > 0
+      ? cos.positions.map((p) => {
+          const citeIds = p.citations.map((c) => `[^${c.id}]`).join(' ');
+          return `- ${p.claim}${citeIds ? ` ${citeIds}` : ''}`;
+        })
+      : ['_No positions returned by the COS lens._'];
+
+    const sourceLines = cos.citations.length > 0
+      ? cos.citations.map((c) => `- [^${c.id}]: ${c.text} (${c.source})`)
+      : ['_No sources cited by the COS lens._'];
+
+    body = [
+      '## COS Summary',
+      cos.summary,
+      '',
+      '## Key Positions',
+      ...positionLines,
+      '',
+      '## Sources',
+      ...sourceLines,
+    ];
+    lensOutputs = { COS: cos };
+  } else {
+    // Pre-U2 placeholder body — preserved verbatim for replay/record so existing tests stay green.
+    body = [
+      '## Hot Buttons',
+      '_COS lens analysis of key sensitivities and priorities._',
+      '',
+      '## What NOT to Bring Up',
+      '_Topics flagged as friction-causing or out of scope for this session._',
+      '',
+      '## Open Commitments',
+      '_Outstanding commitments to or from this stakeholder._',
+      '',
+      '## Talking Points',
+      '_Suggested points with source citations._',
+      '',
+      '## Strategic Questions',
+      '_2-3 questions to ask in the 1:1._',
+    ];
+    lensOutputs = { COS: { role: 'COS', stakeholderSlug: slug, stakeholderContent } };
+  }
+
+  const memoMarkdown = [...header, ...body, ...footer].join('\n');
 
   // B47 Phase 2: rigorScore + CLEAN/DRAFT assigned by the real Verifier in run-loop
   // (orchestrator/playbookVerifier.ts). The playbook no longer fabricates a score;
@@ -208,7 +281,7 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
   return {
     memoMarkdown,
     degradedSources: prereq.kind === 'degrade' ? prereq.flags : [],
-    lensOutputs: { COS: { role: 'COS', stakeholderSlug: slug, stakeholderContent } },
+    lensOutputs,
     stamps,
     rigorScore: null,
     rigorThreshold: RIGOR_THRESHOLD,

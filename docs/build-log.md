@@ -2014,3 +2014,44 @@ suite: orchestrator + agents 159/159 green. DEFERRED dependent patches (now unbl
 real Synthesizer merge), U3 (quick_read stop overwriting real lens output — confirmed live: its memo
 still shows templated stubs), U2 (stakeholder COS), U5 (gtm honest-UNKNOWN). Then WF-2 → WF-4 → WF-5 →
 GATE-6.
+
+### WF-1 remainder batch 2 — four Ch.7 playbooks made honest under live (O2+U4 / U3 / U2 / U5)
+
+Applied the deferred WF-1 remainder patches (the ones O3 unblocked). Each playbook discarded real lens
+output and/or shipped fabricated content to a CLEAN/QUICK_READ stamp on the live path; now each is honest.
+typecheck clean (apps/utility tsc rc=0); the 4 touched specs are replay-green by construction (open-qa 12,
+stakeholder 14, quick-read 15, gtm 36 = 77/77; gtm re-run 36/36 after the severity-badge scrub). Control
+model held: U5 authored+graded by workflows (writer≠grader); main thread applied + commits serially.
+
+- **O2+U4 (open-qa/index.ts):** makeOpusClient → modelClientFromEnv (live = RealClaudeClient, not a silent
+  fixture fallback). Both ad-hoc and skipDecompose paths, under live, now capture the real dispatchLens
+  output and run the real Synthesizer (dispatchSynthesizer), zod-validate non-empty memoMarkdown, and throw
+  OpenQaOutputContractViolation on a miss — never the prior "${role} analysis complete" template /
+  empty-section memo under DECOMPOSED_AD_HOC→CLEAN. replay/record byte-identical.
+- **U3 (quick-read/index.ts):** stop OVERWRITING the real dispatchLens return with stubLensSummary under
+  live — the daily-morning-brief cron was persisting canned summaries to the vault as real analysis. Live
+  uses output.summary (dispatchLens fail-loud via onSubagentStop, O1); replay keeps the stub.
+- **U2 (stakeholder-1-1/index.ts):** capture the previously-discarded COS dispatchLens return; under live,
+  zod-validate (StakeholderLensOutputContractViolation, fail-loud) and weave the real summary/positions/
+  citations into the memo + lensOutputs.COS (which run-loop's playbookVerifier feeds the Verifier). replay
+  keeps the placeholder body + synthetic lensOutputs.COS.
+- **U5 (gtm-realloc/index.ts):** honest-UNKNOWN scrub (NOT the rejected STUBBED_SOURCES patch). gtm calls
+  NO model — its analytical content was hardcoded. Confirmed via vault/calibration-library/registry grep:
+  the ROI ratios (7.2/3.1/11.4), "_(calibration-sourced)_", attributedPipeline 4.8M, +$1.8M, 3.7×, 15%,
+  <12%, spend-mix fractions, FTE/HC counts, and risk-severity badges (low/medium) had NO source — all
+  scrubbed to UNKNOWN-with-reason; qualitative strategic direction kept. Authored by a Sonnet workflow agent
+  → adversarial grader caught 4 missed FTE/HC magnitudes (fix-all-consumers); a 2nd independent grader
+  caught the risk-severity badges; both rounds applied. The honest gtm memo is now deliberately sparse and
+  will score DRAFT under the real Verifier — correct (gtm has no real grounding).
+  **FOLLOW-UP:** gtm_realloc is the LEAST-wired playbook (pure literals, no dispatchLens/Synthesizer). The
+  real fix is to wire it to real lenses like open_qa — tracked as a post-WF-1 item.
+- **Harness (tests/e2e/live-engine-proof.mjs):** additive — preserve the live memo to /tmp/live-memo-<key>.md
+  before the throwaway-vault cleanup; pipe-delimited FORBID env gate fails the proof if stub/fabrication text
+  leaks into a live memo. Unset by default (board_narrative/pre_mortem unchanged).
+
+**LIVE-VERIFY PENDING (the DONE gate — replay-green is only the COMMIT gate, per advisor):** each needs a
+STUB_MODE=live run with a FORBID string-absence check on the real memo. Order cheapest-first: quick_read
+(~110s parallel) → stakeholder_1_1 (single COS) → open_qa (real Synthesizer — re-measure latency clean
+first; O3 saw 628s, suspected throttling). Verifier-prompt "Chasen" strip DEFERRED to its own session (P0
+trust anchor; entity list is instructional — stripping risks weakening detection; no observed live failure
+attributable to it — run the planted-claim canary live before+after when done).

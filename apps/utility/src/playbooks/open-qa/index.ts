@@ -26,10 +26,11 @@ export const STUBBED_SOURCES: readonly StubbedSource[] = [];
 import type { LensRole } from '@c-suite/shared-types/agent-definition';
 import { decompose } from '../lib/decomposer.js';
 import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
-import { dispatchLens } from '../../orchestrator/dispatch.js';
+import { dispatchLens, dispatchSynthesizer } from '../../orchestrator/dispatch.js';
 import { buildLensBundle } from '../../orchestrator/run-loop.js';
-import { StubClaudeClient } from '@c-suite/stub-harness/stub';
+import { modelClientFromEnv } from '../../agents/modelClient.js';
 import { createLogger } from '../../logger.js';
+import { z } from 'zod';
 
 const log = createLogger();
 
@@ -45,16 +46,36 @@ export interface OpenQaRedirect {
   playbookId: PlaybookId;
 }
 
-// ── Opus-class stub client ────────────────────────────────────────────────────
-// Production: real Opus client from Ch.4 wiring. Tests: StubClaudeClient (STUB_MODE=replay).
+// ── Decomposer model client (O2 fix) ────────────────────────────────────────────
+// modelClientFromEnv() is the single factory every live path uses (ADR-0017): it returns
+// RealClaudeClient under STUB_MODE=live and StubClaudeClient (replay/record) otherwise. The
+// prior makeOpusClient() hard-returned StubClaudeClient for ALL modes including live, so under
+// live the decomposer silently fell back to fixture lenses with no degraded signal. Both clients
+// satisfy decompose()'s ClaudeClient duck-type (Pick<…,'invoke'>). Tests mock decompose() entirely,
+// so the returned client is never exercised in replay — existing behavior preserved.
 
-function makeOpusClient(): InstanceType<typeof StubClaudeClient> {
-  const stubMode = (process.env.STUB_MODE ?? 'replay') as 'replay' | 'record' | 'live';
+function makeOpusClient(): ReturnType<typeof modelClientFromEnv> {
   const fixtureDir =
     process.env.DECOMPOSER_FIXTURE_DIR ??
     `${process.cwd()}/tests/fixtures/decomposer`;
-  return new StubClaudeClient(stubMode, fixtureDir);
+  return modelClientFromEnv(fixtureDir);
 }
+
+// ── U4: live output-contract violation ───────────────────────────────────────────
+// Thrown when STUB_MODE=live and the real Synthesizer returns an empty/missing memo. NEVER caught
+// into a placeholder fallback — shipping template strings under the DECOMPOSED_AD_HOC → CLEAN stamp
+// the run-loop Verifier applies would be fabricated content presented as real (DOCTRINE #1).
+class OpenQaOutputContractViolation extends Error {
+  readonly code = 'OPEN_QA_OUTPUT_CONTRACT_VIOLATION' as const;
+  constructor(detail: string) {
+    super(`open_qa Synthesizer returned malformed output: ${detail}`);
+    this.name = 'OpenQaOutputContractViolation';
+  }
+}
+
+const SynthesizerMemoSchema = z.object({
+  memoMarkdown: z.string().min(1, 'memoMarkdown must be non-empty'),
+});
 
 // ── runPlaybook ───────────────────────────────────────────────────────────────
 
@@ -104,22 +125,41 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     const prereq = evaluatePrereqs('open_qa', deps);
     const degradedSources = prereq.kind === 'degrade' ? prereq.flags : [];
 
+    // U4: under STUB_MODE=live the real dispatchLens LensOutputs feed the real Synthesizer, which
+    // authors the memo — the prior code DISCARDED dispatchLens output and shipped template
+    // ("${role} analysis complete") sections under DECOMPOSED_AD_HOC (→ CLEAN after the run-loop
+    // Verifier). REPLAY/RECORD keep the original literal fan-out + buildMemo so existing tests
+    // (which mock dispatchLens → undefined and do NOT export dispatchSynthesizer) stay green and
+    // dispatchSynthesizer is never referenced at runtime.
+    const isLive = (process.env.STUB_MODE ?? 'replay') === 'live';
+
     // Fan-out across decomposed lens set
     const lensOutputs: Record<string, unknown> = {};
     await Promise.all(
       lenses.map(async (role) => {
         const bundle = buildLensBundle(role as LensRole, runId, input.prompt, 'open_qa');
-        await dispatchLens(role as LensRole, bundle, db, emit);
-        lensOutputs[role] = { role, summary: `${role} lens analysis of: ${input.prompt.slice(0, 60)}` };
+        const lensOutput = await dispatchLens(role as LensRole, bundle, db, emit);
+        lensOutputs[role] = isLive
+          ? lensOutput
+          : { role, summary: `${role} lens analysis of: ${input.prompt.slice(0, 60)}` };
       })
     );
 
-    // Stub synthesizer output
-    const sections = lenses.map((role) =>
-      [`## ${role} Lens`, '', `${role} analysis complete. (Production: Synthesizer integrates lens outputs here.)`, ''].join('\n')
-    );
-
-    const memoMarkdown = buildMemo(input.prompt, sections, outputShape, runId, lenses);
+    let memoMarkdown: string;
+    if (isLive) {
+      // Real Synthesizer integrates the real lens outputs into the memo. Fail loud on an empty
+      // memo — never fall back to fabricated template sections under a clean stamp (DOCTRINE #1).
+      const synth = await dispatchSynthesizer(runId, input.prompt, 'open_qa', lensOutputs, db, emit);
+      const parsed = SynthesizerMemoSchema.safeParse(synth);
+      if (!parsed.success) throw new OpenQaOutputContractViolation(parsed.error.message);
+      memoMarkdown = parsed.data.memoMarkdown;
+    } else {
+      // Stub synthesizer output (replay/record — byte-identical to pre-U4 behavior).
+      const sections = lenses.map((role) =>
+        [`## ${role} Lens`, '', `${role} analysis complete. (Production: Synthesizer integrates lens outputs here.)`, ''].join('\n')
+      );
+      memoMarkdown = buildMemo(input.prompt, sections, outputShape, runId, lenses);
+    }
 
     // B47 Phase 2: rigorScore + rigorRawScore assigned by the real Verifier in
     // run-loop (orchestrator/playbookVerifier.ts), which applies the open_qa cap of
@@ -139,18 +179,32 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
   // skipDecompose=true path: run as standard pipeline with all lenses
   // (This is the redirected call path — pre_mortem / stakeholder_1_1 / etc. handle themselves)
   const allLenses: LensRole[] = ['CEO', 'CFO', 'CRO', 'CMO', 'CPO', 'COS'];
+  const skipIsLive = (process.env.STUB_MODE ?? 'replay') === 'live';
   const lensOutputs: Record<string, unknown> = {};
 
   await Promise.all(
     allLenses.map(async (role) => {
       const bundle = buildLensBundle(role, runId, input.prompt, 'open_qa');
-      await dispatchLens(role, bundle, db, emit);
-      lensOutputs[role] = { role, summary: `${role}: ${input.prompt.slice(0, 60)}` };
+      const lensOutput = await dispatchLens(role, bundle, db, emit);
+      lensOutputs[role] = skipIsLive
+        ? lensOutput
+        : { role, summary: `${role}: ${input.prompt.slice(0, 60)}` };
     })
   );
 
+  // U4: live → real Synthesizer over real lens outputs (fail loud on empty memo). The prior code
+  // shipped buildMemo(…, [], …) — an empty-section memo with NO lens content — under DECOMPOSED_AD_HOC.
+  // replay/record keep that placeholder memo so existing tests stay byte-identical.
   // B47 Phase 2: rigorScore + rigorRawScore assigned by the real Verifier in run-loop.
-  const memoMarkdown = buildMemo(input.prompt, [], 'memo', runId, allLenses);
+  let memoMarkdown: string;
+  if (skipIsLive) {
+    const synth = await dispatchSynthesizer(runId, input.prompt, 'open_qa', lensOutputs, db, emit);
+    const parsed = SynthesizerMemoSchema.safeParse(synth);
+    if (!parsed.success) throw new OpenQaOutputContractViolation(parsed.error.message);
+    memoMarkdown = parsed.data.memoMarkdown;
+  } else {
+    memoMarkdown = buildMemo(input.prompt, [], 'memo', runId, allLenses);
+  }
 
   return {
     memoMarkdown,
