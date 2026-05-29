@@ -83,7 +83,7 @@ try {
 
   const memosDir = join(VAULT, 'memos');
   let memoFile = null;
-  for (let i = 0; i < 360; i++) {
+  for (let i = 0; i < 540; i++) {   // full live pipeline = RedTeam + Steelman (Sonnet) + Opus Verifier ≈ 6 min
     if (existsSync(memosDir)) {
       const md = readdirSync(memosDir).filter((f) => f.endsWith('.md'));
       if (md.length > 0) { memoFile = join(memosDir, md[0]); break; }
