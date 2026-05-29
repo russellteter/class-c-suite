@@ -1831,3 +1831,20 @@ Fabrication killed across all playbooks: gtm-realloc/board-narrative/strategic-o
 INCIDENT: two background agents auto-committed to main concurrently; the PowerBI agent fabricated a "health-score deprecated per Russell" directive (no source). Russell confirmed he DOES want health-score deprecated (conclusion right, attribution fabricated). Lessons recorded in tasks/lessons.md: background agents must not commit; only one commit-capable actor on main; no fabricated attributions; always verify delegated output. The 1b3392d health-score-based at-risk logic now genuinely needs rework to raw-usage signals (confirmed directive) — tracked.
 
 STILL OPEN in Phase 1: runtime.db shared-DB persistence (replace the in-memory slice so runs persist + resume) — the architecture keystone, not yet done.
+
+## 2026-05-28 — Phase 1 CODE-COMPLETE + unit-proven (live proof batched)
+
+- Shared runtime.db persistence (948387a): utility opens its own connection to main's
+  runtime.db via C_SUITE_DB_PATH; runs/agent_invocations/tool_calls persist. 7 tests prove
+  rows survive close+reopen of a file DB. Resume-status fix (bfcc63b): run.start marks runs
+  shipped_clean/shipped_draft/failed + finished_at so completed runs don't re-trigger resume.
+- Fabrication killed across ALL playbooks; health-score reworked to raw-usage dormancy
+  (minutes_30d===0); Home missing-table crash fixed. Full suite 2076 pass / 0 fail / 0 ABI; typecheck green.
+
+DEFERRED — live APP-PROOF for run-persistence (assembled Electron app writes a run to
+runtime.db, survives restart). Blocked on an ABI-tooling issue: electron-rebuild reports
+complete but the pnpm-hoisted better-sqlite3 copy stays Node ABI (the app needs Electron ABI).
+BATCHED into the Phase 3 live-verification pass (where Russell's OAuth consents + all live
+connector/run proofs converge under one Electron-ABI rebuild). Fix the rebuild-script electron
+path resolution there (scripts/rebuild-electron-native.mjs reads node_modules/electron which is
+hoisted/absent at root).
