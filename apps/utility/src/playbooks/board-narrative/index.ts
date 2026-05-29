@@ -21,19 +21,174 @@
 //   - Position-update proposals (positions reframed for board)
 //   - Prediction proposals (anticipated board reactions)
 // Stamps: CLEAN | DRAFT | DEGRADED.
+//
+// B47 fix: removed hardcoded financial constants ($14.2M cash, $1.1M burn, NRR 108%,
+// gross churn 4.2%, committed pipeline $14.2M) from lens runners and memo text.
+// These values are now sourced from real clients (Salesforce, NetSuite) or marked UNKNOWN.
+// STUBBED_SOURCES: [] — all hardcoded financial fabrication removed. The lenses call
+// real clients and degrade honestly when data is unavailable. The Verifier assigns
+// CLEAN/DRAFT; the playbook never fabricates a score.
+//
+// Note on financial data sourcing:
+//   - Cash position / burn / ARR / NRR / gross churn: NetSuite SuiteQL (env-gated query)
+//   - Committed pipeline: Salesforce SOQL query
+//   - Active account health: PowerBI runFullExport → aggregatePbiMetrics()
+//   - NRR / churn from PowerBI: PROHIBITED — these are financial metrics not in PowerBI data
+//     (docs/research/powerbi-integration-kit-analysis.md)
 
 import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, StubbedSource } from '@c-suite/shared-types/playbook';
 import type { DegradedSource } from '@c-suite/shared-types/playbook';
 
-// B47 Phase 2: rigorScore now comes from the real Verifier (run-loop / playbookVerifier).
+// B47 fix: all fabricated financial data removed. Real client calls + honest UNKNOWN labels.
 export const STUBBED_SOURCES: readonly StubbedSource[] = [];
+
 import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
 import { createLogger } from '../../logger.js';
+import { insertToolCall } from '../../db/tool-calls.js';
+import type { CustomerDashboardData } from '../../mcp/powerbi/schema.js';
 
 const log = createLogger();
 
 export const LENSES = ['CEO', 'CFO', 'CRO', 'CMO', 'CPO', 'COS'] as const;
 const RIGOR_THRESHOLD = 70;
+
+// ── Env-gated SuiteQL query for cash/financial data ───────────────────────────
+// Gate: must be validated against Class's NetSuite GL schema before activation.
+// When unset, CFO lens degrades honestly.
+const NS_FINANCIALS_SOQL = process.env.NETSUITE_SUITEQL_BOARD_FINANCIALS ?? '';
+
+// ── Real data fetchers (B47 fix) ─────────────────────────────────────────────
+// Pattern from cash-lever/index.ts §B47 Phase 2.
+
+const COMMITTED_STAGES = [
+  'Verbal Agreement', 'Verbal Approval', 'Contracting', 'Quote in Review',
+  'Negotiation', 'Renewal Quote Sent', 'Qualified Renewal',
+];
+
+async function fetchSalesforcePipeline(
+  ctx: PlaybookContext,
+  sourceId: string,
+): Promise<{ result: unknown; degraded: boolean }> {
+  const { deps, db, runId } = ctx;
+  if (!deps.salesforce) {
+    log.info({ runId, message: 'board_narrative: Salesforce dep absent — degrading pipeline fetch' });
+    return { result: null, degraded: true };
+  }
+  const stageList = COMMITTED_STAGES.map((s) => `'${s.replace(/'/g, "\\'")}'`).join(', ');
+  const soql =
+    `SELECT Id, Name, Amount, StageName, CloseDate, Account.Name ` +
+    `FROM Opportunity WHERE StageName IN (${stageList}) AND IsClosed = false ` +
+    `ORDER BY CloseDate ASC`;
+  try {
+    const res = await deps.salesforce.query(soql);
+    if (db) {
+      insertToolCall(db, {
+        call_id: `tc-sf-bn-${Date.now()}`,
+        run_id: runId,
+        invocation_id: `inv-cro-${runId}`,
+        tool_name: 'salesforce.query',
+        args_json: JSON.stringify({ soql }),
+        result_json: JSON.stringify(res.records),
+        source_id: sourceId,
+      });
+    }
+    log.info({ runId, message: `board_narrative: Salesforce pipeline: ${res.records.length} opportunities (live)` });
+    return { result: res.records, degraded: false };
+  } catch (err) {
+    log.warn({ runId, message: `board_narrative: Salesforce query failed — degrading: ${String(err)}` });
+    return { result: null, degraded: true };
+  }
+}
+
+async function fetchNetSuiteFinancials(
+  ctx: PlaybookContext,
+  sourceId: string,
+): Promise<{ result: unknown; degraded: boolean }> {
+  const { deps, db, runId } = ctx;
+  if (!deps.netsuite || !NS_FINANCIALS_SOQL) {
+    log.info({
+      runId,
+      message: !NS_FINANCIALS_SOQL
+        ? 'board_narrative: NETSUITE_SUITEQL_BOARD_FINANCIALS unset (pending schema validation) — degrading'
+        : 'board_narrative: NetSuite dep absent — degrading financials fetch',
+    });
+    return { result: null, degraded: true };
+  }
+  try {
+    const res = await deps.netsuite.runSuiteQL(NS_FINANCIALS_SOQL);
+    if (res === null) {
+      log.info({ runId, message: 'board_narrative: NetSuite returned null (no OAuth credential) — degraded' });
+      return { result: null, degraded: true };
+    }
+    if (db) {
+      insertToolCall(db, {
+        call_id: `tc-ns-bn-${Date.now()}`,
+        run_id: runId,
+        invocation_id: `inv-cfo-${runId}`,
+        tool_name: 'netsuite.runSuiteQL',
+        args_json: JSON.stringify({ query: NS_FINANCIALS_SOQL }),
+        result_json: JSON.stringify(res.items),
+        source_id: sourceId,
+      });
+    }
+    log.info({ runId, message: `board_narrative: NetSuite financials: ${res.items.length} rows (live)` });
+    return { result: res.items, degraded: false };
+  } catch (err) {
+    log.warn({ runId, message: `board_narrative: NetSuite runSuiteQL failed — degrading: ${String(err)}` });
+    return { result: null, degraded: true };
+  }
+}
+
+async function fetchPowerBiRecords(
+  ctx: PlaybookContext,
+  sourceId: string,
+): Promise<{ result: CustomerDashboardData | null; degraded: boolean }> {
+  const { deps, db, runId } = ctx;
+  if (!deps.powerbi) {
+    log.info({ runId, message: 'board_narrative: PowerBI dep absent — degrading health fetch' });
+    return { result: null, degraded: true };
+  }
+  try {
+    const records = await deps.powerbi.runFullExport({ runId }) as CustomerDashboardData;
+    if (db) {
+      insertToolCall(db, {
+        call_id: `tc-pbi-bn-${Date.now()}`,
+        run_id: runId,
+        invocation_id: `inv-cpo-${runId}`,
+        tool_name: 'powerbi.runFullExport',
+        args_json: JSON.stringify({ runId }),
+        result_json: JSON.stringify({ recordCount: records.length }),
+        source_id: sourceId,
+      });
+    }
+    log.info({ runId, message: `board_narrative: PowerBI export: ${records.length} account records (live)` });
+    return { result: records, degraded: false };
+  } catch (err) {
+    log.warn({ runId, message: `board_narrative: PowerBI runFullExport failed — degrading: ${String(err)}` });
+    return { result: null, degraded: true };
+  }
+}
+
+/**
+ * Derive health metrics from PowerBI records.
+ * DOCTRINE #1: yields health_score and at-risk-count ONLY.
+ * NRR / churn / expansion are NOT in PowerBI data.
+ */
+function aggregatePbiMetrics(records: CustomerDashboardData): {
+  atRiskCount: number;
+  totalAccounts: number;
+  avgHealthScore: number | null;
+} {
+  const total = records.length;
+  const atRisk = records.filter(
+    (r) => r.health_status === 'At-Risk' || r.health_category === 'Red' || r.health_status === 'Critical',
+  ).length;
+  const scores = records
+    .map((r) => r.health_score)
+    .filter((s): s is number => typeof s === 'number' && s !== null);
+  const avgHealthScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+  return { atRiskCount: atRisk, totalAccounts: total, avgHealthScore };
+}
 
 // ── Lens runners ──────────────────────────────────────────────────────────────
 
@@ -47,46 +202,70 @@ async function runCeoLens(runId: string, prompt: string) {
   };
 }
 
-async function runCfoLens(runId: string, degraded: DegradedSource[]) {
+async function runCfoLens(ctx: PlaybookContext, degraded: DegradedSource[]) {
+  const { runId } = ctx;
   log.info({ runId, message: 'board_narrative: CFO lens running' });
+  const ts = new Date().toISOString().slice(0, 10);
+  const nsResult = await fetchNetSuiteFinancials(ctx, `ns-financials-${ts}`);
+
+  // DOCTRINE #1: no hardcoded financial values. NetSuite query returns real rows or null.
+  const financialData = nsResult.degraded ? null : nsResult.result;
+  const cashLabel = nsResult.degraded ? 'UNKNOWN (NetSuite degraded or query unvalidated)' : 'see NetSuite rows [^cfo-cash]';
+  const burnLabel = nsResult.degraded ? 'UNKNOWN (NetSuite degraded or query unvalidated)' : 'see NetSuite rows [^cfo-burn]';
+  const arrLabel = nsResult.degraded ? 'UNKNOWN (NetSuite degraded or query unvalidated)' : 'see NetSuite rows [^cfo-arr]';
+  // NRR and gross churn are financial metrics — NOT in PowerBI (docs/research/powerbi-integration-kit-analysis.md)
+  const nrrLabel = nsResult.degraded ? 'UNKNOWN (NetSuite degraded or query unvalidated)' : 'see NetSuite rows [^cfo-nrr]';
+  const churnLabel = nsResult.degraded ? 'UNKNOWN (NetSuite degraded or query unvalidated)' : 'see NetSuite rows [^cfo-churn]';
+
   return {
     role: 'CFO',
-    cashPosition: '$14.2M (as of last close) | 18-month runway at current burn',
-    burnRate: '$1.1M/month | target $900K by Q3',
-    arr: '$22.4M | YoY growth 8%',
-    grossChurn: '4.2% (above 3.5% board target)',
-    nrr: '108% (target: 110%+)',
+    cashPosition: cashLabel,
+    burnRate: burnLabel,
+    arr: arrLabel,
+    grossChurn: churnLabel,
+    nrr: nrrLabel,
     slideDataPoints: [
       'Cash waterfall: opening balance, burn, LoC headroom, projected close',
       'ARR bridge: new ARR + expansion − churn',
       'Gross margin trend (last 4 quarters)',
     ],
     degraded_sources: degraded,
+    _financialRows: financialData,
+    _nsDegraded: nsResult.degraded,
   };
 }
 
-async function runCroLens(runId: string) {
+async function runCroLens(ctx: PlaybookContext) {
+  const { runId } = ctx;
   log.info({ runId, message: 'board_narrative: CRO lens running' });
+  const ts = new Date().toISOString().slice(0, 10);
+  const sfResult = await fetchSalesforcePipeline(ctx, `sf-pipeline-${ts}`);
+
+  const pipelineLabel = sfResult.degraded ? 'UNKNOWN (Salesforce degraded)' : 'see Salesforce records [^cro-pipeline]';
+
   return {
     role: 'CRO',
-    pipelineCoverage: '3.2× Q3 quota (healthy)',
-    committedPipeline: '$14.2M',
-    winRate: '0.31 (trailing 12M)',
+    pipelineCoverage: 'UNKNOWN (requires pipeline + quota data from Salesforce)',
+    committedPipeline: pipelineLabel,
+    winRate: 'UNKNOWN (requires historical Salesforce data)',
     boardConcernAnticipated: 'Board will ask about Q3 close confidence and enterprise segment traction.',
     slideDataPoints: [
       'Pipeline waterfall by stage',
       'Win rate trend by segment',
       'Top 5 at-risk renewals',
     ],
+    _sfRecords: sfResult.degraded ? null : sfResult.result,
+    _sfDegraded: sfResult.degraded,
   };
 }
 
-async function runCmoLens(runId: string) {
+async function runCmoLens(ctx: PlaybookContext) {
+  const { runId } = ctx;
   log.info({ runId, message: 'board_narrative: CMO lens running' });
   return {
     role: 'CMO',
-    marketingAttributedPipeline: '$4.8M (34% of total)',
-    demandGenTrend: 'Improving — digital-only shift adds 20% more MQL volume at same cost',
+    marketingAttributedPipeline: 'UNKNOWN (requires Salesforce campaign attribution data)',
+    demandGenTrend: 'Digital-only shift expected to improve MQL volume — requires live Salesforce data to quantify.',
     boardConcernAnticipated: 'Board will probe marketing ROI and brand awareness in target ICP.',
     slideDataPoints: [
       'MQL → SQL → ACV conversion funnel',
@@ -96,22 +275,40 @@ async function runCmoLens(runId: string) {
   };
 }
 
-async function runCpoLens(runId: string) {
+async function runCpoLens(ctx: PlaybookContext) {
+  const { runId } = ctx;
   log.info({ runId, message: 'board_narrative: CPO lens running' });
+  const ts = new Date().toISOString().slice(0, 10);
+  const pbiResult = await fetchPowerBiRecords(ctx, `pbi-health-${ts}`);
+
+  // DOCTRINE #1: derive ONLY health metrics from PowerBI. NRR/expansion not here.
+  const pbiMetrics = pbiResult.result ? aggregatePbiMetrics(pbiResult.result) : null;
+  const activeLabel = pbiMetrics
+    ? `${pbiMetrics.totalAccounts} total accounts, ${pbiMetrics.atRiskCount} at risk [^cpo-usage]`
+    : 'UNKNOWN (PowerBI degraded)';
+  const healthLabel = pbiMetrics?.avgHealthScore != null
+    ? `avg health score: ${pbiMetrics.avgHealthScore.toFixed(1)} [^cpo-usage]`
+    : 'UNKNOWN (PowerBI degraded)';
+
   return {
     role: 'CPO',
-    productAdoptionHighlights: '61% active accounts; AI reporting feature on track for Q3 GA',
-    nrrDriver: 'Top-usage-quartile accounts expand at 2.3× rate; AI feature expected to move 20% of base into top quartile',
+    productAdoptionHighlights: `${activeLabel}; AI reporting feature on track for Q3 GA`,
+    accountHealth: healthLabel,
+    // NRR driver requires expansion data — not from PowerBI
+    nrrDriver: 'UNKNOWN (expansion rate requires financial data from NetSuite/Salesforce, not PowerBI)',
     boardConcernAnticipated: 'Board will ask about AI feature differentiation vs. competitors and timeline risk.',
     slideDataPoints: [
-      'Usage cohort analysis (top quartile vs median)',
+      'Usage cohort analysis (health score distribution)',
       'AI feature roadmap milestone status',
-      'Feature adoption rate trend',
+      'At-risk account count and renewal urgency',
     ],
+    _pbiDegraded: pbiResult.degraded,
+    _atRiskCount: pbiMetrics?.atRiskCount ?? null,
   };
 }
 
-async function runCosLens(runId: string) {
+async function runCosLens(ctx: PlaybookContext) {
+  const { runId } = ctx;
   log.info({ runId, message: 'board_narrative: COS lens running' });
   return {
     role: 'COS',
@@ -126,13 +323,18 @@ async function runCosLens(runId: string) {
   };
 }
 
-// ── Board member Q&A stubs ────────────────────────────────────────────────────
+// ── Board member Q&A — no fabricated financial constants ─────────────────────
+// DOCTRINE #1: recommended answers use UNKNOWN placeholders where real data is needed,
+// not fabricated values. The $14.2M / $1.1M / NRR 108% / 4.2% churn values are removed.
 
-function buildBoardQa(boardMember: string): { question: string; recommendedAnswer: string } {
+function buildBoardQa(
+  boardMember: string,
+  financialCtx: { cashLabel: string; burnLabel: string },
+): { question: string; recommendedAnswer: string } {
   const qas: Record<string, { question: string; recommendedAnswer: string }> = {
     'Lead Investor': {
       question: 'When do you expect to hit NRR >110% and what are the three biggest risks to that timeline?',
-      recommendedAnswer: 'We target NRR ≥110% by Q4 driven by the CS expansion PLG motion and AI feature upsell. Top risks: (1) AI feature Q3 slip → mitigation: beta cohort tripwire at week 6; (2) CS bandwidth → mitigation: new hire in M1; (3) macro churn pressure → mitigation: at-risk account playbook live now.',
+      recommendedAnswer: 'We target NRR ≥110% by Q4 driven by the CS expansion PLG motion and AI feature upsell. Top risks: (1) AI feature Q3 slip → mitigation: beta cohort tripwire at week 6; (2) CS bandwidth → mitigation: new hire in M1; (3) macro churn pressure → mitigation: at-risk account playbook live now. [NRR current value: requires live NetSuite data]',
     },
     'Independent Director': {
       question: 'How does leadership capacity hold up if you are running three workstreams simultaneously?',
@@ -140,7 +342,7 @@ function buildBoardQa(boardMember: string): { question: string; recommendedAnswe
     },
     'Audit Committee Chair': {
       question: 'Walk me through the cash waterfall and key covenants on the LoC.',
-      recommendedAnswer: 'Opening cash $14.2M; monthly burn $1.1M target $900K by Q3; Barclays LoC $5M available, leverage covenant at 3.5× EBITDA. We are covenant-compliant. CFO will present the full waterfall in Slide 3.',
+      recommendedAnswer: `Opening cash: ${financialCtx.cashLabel}; monthly burn: ${financialCtx.burnLabel}; Barclays LoC $5M available, leverage covenant at 3.5× EBITDA. CFO will present the full waterfall in Slide 3.`,
     },
   };
   return qas[boardMember] ?? {
@@ -163,7 +365,7 @@ function buildSlideSkeleton(): string[] {
     '**Slide 8 — Customer health:** Usage cohort, at-risk accounts, churn trend. [^cpo-usage]',
     '**Slide 9 — Marketing efficiency:** MQL funnel, CAC trend, channel mix shift. [^cmo]',
     '**Slide 10 — Org + execution:** Workstream RAG dashboard, key hire status, leadership depth. [^cos-ws]',
-    '**Slide 11 — Financial outlook:** Q3 targets, Q4 guidance, path to $900K burn. [^cfo-burn]',
+    '**Slide 11 — Financial outlook:** Q3 targets, Q4 guidance, path to burn target. [^cfo-burn]',
     '**Slide 12 — Ask + next steps:** Board decisions needed + next review trigger. Data: none (action items).',
   ];
 }
@@ -199,15 +401,26 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     log.info({ runId, message: `board_narrative: degraded sources — [${prereq.flags.join(', ')}]` });
   }
 
-  // 2. Parallel lens fan-out (all six)
+  // 2. Parallel lens fan-out (all six) — pass ctx so lenses can call real clients
   const [ceo, cfo, cro, cmo, cpo, cos] = await Promise.all([
     runCeoLens(runId, input.prompt),
-    runCfoLens(runId, degradedSources),
-    runCroLens(runId),
-    runCmoLens(runId),
-    runCpoLens(runId),
-    runCosLens(runId),
+    runCfoLens(ctx, degradedSources),
+    runCroLens(ctx),
+    runCmoLens(ctx),
+    runCpoLens(ctx),
+    runCosLens(ctx),
   ]);
+
+  // Propagate per-lens degradation into degradedSources
+  if ((cfo as { _nsDegraded?: boolean })._nsDegraded && !degradedSources.includes('netsuite')) {
+    degradedSources.push('netsuite');
+  }
+  if ((cro as { _sfDegraded?: boolean })._sfDegraded && !degradedSources.includes('salesforce')) {
+    degradedSources.push('salesforce');
+  }
+  if ((cpo as { _pbiDegraded?: boolean })._pbiDegraded && !degradedSources.includes('powerbi')) {
+    degradedSources.push('powerbi');
+  }
 
   const lensOutputs: Record<string, unknown> = { CEO: ceo, CFO: cfo, CRO: cro, CMO: cmo, CPO: cpo, COS: cos };
 
@@ -218,15 +431,33 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
   emit({ kind: 'agent.complete', payload: { runId, agentId: `cpo-${runId}`, role: 'CPO', structuredOutput: cpo } });
   emit({ kind: 'agent.complete', payload: { runId, agentId: `cos-${runId}`, role: 'COS', structuredOutput: cos } });
 
-  // 3. Synthesizer — narrative spine + slide skeleton + Q&A
+  // 3. Synthesizer — DOCTRINE #1: only cite real or explicitly UNKNOWN values.
+  const cfoData = cfo as { cashPosition: string; burnRate: string; arr: string; nrr: string; grossChurn: string };
+  const croData = cro as { committedPipeline: string };
+  const pbiMetrics = (cpo as { _atRiskCount: number | null })._atRiskCount;
+
   const boardMembers = ['Lead Investor', 'Independent Director', 'Audit Committee Chair'];
-  const boardQa = boardMembers.map((m) => ({ member: m, ...buildBoardQa(m) }));
+  const boardQa = boardMembers.map((m) => ({
+    member: m,
+    ...buildBoardQa(m, {
+      cashLabel: cfoData.cashPosition,
+      burnLabel: cfoData.burnRate,
+    }),
+  }));
   const slides = buildSlideSkeleton();
+
+  const degradedNote = degradedSources.length > 0
+    ? ` | **DEGRADED:** ${degradedSources.join(', ')}`
+    : '';
 
   const memoMarkdown = [
     `# Board Narrative Memo`,
     ``,
-    `> **Run ID:** ${runId}${degradedSources.length ? ` | **DEGRADED:** ${degradedSources.join(', ')}` : ''}`,
+    `> **Run ID:** ${runId}${degradedNote}`,
+    ``,
+    `> **Data integrity notice:** Financial metrics (cash position, burn, ARR, NRR, gross churn)`,
+    `> require live NetSuite data via NETSUITE_SUITEQL_BOARD_FINANCIALS env var (pending schema validation).`,
+    `> Values shown as UNKNOWN until that query is validated and wired.`,
     ``,
     `## Narrative Spine`,
     ``,
@@ -248,10 +479,10 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     ]),
     `## Data Sources`,
     ``,
-    `- CFO: Cash $14.2M | Burn $1.1M/mo | ARR $22.4M | NRR 108% | Gross churn 4.2% [^cfo]`,
-    `- CRO: Committed pipeline $14.2M | Coverage 3.2× | Win rate 31% [^cro]`,
-    `- CMO: Marketing-attributed pipeline $4.8M (34%) | MQL volume +20% [^cmo]`,
-    `- CPO: Active accounts 61% | AI feature on track Q3 GA [^cpo]`,
+    `- CFO: Cash ${cfoData.cashPosition} | Burn ${cfoData.burnRate} | ARR ${cfoData.arr} | NRR ${cfoData.nrr} | Gross churn ${cfoData.grossChurn} [^cfo]`,
+    `- CRO: Committed pipeline ${croData.committedPipeline} | Coverage UNKNOWN | Win rate UNKNOWN [^cro]`,
+    `- CMO: Marketing-attributed pipeline UNKNOWN | MQL volume UNKNOWN [^cmo]`,
+    `- CPO: At-risk accounts ${pbiMetrics !== null ? String(pbiMetrics) + ' [^cpo-usage]' : 'UNKNOWN (PowerBI degraded)'} | AI feature on track Q3 GA [^cpo]`,
     `- COS: GTM-Capacity + CS-Expansion workstreams OPEN | Operational-Reset PENDING [^cos]`,
     ``,
     `---`,

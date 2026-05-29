@@ -23,8 +23,11 @@
 import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, StubbedSource } from '@c-suite/shared-types/playbook';
 import type { DegradedSource } from '@c-suite/shared-types/playbook';
 
-// B47 Phase 2: rigorScore now comes from the real Verifier (run-loop / playbookVerifier).
-export const STUBBED_SOURCES: readonly StubbedSource[] = [];
+// B47 fix: netsuite declared because CFO lens financials (ARR, burn, implied valuation)
+// require NetSuite SuiteQL (NETSUITE_SUITEQL_BOARD_FINANCIALS pending schema validation).
+// Until wired, those values degrade to UNKNOWN — declared here so stub-guard refuses
+// STUB_MODE=live runs that would fabricate them under a CLEAN stamp.
+export const STUBBED_SOURCES: readonly StubbedSource[] = ['netsuite'];
 import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
 import { createLogger } from '../../logger.js';
 
@@ -61,15 +64,21 @@ async function runCeoLens(runId: string, prompt: string) {
 }
 
 async function runCfoLens(runId: string, degraded: DegradedSource[]) {
+  // DOCTRINE #1: financial metrics require live NetSuite data (NETSUITE_SUITEQL_BOARD_FINANCIALS
+  // pending schema validation). Values are UNKNOWN until that query is wired and validated.
+  // Declared in STUBBED_SOURCES so stub-guard blocks CLEAN stamp on live mode.
   log.info({ runId, message: 'strategic_option: CFO lens running' });
   return {
     role: 'CFO',
-    cashRunway: '18 months at current burn',
-    burnRate: 1_100_000,
-    arr: 22_400_000,
-    revenueMultipleRange: { low: 2.8, mid: 3.4, high: 4.1 },
-    impliedValuationRange: { low: 62_720_000, mid: 76_160_000, high: 91_840_000 },
-    saleReadinessBlockers: ['Churn rate above buyer threshold (4.2% vs 3.5% benchmark)', 'NRR below 110% threshold'],
+    cashRunway: 'UNKNOWN (requires NetSuite cash data — NETSUITE_SUITEQL_BOARD_FINANCIALS unvalidated)',
+    burnRate: null, // UNKNOWN — no hardcoded value; source: NetSuite (STUBBED)
+    arr: null,      // UNKNOWN — no hardcoded value; source: NetSuite (STUBBED)
+    revenueMultipleRange: { low: 2.8, mid: 3.4, high: 4.1 }, // market-range estimate, not company-specific
+    impliedValuationRange: null, // UNKNOWN — depends on real ARR; cannot compute from stub
+    saleReadinessBlockers: [
+      'Churn rate vs buyer threshold: UNKNOWN (requires NetSuite NRR/churn data)',
+      'NRR vs 110% threshold: UNKNOWN (requires NetSuite financial data)',
+    ],
     degraded_sources: degraded,
   };
 }
@@ -299,7 +308,7 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     ``,
     `${ceo.recommendation}`,
     ``,
-    `CFO context: ${cfo.arr ? `ARR $${(cfo.arr / 1_000_000).toFixed(1)}M` : 'ARR data degraded'}; implied valuation mid-range $76.2M at 3.4× multiple.`,
+    `CFO context: ARR ${(cfo as { arr: number | null }).arr != null ? `$${((cfo as { arr: number }).arr / 1_000_000).toFixed(1)}M` : 'UNKNOWN (NetSuite degraded)'}; implied valuation ${(cfo as { impliedValuationRange: unknown }).impliedValuationRange != null ? `mid-range $${((cfo as { impliedValuationRange: { mid: number } }).impliedValuationRange.mid / 1_000_000).toFixed(1)}M at 3.4×` : 'UNKNOWN (ARR required)'}.`,
     `CPO catalyst: ${cpo.turnaroundCatalyst}`,
     `COS execution constraint: ${cos.bestExecutionPath}`,
     ``,

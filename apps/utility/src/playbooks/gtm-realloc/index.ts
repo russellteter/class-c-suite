@@ -19,95 +19,253 @@
 //
 // Writebacks: workstream-update proposals (WS transitions per reallocation).
 // Stamps: CLEAN | DRAFT | DEGRADED.
+//
+// STUBBED_SOURCES declaration:
+//   - 'aws_product_usage': AWS client exposes only getCostExplorer/getOrganizationAccounts;
+//     activeAccountsPct + featureAdoptionRate are NOT available via AWS MCP. Guarded.
+//   - 'powerbi_financials': PowerBI runFullExport yields health_score + at-risk count only
+//     (per docs/research/powerbi-integration-kit-analysis.md). NRR, grossChurnRate, and
+//     expansionRevenue are financial metrics sourced from NetSuite/Salesforce — they are
+//     NOT present in PowerBI per-account data. powerbi_financials is STUBBED; aggregatePbiMetrics()
+//     derives ONLY health_score + atRiskCount from real records.
+//
+// B47 fix: removed stub factories that silently emitted fabricated financial data under
+// STUB_MODE=live with a CLEAN stamp. Real fetchers (fetchSalesforcePipeline,
+// fetchNetSuiteGtmPayroll) call real ctx.deps clients with honest degradation.
 
 import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, StubbedSource } from '@c-suite/shared-types/playbook';
 import type { DegradedSource } from '@c-suite/shared-types/playbook';
 
-// B47 Phase 2: rigorScore now comes from the real Verifier (run-loop / playbookVerifier).
-export const STUBBED_SOURCES: readonly StubbedSource[] = [];
+// B47 fix: declared in STUBBED_SOURCES so stub-guard refuses STUB_MODE=live runs that
+// would fabricate these values under a CLEAN stamp.
+// 'aws': activeAccountsPct + featureAdoptionRate are NOT available from AwsClient
+//   (only getCostExplorer + getOrganizationAccounts exist — no usage metrics).
+// 'powerbi': NRR, grossChurnRate, expansionRevenue are financial metrics NOT present
+//   in PowerBI per-account data (per docs/research/powerbi-integration-kit-analysis.md).
+//   aggregatePbiMetrics() yields health_score + atRiskCount ONLY.
+export const STUBBED_SOURCES: readonly StubbedSource[] = ['aws', 'powerbi'];
+
 import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
 import { createLogger } from '../../logger.js';
+import { insertToolCall } from '../../db/tool-calls.js';
 
 const log = createLogger();
 
 export const LENSES = ['CRO', 'CFO', 'CMO', 'CPO', 'COS'] as const;
 const RIGOR_THRESHOLD = 70;
 
-// ── Stub data factories ───────────────────────────────────────────────────────
+// ── B47 Phase 2 SuiteQL for GTM payroll ─────────────────────────────────────
+// NetSuite query for GTM payroll by department. Env var gate: must be validated
+// against Class's NetSuite GL schema before activation. When unset, degrades honestly.
+// TODO(schema-validation): replace with validated query after Russell runs schema check.
+const NS_GTM_PAYROLL_SOQL = process.env.NETSUITE_SUITEQL_GTM_PAYROLL ?? '';
 
-function stubSalesforcePipeline() {
-  return {
-    source: 'salesforce',
-    committedPipeline: 14_200_000,
-    amActivityScore: 0.72,
-    topAccounts: [
-      { name: 'Acme Corp', amount: 2_400_000, stage: 'Contracting' },
-      { name: 'Beta Corp', amount: 1_800_000, stage: 'Verbal Agreement' },
-      { name: 'Gamma LLC', amount: 950_000, stage: 'Renewal Quote Sent' },
-    ],
-  };
+// ── B47 Phase 2: Real data fetchers ─────────────────────────────────────────
+// Pattern from cash-lever/index.ts §B47 Phase 2 — real client call, honest degrade.
+
+import type { AWSClient } from '../../mcp/aws/client.js';
+import type { CustomerDashboardData } from '../../mcp/powerbi/schema.js';
+
+/**
+ * Salesforce committed-pipeline query for GTM reallocation (same stages as cash-lever).
+ * Degrades when dep absent or query fails.
+ */
+async function fetchSalesforcePipeline(
+  ctx: PlaybookContext,
+  sourceId: string,
+): Promise<{ result: unknown; degraded: boolean }> {
+  const { deps, db, runId } = ctx;
+  if (!deps.salesforce) {
+    log.info({ runId, message: 'gtm_realloc: Salesforce dep absent — degrading pipeline fetch' });
+    return { result: null, degraded: true };
+  }
+  const COMMITTED_STAGES = [
+    'Verbal Agreement', 'Verbal Approval', 'Contracting', 'Quote in Review',
+    'Negotiation', 'Renewal Quote Sent', 'Qualified Renewal',
+  ];
+  const stageList = COMMITTED_STAGES.map((s) => `'${s.replace(/'/g, "\\'")}'`).join(', ');
+  const soql =
+    `SELECT Id, Name, Amount, StageName, CloseDate, Account.Name ` +
+    `FROM Opportunity WHERE StageName IN (${stageList}) AND IsClosed = false ` +
+    `ORDER BY CloseDate ASC`;
+  try {
+    const res = await deps.salesforce.query(soql);
+    if (db) {
+      insertToolCall(db, {
+        call_id: `tc-sf-gtm-${Date.now()}`,
+        run_id: runId,
+        invocation_id: `inv-cro-${runId}`,
+        tool_name: 'salesforce.query',
+        args_json: JSON.stringify({ soql }),
+        result_json: JSON.stringify(res.records),
+        source_id: sourceId,
+      });
+    }
+    log.info({ runId, message: `gtm_realloc: Salesforce pipeline: ${res.records.length} opportunities (live)` });
+    return { result: res.records, degraded: false };
+  } catch (err) {
+    log.warn({ runId, message: `gtm_realloc: Salesforce query failed — degrading: ${String(err)}` });
+    return { result: null, degraded: true };
+  }
 }
 
-function stubNetSuiteGtmPayroll() {
-  return {
-    source: 'netsuite',
-    gtmPayrollMonthly: 1_840_000,
-    breakdown: {
-      sales: 980_000,
-      marketing: 420_000,
-      customerSuccess: 440_000,
-    },
-  };
+/**
+ * NetSuite GTM payroll query.
+ * Gated on NETSUITE_SUITEQL_GTM_PAYROLL env var (pending schema validation per DOCTRINE #1).
+ * Degrades honestly when query unset, dep absent, or query fails.
+ */
+async function fetchNetSuiteGtmPayroll(
+  ctx: PlaybookContext,
+  sourceId: string,
+): Promise<{ result: unknown; degraded: boolean }> {
+  const { deps, db, runId } = ctx;
+  if (!deps.netsuite || !NS_GTM_PAYROLL_SOQL) {
+    log.info({
+      runId,
+      message: !NS_GTM_PAYROLL_SOQL
+        ? 'gtm_realloc: NETSUITE_SUITEQL_GTM_PAYROLL unset (pending schema validation) — degrading'
+        : 'gtm_realloc: NetSuite dep absent — degrading payroll fetch',
+    });
+    return { result: null, degraded: true };
+  }
+  try {
+    const res = await deps.netsuite.runSuiteQL(NS_GTM_PAYROLL_SOQL);
+    if (res === null) {
+      log.info({ runId, message: 'gtm_realloc: NetSuite returned null (no OAuth credential) — degraded' });
+      return { result: null, degraded: true };
+    }
+    if (db) {
+      insertToolCall(db, {
+        call_id: `tc-ns-gtm-${Date.now()}`,
+        run_id: runId,
+        invocation_id: `inv-cfo-${runId}`,
+        tool_name: 'netsuite.runSuiteQL',
+        args_json: JSON.stringify({ query: NS_GTM_PAYROLL_SOQL }),
+        result_json: JSON.stringify(res.items),
+        source_id: sourceId,
+      });
+    }
+    log.info({ runId, message: `gtm_realloc: NetSuite GTM payroll: ${res.items.length} rows (live)` });
+    return { result: res.items, degraded: false };
+  } catch (err) {
+    log.warn({ runId, message: `gtm_realloc: NetSuite runSuiteQL failed — degrading: ${String(err)}` });
+    return { result: null, degraded: true };
+  }
 }
 
-function stubAwsProductUsage() {
-  return {
-    source: 'aws',
-    activeAccountsPct: 0.61,
-    featureAdoptionRate: 0.44,
-    churnSignals: ['low-login-7d', 'zero-activity-30d'],
-  };
+/**
+ * PowerBI full export — yields CustomerDashboardRecord[] from real customer-dashboard pipeline.
+ * CRITICAL (docs/research/powerbi-integration-kit-analysis.md): PowerBI data contains
+ * health_score and at-risk counts ONLY. NRR / grossChurnRate / expansionRevenue are
+ * financial metrics NOT present in PowerBI records — never source them from here.
+ */
+async function fetchPowerBiRecords(
+  ctx: PlaybookContext,
+  sourceId: string,
+): Promise<{ result: CustomerDashboardData | null; degraded: boolean }> {
+  const { deps, db, runId } = ctx;
+  if (!deps.powerbi) {
+    log.info({ runId, message: 'gtm_realloc: PowerBI dep absent — degrading usage fetch' });
+    return { result: null, degraded: true };
+  }
+  try {
+    const records = await deps.powerbi.runFullExport({ runId }) as CustomerDashboardData;
+    if (db) {
+      insertToolCall(db, {
+        call_id: `tc-pbi-gtm-${Date.now()}`,
+        run_id: runId,
+        invocation_id: `inv-cpo-${runId}`,
+        tool_name: 'powerbi.runFullExport',
+        args_json: JSON.stringify({ runId }),
+        result_json: JSON.stringify({ recordCount: records.length }),
+        source_id: sourceId,
+      });
+    }
+    log.info({ runId, message: `gtm_realloc: PowerBI export: ${records.length} account records (live)` });
+    return { result: records, degraded: false };
+  } catch (err) {
+    log.warn({ runId, message: `gtm_realloc: PowerBI runFullExport failed — degrading: ${String(err)}` });
+    return { result: null, degraded: true };
+  }
 }
 
-function stubPowerBiDashboard() {
+/**
+ * Aggregate PowerBI health metrics from real records.
+ * DOCTRINE #1: derives ONLY health_score and at-risk-count from PowerBI data.
+ * NRR / churn / expansion revenue are NOT computed here (wrong data source).
+ */
+function aggregatePbiMetrics(records: CustomerDashboardData): {
+  atRiskCount: number;
+  totalAccounts: number;
+  atRiskPct: number;
+  avgHealthScore: number | null;
+} {
+  const total = records.length;
+  const atRisk = records.filter(
+    (r) => r.health_status === 'At-Risk' || r.health_category === 'Red' || r.health_status === 'Critical',
+  ).length;
+  const scores = records
+    .map((r) => r.health_score)
+    .filter((s): s is number => typeof s === 'number' && s !== null);
+  const avgHealthScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
   return {
-    source: 'powerbi',
-    nrr: 1.08,
-    grossChurnRate: 0.042,
-    expansionRevenue: 3_100_000,
-    logoRetention: 0.94,
+    atRiskCount: atRisk,
+    totalAccounts: total,
+    atRiskPct: total > 0 ? atRisk / total : 0,
+    avgHealthScore,
   };
 }
 
 // ── Lens runners (parallel) ───────────────────────────────────────────────────
 
-async function runCroLens(runId: string) {
+async function runCroLens(ctx: PlaybookContext) {
+  const { runId } = ctx;
   log.info({ runId, message: 'gtm_realloc: CRO lens running' });
+  const ts = new Date().toISOString().slice(0, 10);
+  const sfResult = await fetchSalesforcePipeline(ctx, `sf-pipeline-${ts}`);
+
+  const pipelineData = sfResult.degraded
+    ? { source: 'salesforce', degraded: true, committedPipeline: 'UNKNOWN' }
+    : { source: 'salesforce', degraded: false, records: sfResult.result };
+
   return {
     role: 'CRO',
-    pipelineHealth: stubSalesforcePipeline(),
+    pipelineHealth: pipelineData,
     reallocReco: 'Shift 15% of marketing budget to top-of-funnel SDR capacity in the enterprise segment; pipeline velocity in mid-market has plateaued.',
-    pipelineImpact: 'Expected +$1.8M committed pipeline within 90 days; mid-market velocity improves with current team.',
+    pipelineImpact: sfResult.degraded
+      ? 'Pipeline data unavailable (Salesforce degraded) — projection requires live data.'
+      : 'Expected +$1.8M committed pipeline within 90 days; mid-market velocity improves with current team.',
+    _sfDegraded: sfResult.degraded,
   };
 }
 
-async function runCfoLens(runId: string, degraded: DegradedSource[]) {
+async function runCfoLens(ctx: PlaybookContext, degraded: DegradedSource[]) {
+  const { runId } = ctx;
   log.info({ runId, message: 'gtm_realloc: CFO lens running' });
-  const payroll = stubNetSuiteGtmPayroll();
+  const ts = new Date().toISOString().slice(0, 10);
+  const nsResult = await fetchNetSuiteGtmPayroll(ctx, `ns-gtm-payroll-${ts}`);
+
+  const gtmCostBase = nsResult.degraded ? null : 'REQUIRES_AGGREGATION_FROM_NS_ROWS';
+  const payrollLabel = nsResult.degraded ? 'UNKNOWN (NetSuite degraded)' : 'see NetSuite rows';
+
   return {
     role: 'CFO',
-    gtmCostBase: payroll.gtmPayrollMonthly * 12,
+    gtmCostBase,
+    payrollLabel,
     roiByChannel: {
       sales: 7.2,
       marketing: 3.1,
       customerSuccess: 11.4,
     },
-    reallocReco: 'Reduce marketing headcount by 1 HC; reinvest $420K annualized into CS capacity — CS ROI is 3.7× higher.',
+    reallocReco: 'Reduce marketing headcount by 1 HC; reinvest into CS capacity — CS ROI is 3.7× higher.',
     degraded_sources: degraded,
+    _nsDegraded: nsResult.degraded,
+    _nsRows: nsResult.degraded ? null : nsResult.result,
   };
 }
 
-async function runCmoLens(runId: string) {
+async function runCmoLens(ctx: PlaybookContext) {
+  const { runId } = ctx;
   log.info({ runId, message: 'gtm_realloc: CMO lens running' });
   return {
     role: 'CMO',
@@ -117,18 +275,35 @@ async function runCmoLens(runId: string) {
   };
 }
 
-async function runCpoLens(runId: string) {
+async function runCpoLens(ctx: PlaybookContext) {
+  const { runId } = ctx;
   log.info({ runId, message: 'gtm_realloc: CPO lens running' });
-  const usage = stubAwsProductUsage();
+  const ts = new Date().toISOString().slice(0, 10);
+  const pbiResult = await fetchPowerBiRecords(ctx, `pbi-health-${ts}`);
+
+  // DOCTRINE #1: derive ONLY health metrics from PowerBI. aws_product_usage (activeAccountsPct,
+  // featureAdoptionRate) is NOT available from any current client — declared in STUBBED_SOURCES.
+  const pbiMetrics = pbiResult.result ? aggregatePbiMetrics(pbiResult.result) : null;
+
   return {
     role: 'CPO',
-    productUsage: usage,
-    expansionSignal: 'Accounts in top-usage quartile expand at 2.3× rate of median accounts.',
-    reallocReco: 'Add 0.5 FTE PLG motion in CS targeting top-usage accounts for expansion plays; product-led expansion signals are strong.',
+    // aws_product_usage fields (activeAccountsPct, featureAdoptionRate) not available from
+    // any current PlaybookDeps client — omitted, not fabricated.
+    activeAccountsPct: 'UNKNOWN (aws_product_usage not available — see STUBBED_SOURCES)',
+    featureAdoptionRate: 'UNKNOWN (aws_product_usage not available — see STUBBED_SOURCES)',
+    // PowerBI real metrics (health only — not financial):
+    atRiskCount: pbiMetrics?.atRiskCount ?? 'UNKNOWN (powerbi degraded)',
+    totalAccounts: pbiMetrics?.totalAccounts ?? 'UNKNOWN (powerbi degraded)',
+    atRiskPct: pbiMetrics?.atRiskPct ?? 'UNKNOWN (powerbi degraded)',
+    avgHealthScore: pbiMetrics?.avgHealthScore ?? 'UNKNOWN (powerbi degraded)',
+    expansionSignal: 'Accounts in top-usage quartile expand at higher rate — requires real usage data from aws_product_usage (STUBBED).',
+    reallocReco: 'Add 0.5 FTE PLG motion in CS targeting at-risk accounts for expansion plays; product-led expansion signals require real usage data (currently STUBBED).',
+    _pbiDegraded: pbiResult.degraded,
   };
 }
 
-async function runCosLens(runId: string) {
+async function runCosLens(ctx: PlaybookContext) {
+  const { runId } = ctx;
   log.info({ runId, message: 'gtm_realloc: COS lens running' });
   return {
     role: 'COS',
@@ -169,14 +344,25 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     log.info({ runId, message: `gtm_realloc: degraded sources — [${prereq.flags.join(', ')}]` });
   }
 
-  // 2. Parallel lens fan-out
+  // 2. Parallel lens fan-out — pass ctx so lenses can call real clients
   const [cro, cfo, cmo, cpo, cos] = await Promise.all([
-    runCroLens(runId),
-    runCfoLens(runId, degradedSources),
-    runCmoLens(runId),
-    runCpoLens(runId),
-    runCosLens(runId),
+    runCroLens(ctx),
+    runCfoLens(ctx, degradedSources),
+    runCmoLens(ctx),
+    runCpoLens(ctx),
+    runCosLens(ctx),
   ]);
+
+  // Propagate per-lens degradation into degradedSources
+  if ((cro as { _sfDegraded?: boolean })._sfDegraded && !degradedSources.includes('salesforce')) {
+    degradedSources.push('salesforce');
+  }
+  if ((cfo as { _nsDegraded?: boolean })._nsDegraded && !degradedSources.includes('netsuite')) {
+    degradedSources.push('netsuite');
+  }
+  if ((cpo as { _pbiDegraded?: boolean })._pbiDegraded && !degradedSources.includes('powerbi')) {
+    degradedSources.push('powerbi');
+  }
 
   const lensOutputs = { CRO: cro, CFO: cfo, CMO: cmo, CPO: cpo, COS: cos };
 
@@ -186,30 +372,53 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
   emit({ kind: 'agent.complete', payload: { runId, agentId: `cpo-${runId}`, role: 'CPO', structuredOutput: cpo } });
   emit({ kind: 'agent.complete', payload: { runId, agentId: `cos-${runId}`, role: 'COS', structuredOutput: cos } });
 
-  // 3. Synthesizer — inline stub; real Synthesizer agent fires in run-loop integration.
-  const pbiData = stubPowerBiDashboard();
+  // 3. Synthesizer — DOCTRINE #1: only cite real or explicitly UNKNOWN values.
+  // Financial metrics not available from real clients are marked UNKNOWN.
+  // aws_product_usage (activeAccountsPct) and powerbi_financials (NRR, churn, expansion)
+  // are in STUBBED_SOURCES — they are NOT used in the memo.
+
+  const sfDegraded = degradedSources.includes('salesforce');
+  const nsDegraded = degradedSources.includes('netsuite');
+  const pbiDegraded = degradedSources.includes('powerbi');
+
+  const pipelineLabel = sfDegraded ? 'UNKNOWN (Salesforce degraded)' : 'see CRO lens [^cro]';
+  const payrollLabel = nsDegraded ? 'UNKNOWN (NetSuite degraded)' : 'see CFO lens [^cfo]';
+  const atRiskLabel = pbiDegraded
+    ? 'UNKNOWN (PowerBI degraded)'
+    : `${String((cpo as { atRiskCount: unknown }).atRiskCount)} accounts at risk [^pbi]`;
+
+  const degradedNote = degradedSources.length > 0
+    ? ` | **DEGRADED:** ${degradedSources.join(', ')}`
+    : '';
+
   const memoMarkdown = [
     `# GTM Reallocation Memo`,
     ``,
-    `> **Run ID:** ${runId}${degradedSources.length ? ` | **DEGRADED:** ${degradedSources.join(', ')}` : ''}`,
+    `> **Run ID:** ${runId}${degradedNote}`,
+    ``,
+    `> **Data integrity notice:** NRR, gross churn rate, and active-account % are NOT available`,
+    `> from current real-time integrations (see STUBBED_SOURCES: aws_product_usage, powerbi_financials).`,
+    `> Values shown as UNKNOWN until those sources are wired to real clients.`,
     ``,
     `## Current GTM Cost vs ROI`,
     ``,
-    `- **Total GTM payroll (annualized):** $${(1_840_000 * 12 / 1_000_000).toFixed(1)}M`,
-    `- **ROI by function:** Sales 7.2× | Marketing 3.1× | Customer Success 11.4×`,
-    `- **NRR:** ${(pbiData.nrr * 100).toFixed(0)}% | **Gross churn:** ${(pbiData.grossChurnRate * 100).toFixed(1)}%`,
-    `- **Committed pipeline:** $14.2M`,
+    `- **Total GTM payroll (annualized):** ${payrollLabel}`,
+    `- **ROI by function:** Sales 7.2× | Marketing 3.1× | Customer Success 11.4× _(calibration-sourced)_`,
+    `- **NRR:** UNKNOWN (not available from PowerBI — financial metric, source: NetSuite/Salesforce, STUBBED)`,
+    `- **Gross churn:** UNKNOWN (not available from PowerBI — financial metric, STUBBED)`,
+    `- **Committed pipeline:** ${pipelineLabel}`,
+    `- **At-risk accounts:** ${atRiskLabel}`,
     ``,
     `## Recommended Reallocation`,
     ``,
-    `1. **CS expansion (+0.5 FTE PLG motion, M1):** Target top-usage-quartile accounts. CS ROI is 3.7× marketing ROI; product-usage signals validate the expansion opportunity. [^aws-usage]`,
+    `1. **CS expansion (+0.5 FTE PLG motion, M1):** Target at-risk accounts. CS ROI is 3.7× marketing ROI. [^pbi]`,
     `2. **Marketing consolidation (M2):** Eliminate events budget (12% pipeline attribution); redeploy into digital demand-gen. [^cmo]`,
-    `3. **SDR capacity add (+1 HC enterprise, M3):** Enterprise pipeline velocity is the CRO's primary constraint; mid-market is adequately covered. [^cro]`,
+    `3. **SDR capacity add (+1 HC enterprise, M3):** Enterprise pipeline velocity is the CRO's primary constraint. [^cro]`,
     ``,
     `## Pipeline Impact Projection`,
     ``,
-    `- **90-day committed pipeline:** +$1.8M (SDR ramp lag; CS expansion faster-to-value)`,
-    `- **NRR target:** 112% by Q4 (from 108% current) via CS expansion motion`,
+    `- **90-day committed pipeline delta:** ${sfDegraded ? 'UNKNOWN (Salesforce degraded)' : 'requires live pipeline data from Salesforce [^cro]'}`,
+    `- **NRR target trajectory:** UNKNOWN — requires financial data from NetSuite/Salesforce (not PowerBI)`,
     `- **Marketing-attributed pipeline:** Flat near-term; improves in H2 as digital mix matures`,
     ``,
     `## Risks`,
@@ -217,15 +426,17 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     `- **Execution drag (medium):** Parallel moves risk overextending COS bandwidth. Mitigation: COS sequencing per above.`,
     `- **Marketing attribution drop (low):** Events consolidation may temporarily reduce pipeline; digital ramp takes 60–90 days.`,
     `- **CS capacity stretch (low):** PLG motion adds 0.5 FTE equivalent scope to existing CS; monitor utilization.`,
+    `- **Data gap (medium):** Active-account % and NRR unavailable from current integrations — reallocation decision made with incomplete signal.`,
     ``,
     `## Workstream-Update Proposals`,
     ``,
     `- GTM-Capacity: OPEN → transition trigger: CS hire complete (M1)`,
-    `- CS-Expansion: OPEN → activate PLG motion on top-usage accounts`,
+    `- CS-Expansion: OPEN → activate PLG motion on at-risk accounts`,
     `- Marketing-Demand-Gen: OPEN → consolidate events into digital by M2`,
     ``,
     `---`,
     `_Playbook: gtm_realloc | Lenses: CRO, CFO, CMO, CPO, COS | Threshold: ${RIGOR_THRESHOLD}_`,
+    `_STUBBED_SOURCES: aws_product_usage, powerbi_financials — stub-guard blocks CLEAN stamp under STUB_MODE=live_`,
   ].join('\n');
 
   // B47 Phase 2: rigorScore + CLEAN/DRAFT assigned by the real Verifier in run-loop
@@ -247,7 +458,7 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
       writebackId: `wb-gtm-ws-2-${runId}`,
       artifactType: 'workstream_update',
       draftPath: `drafts/gtm-realloc/${runId}/ws-cs-expansion.md`,
-      description: 'CS-Expansion workstream: activate PLG motion on top-usage accounts',
+      description: 'CS-Expansion workstream: activate PLG motion on at-risk accounts',
       topic: 'cs_expansion_plg',
     },
     {

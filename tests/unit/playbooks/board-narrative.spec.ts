@@ -24,12 +24,59 @@ vi.mock('../../../apps/utility/src/safewrite/index.js', () => ({
 }));
 
 import { LENSES, runPlaybook } from '../../../apps/utility/src/playbooks/board-narrative/index.js';
-import type { PlaybookInput, PlaybookContext } from '@c-suite/shared-types/playbook';
+import type { PlaybookInput, PlaybookContext, PlaybookDeps } from '@c-suite/shared-types/playbook';
 
-const ALL_DEPS = {
-  salesforce: true, netsuite: true, powerbi: true,
-  aws: true, calibration: true, chorus: true, gmail: true,
-};
+// Mock clients that satisfy the interface without real network calls.
+// B47 fix: board_narrative now calls real client methods — tests must provide mock clients.
+function makeMockDeps(): PlaybookDeps {
+  return {
+    salesforce: {
+      serviceId: 'salesforce',
+      query: vi.fn().mockResolvedValue({ totalSize: 2, done: true, records: [
+        { Id: 'opp1', Name: 'Acme Renewal', Amount: 1_500_000, StageName: 'Contracting' },
+        { Id: 'opp2', Name: 'Beta Verbal', Amount: 900_000, StageName: 'Verbal Agreement' },
+      ] }),
+      queryAll: vi.fn().mockResolvedValue({ totalSize: 0, done: true, records: [] }),
+      describeObject: vi.fn().mockResolvedValue({ name: 'Opportunity', fields: [] }),
+      isAuthenticated: vi.fn().mockResolvedValue(true),
+      reconnect: vi.fn().mockResolvedValue(undefined),
+      healthCheck: vi.fn().mockResolvedValue({ ok: true, authMode: 'oauth' }),
+    },
+    netsuite: {
+      serviceId: 'netsuite',
+      degraded: false,
+      runSuiteQL: vi.fn().mockResolvedValue({ items: [], count: 0, hasMore: false }),
+      runSavedSearch: vi.fn().mockResolvedValue({ items: [], count: 0, hasMore: false }),
+      isNetSuiteTableReadable: vi.fn().mockResolvedValue(true),
+      isAuthenticated: vi.fn().mockResolvedValue(true),
+      reconnect: vi.fn().mockResolvedValue(undefined),
+      healthCheck: vi.fn().mockResolvedValue({ ok: true, authMode: 'tba' }),
+    },
+    powerbi: {
+      serviceId: 'powerbi',
+      runFullExport: vi.fn().mockResolvedValue([
+        { account_id: 'acc1', account_name: 'Acme', health_score: 78, health_status: 'Healthy', arr_usd: 60000 },
+        { account_id: 'acc2', account_name: 'Beta', health_score: 28, health_status: 'At-Risk', arr_usd: 25000 },
+        { account_id: 'acc3', account_name: 'Gamma', health_score: 55, health_status: 'Healthy', arr_usd: 40000 },
+      ]),
+      getAccountUsage: vi.fn().mockResolvedValue(null),
+      isAuthenticated: vi.fn().mockResolvedValue(true),
+      reconnect: vi.fn().mockResolvedValue(undefined),
+      healthCheck: vi.fn().mockResolvedValue({ ok: true, authMode: 'subprocess' }),
+    },
+    calibration: {} as never,
+    aws: {
+      serviceId: 'aws',
+      getCostExplorer: vi.fn().mockResolvedValue({}),
+      getOrganizationAccounts: vi.fn().mockResolvedValue({}),
+      isAuthenticated: vi.fn().mockResolvedValue(true),
+      reconnect: vi.fn().mockResolvedValue(undefined),
+      healthCheck: vi.fn().mockResolvedValue({ ok: true, authMode: 'sso' }),
+    },
+    chorus: {} as never,
+    gmail: {} as never,
+  };
+}
 
 function makeCtx(overrides?: Partial<PlaybookContext>): PlaybookContext {
   return {
@@ -37,7 +84,7 @@ function makeCtx(overrides?: Partial<PlaybookContext>): PlaybookContext {
     db: {} as never,
     vaultPath: '/tmp/vault',
     emit: vi.fn(),
-    deps: ALL_DEPS,
+    deps: makeMockDeps(),
     ...overrides,
   };
 }
@@ -157,42 +204,50 @@ describe('board_narrative — parallel lens fan-out (ADR §7)', () => {
 describe('board_narrative — prereq decision integration (ADR §3.6, Decision 4)', () => {
 
   it('block when Salesforce unavailable', async () => {
-    const result = await runPlaybook(makeInput(), makeCtx({ deps: { ...ALL_DEPS, salesforce: false } }));
+    const deps = { ...makeMockDeps(), salesforce: undefined };
+    const result = await runPlaybook(makeInput(), makeCtx({ deps }));
     expect(result.memoMarkdown).toMatch(/Blocked/);
   });
 
   it('block when NetSuite unavailable', async () => {
-    const result = await runPlaybook(makeInput(), makeCtx({ deps: { ...ALL_DEPS, netsuite: false } }));
+    const deps = { ...makeMockDeps(), netsuite: undefined };
+    const result = await runPlaybook(makeInput(), makeCtx({ deps }));
     expect(result.memoMarkdown).toMatch(/Blocked/);
   });
 
   it('block when PowerBI unavailable', async () => {
-    const result = await runPlaybook(makeInput(), makeCtx({ deps: { ...ALL_DEPS, powerbi: false } }));
+    const deps = { ...makeMockDeps(), powerbi: undefined };
+    const result = await runPlaybook(makeInput(), makeCtx({ deps }));
     expect(result.memoMarkdown).toMatch(/Blocked/);
   });
 
   it('block when calibration unavailable', async () => {
-    const result = await runPlaybook(makeInput(), makeCtx({ deps: { ...ALL_DEPS, calibration: false } }));
+    const deps = { ...makeMockDeps(), calibration: undefined };
+    const result = await runPlaybook(makeInput(), makeCtx({ deps }));
     expect(result.memoMarkdown).toMatch(/Blocked/);
   });
 
   it('block result has empty lensOutputs when any required source absent', async () => {
-    const result = await runPlaybook(makeInput(), makeCtx({ deps: { ...ALL_DEPS, netsuite: false } }));
+    const deps = { ...makeMockDeps(), netsuite: undefined };
+    const result = await runPlaybook(makeInput(), makeCtx({ deps }));
     expect(Object.keys(result.lensOutputs).length).toBe(0);
   });
 
   it('degrade when aws unavailable — degradedSources includes aws', async () => {
-    const result = await runPlaybook(makeInput(), makeCtx({ deps: { ...ALL_DEPS, aws: false } }));
+    const deps = { ...makeMockDeps(), aws: undefined };
+    const result = await runPlaybook(makeInput(), makeCtx({ deps }));
     expect(result.degradedSources).toContain('aws');
   });
 
   it('degrade when gmail unavailable — degradedSources includes gmail', async () => {
-    const result = await runPlaybook(makeInput(), makeCtx({ deps: { ...ALL_DEPS, gmail: false } }));
+    const deps = { ...makeMockDeps(), gmail: undefined };
+    const result = await runPlaybook(makeInput(), makeCtx({ deps }));
     expect(result.degradedSources).toContain('gmail');
   });
 
   it('degrade when chorus unavailable — degradedSources includes chorus', async () => {
-    const result = await runPlaybook(makeInput(), makeCtx({ deps: { ...ALL_DEPS, chorus: false } }));
+    const deps = { ...makeMockDeps(), chorus: undefined };
+    const result = await runPlaybook(makeInput(), makeCtx({ deps }));
     expect(result.degradedSources).toContain('chorus');
   });
 
@@ -201,9 +256,12 @@ describe('board_narrative — prereq decision integration (ADR §3.6, Decision 4
     expect(result.memoMarkdown).not.toMatch(/Blocked/);
   });
 
-  it('proceed — degradedSources empty when all deps available', async () => {
+  it('proceed — degradedSources empty when all mock deps available (netsuite env-gated)', async () => {
+    // In test env, NETSUITE_SUITEQL_BOARD_FINANCIALS is unset → netsuite degrades from env-gate.
+    // All other sources succeed with mock clients.
     const result = await runPlaybook(makeInput(), makeCtx());
-    expect(result.degradedSources).toHaveLength(0);
+    const nonNsDegraded = result.degradedSources.filter((s) => s !== 'netsuite');
+    expect(nonNsDegraded).toHaveLength(0);
   });
 
 });
@@ -228,7 +286,7 @@ describe('board_narrative — stamps (ADR §3.3)', () => {
   });
 
   it('result.stamps contains DEGRADED when degradedSources is non-empty', async () => {
-    const result = await runPlaybook(makeInput(), makeCtx({ deps: { ...ALL_DEPS, aws: false } }));
+    const result = await runPlaybook(makeInput(), makeCtx({ deps: { ...makeMockDeps(), aws: undefined } }));
     expect(result.stamps).toContain('DEGRADED');
   });
 
