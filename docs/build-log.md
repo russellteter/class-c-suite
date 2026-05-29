@@ -2131,3 +2131,72 @@ assertion) may not be active yet — verify.
 single isolated inference succeeded in 11.9s. The generic run-loop dispatches lenses SEQUENTIALLY for this
 reason; quick_read's Promise.all(6) is overload-prone — may need a concurrency cap / retry. Build + replay-
 test the Verifier fix OFFLINE; batch ONE live confirm (Verifier fix + WF-1 FORBID checks) when load eases.
+
+---
+
+## 2026-05-29 — REALITY CHECK: end-to-end is NOT proven (correcting the record)
+
+Russell: the production app shows only an empty load state; no proof anything functions (tools/data).
+Investigated against the persisted DB + the real Electron app + the connector smoke. The "GATE-3 PROVEN
+end-to-end / 2772-char CLEAN memo persisted / run row shipped_clean" claims above are NOT supported by
+the persisted reality. Evidence (all verified this session, zero assertions):
+
+**DB forensics (`~/Library/Application Support/@c-suite/main/runtime.db` — the SAME db the app + the
+`live-engine-proof.mjs` harness use; harness hardcodes this path at line 31):**
+- 23 runs: 9 failed, 6 in_progress, 8 `shipped_clean`. BUT every `shipped_clean` row has **empty
+  `rigor_score`, empty `memo_path`**, and `current_state.kind` still = `"bootstrap"` (one = `handoff`
+  with a fake `/vault/handoffs/...` path that does not exist on this Mac).
+- `current_state.kind` across all 23 runs: bootstrap×19, fan-out×2, handoff×1, synthesizer×1 — BUT this
+  is NOT proof of where execution stopped. Status and current_state are written by SEPARATE paths:
+  `index.ts:114` writes `status, finished_at` (only) when `result.finalState.kind` is shipped-*, while the
+  state machine writes `current_state` + `state_transitions` atomically at `state-machine.ts:367`. On 8 rows
+  status=shipped_clean YET current_state=bootstrap with ZERO transitions (e.g. pre_mortem `762165da`) —
+  impossible if the run truly froze at bootstrap, so **current_state is a stale initial snapshot, not a
+  freeze indicator.** ROOT CAUSE of "nothing real persists" is OPEN — stale/decoupled state-write path vs
+  seeded fixtures (the History screen shows a `POS-001 active` nobody created) vs an actual stall — NOT traced.
+- `cost_ledger = 0` (no inference ever billed/recorded), `tool_calls = 0` (no connector/tool ever
+  invoked+recorded; `insertToolCall` IS wired into cash-lever/board-narrative/gtm-realloc source but the
+  runs froze before reaching it), `writebacks = 0`, `credentials = 0` rows.
+- **No `2026-05-29-pre_mortem-*.md` memo exists** in the vault, repo, or /tmp; memo_path is empty on
+  every run. Note `index.ts:114` writes only `status,finished_at` — it NEVER writes `memo_path`/`rigor_score`,
+  so those columns can't populate even on a genuine success (a persistence gap). Whether a memo was generated
+  in-memory but never persisted, vs never generated at all, is OPEN. Either way: no surviving artifact.
+- (Minor correctness bug found en route: `started_at`/`finished_at` are stored in SECONDS but the schema
+  comments say "ms epoch" and `live-engine-proof` divides by 1000 → 1970 timestamps in any ms-assuming reader.)
+
+**Real Electron app (drove it with `tests/e2e/electron-renderer-smoke.mjs` — REAL window, preload IPC
+bridge intact, not the browser shim; screenshots in `tests/e2e/screenshots/`):**
+- IPC bridge works: `window.ipc` present, `runs:list → array(23)` (the DB read path is real).
+- BUT inside the REAL app: Token Meter **stuck "USAGE LOADING…"** (real bug, not a shim artifact —
+  `cost.usage` never resolves; consistent with cost_ledger=0), context rail empty (no workstreams / no
+  decisions / 0 writebacks), **History/Accepted screen shows 0 commits** (the 23 runs are NOT surfaced
+  in any UI), Connectors screen exposes **only NetSuite, "Not connected"** (1 of 6; not even the 2 that work).
+- So inside the real production app, Russell sees the SAME empty state as the browser screenshot. The
+  earlier "empty was just the browser shim, re-check inside Electron" hypothesis is FALSIFIED — empty is real.
+
+**Connector smoke (`./scripts/mcp-live-smoke.sh all`) — the one positive: 2 connector CLIENTS pull real
+live data (just not via the app's run engine, and not surfaced in the UI):**
+- salesforce **PASS** but rides on the local `sf` CLI session (user=class-prod), NOT the app's vault
+  (0 creds) — proves the client code + Russell's shell login, not an app-provisioned connector. (5 live opps.)
+- powerbi **PASS** but the smoke shells out to a SEPARATE `customer-dashboard` project (its own
+  credentials.json), NOT an in-app C-Suite connector — 691 records prove that project works, not the app.
+- aws **DEGRADED** (SSO tokens expired — `aws sso login`). gmail/netsuite/chorus **BLOCKED** (no OAuth/key).
+- (Smoke reads a wrong db path `~/.../c-suite/runtime.db` vs the real `@c-suite/main/runtime.db` — a path-
+  drift bug; verdict happens to match since real creds are absent too.)
+
+**Honest status of the build:** the SKELETON works — app boots/renders/navigates, IPC + DB + migrations
+persist (23 runs, 46 agent_invocations, 183 process_events), and 2 connector clients fetch real data in
+isolation. What does NOT work: **no run has ever completed end-to-end** (0 memos/scores/tool_calls/cost/
+writebacks; status and current_state disagree because they are written by decoupled paths), the UI surfaces
+no real data (token meter stuck, history empty, connectors 1/6 disconnected), grounding is empty
+(`contextDocuments:[]`). The prior "PROVEN" entries
+describe in-memory harness behavior that left NO persisted artifact; treat them as unproven until a run
+persists a memo+rigor+tool_calls+cost row AND the app renders it.
+
+**Real next leg (not a quick demo — a focused build):** make ONE playbook complete end-to-end and SHOW in
+the app: (a) ROOT-CAUSE why no run persists a memo/cost/tool_call and why status vs current_state disagree —
+trace the status-write (`index.ts:114`) vs the state/transition writes (`state-machine.ts:367`): same db
+handle/path? is the Ch.7 early-return bypassing the transition-persisting machine? are some of these 23 rows
+seeded fixtures (POS-001)? — do this FIRST, it is unproven which it is, (b) make `index.ts` persist
+memo_path+rigor on ship, (c) wire one real source into `contextDocuments` so the memo has content, (d) surface
+runs in History + fix the stuck token meter, (e) record tool_calls+cost so the audit trail is real.
