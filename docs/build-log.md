@@ -2097,10 +2097,29 @@ FIX, split by what the evidence supports (advisor):
   restructure_decision, strategic_option}` keep the real output — or, if genuinely absent, stay undefined so
   fail-closed still catches a real assembler bug. tsc clean; playbook-verifier 9/9 + verifier-runner 11/11
   replay-green; the anti-rubber-stamp PROMPT is untouched (so the replay-only canary is unaffected).
-- **ONE live smoke pending (then checkpoint, do NOT grind):** success criterion = the Verifier GRADES instead
-  of refusing AND the verdict VALIDATES (a DRAFT against an empty auto-skeleton is the correct outcome —
-  success ≠ CLEAN). Nondeterminism + ~8-min/run throttle: smoke once for direction; N-run live hardening +
-  the FORBID U2 check ride a later, less-throttled batch. DIAGNOSTICS (9516ede) self-classify any recurrence.
+- **SMOKE RESULT — Verifier sentinel fix PROVEN live (refuse→grade flip + valid verdict).** A live run
+  produced a non-adversarial memo (board_narrative, blocked) whose Opus Verifier output explicitly recognized
+  the sentinel: *"red_team_output and steelman_output are present with explicit N/A explanations and
+  instructions NOT to treat absence as a violation — so this is not a VerifierInputContractViolation,"* then
+  produced a VALID verdict (scored red_team + falsifier 0 for N/A, not a refusal) → memo `shipped_clean` in
+  runtime.db. The two success criteria (refuse→grade flip; verdict validates) are MET. Needs N-run live
+  hardening (Opus nondeterminism) when throttling eases.
+
+**THREE NEW findings surfaced by the smoke (tracked — NOT this session):**
+1. **Blocked memo ships CLEAN (real bug).** The board_narrative "Blocked — connect sources" degenerate memo
+   (246 chars, 0 claims) cleared rigor ≥70 and `applyShipStamp` marked it CLEAN. A blocked/degraded result
+   must not ship CLEAN — a contentless memo passes the bar because claims_total=0 and the N/A dimensions
+   don't deduct. Fix candidate: floor blocked/degraded playbook results to DRAFT regardless of Verifier score
+   (or the Verifier fails a no-substance memo). My sentinel fix EXPOSED this (pre-fix it would have crashed).
+2. **Multiple run.start per one tile-click+approve (HIGH — reliability).** The real DB shows ~5 runs
+   (stakeholder_1_1 / cash_lever / board_narrative) created during a SINGLE stakeholder smoke (one tile click,
+   one Approve), e.g. board_narrative d0648e36 + cash_lever 12e3b2f3 + stakeholder c7bef176 within ~4s. Smells
+   like the DF (PlanApproval double-fire) fix from batch-1 is incomplete OR a renderer run.start loop. DF was
+   never live-confirmed (handoff noted this). Investigate next session; add the discriminating regression test.
+3. **U2 still needs a clean live-verify.** The smoke picked up the board_narrative memo (not a stakeholder
+   memo), so the FORBID COS-placeholder check did NOT actually exercise U2. Batch U2 + quick_read (retry the
+   6-way overload) + open_qa (Q&A bar, no tile — needs a harness path) live-verify WITH FORBID when throttling
+   eases (~8 min/run now; single isolated inference is 12s, so the throttle is load/concurrency-driven).
 
 **FINDING 2 (process gap):** `tests/unit/verifier-canary.spec.ts` is REPLAY-based (canned Ch.4 fixture) — a
 Verifier PROMPT change CANNOT move it (false green). Any Verifier-prompt edit (this fix AND the deferred

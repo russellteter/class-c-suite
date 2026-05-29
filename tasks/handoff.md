@@ -4,6 +4,56 @@ Driving `docs/PRODUCTION_PLAN.md` + `docs/WORKFLOW_PROGRAM.md` to a working V1, 
 workflows + serial gates. Full execution authority; control model from `tasks/lessons.md`
 (workflow agents return findings / edit-in-worktree, NEVER commit; main thread commits serially).
 
+## SESSION 3 (2026-05-29) — WF-1 remainder DONE; live Verifier robustness DONE + PROVEN; next = GROUNDING
+
+**Commits (all on origin/main):** `fa3472a` WF-1 remainder batch 2 → `9516ede` Verifier diagnostics →
+`35e25cb` Verifier union/refusal handling → `6fd6c26` Verifier N/A sentinel.
+
+**DONE this session:**
+- **WF-1 remainder batch 2** — open_qa (O2+U4), quick_read (U3), stakeholder_1_1 (U2), gtm_realloc (U5):
+  the 4 Ch.7 playbooks no longer ship fabricated/stub content to a CLEAN stamp under live. Replay-green
+  (77/77 across the 4 specs); U5 workflow-authored + 2 adversarial grader rounds. (Build-log "WF-1 batch 2".)
+- **Live Verifier robustness (P0; found BY live-verify, NOT WF-1 scope).** The live Verifier refused EVERY
+  non-adversarial playbook: `JSON.stringify` drops undefined red_team/steelman keys → the Verifier read the
+  VANISHED keys as an assembler failure → designed `{error,missing}` refusal → `runVerifier` (verdict-schema
+  only) crashed the run. Fixed: (a) `runVerifier` validates the `VerifierResponseSchema` UNION → clear
+  `VerifierRefusedError`, not a crash (35e25cb); (b) `buildPlaybookVerifierInput` injects a present-but-N/A
+  red-team/steelman sentinel for non-adversarial playbooks (`ADVERSARIAL_PLAYBOOKS={pre_mortem,
+  restructure_decision,strategic_option}` keep real/fail-closed) → Verifier GRADES not refuses (6fd6c26).
+  Assembler-only — NO prompt change (replay-only canary unaffected). PROVEN LIVE (Verifier recognized the
+  sentinel + produced a valid verdict → memo shipped_clean). Needs N-run hardening (Opus nondeterminism).
+- **Permanent diagnostics:** RealClaudeClient raw-text `sample` on preamble recovery; runVerifier extracted-
+  keys log before any throw; live-verifier-isolation prints keys+missing[]; live-engine-proof preserves the
+  memo to /tmp + a `FORBID` string-absence gate. (DOCTRINE #9: a wrong "red-team/steelman refusal" root-cause
+  was falsified then re-confirmed by reading the REAL raw — don't fix the trust anchor blind.)
+
+**OPEN findings (next session, priority order):**
+1. **Multiple run.start per ONE tile-click+approve (HIGH — reliability).** ~5 runs (stakeholder/cash_lever/
+   board_narrative) created during a single stakeholder smoke. DF (PlanApproval double-fire) batch-1 fix may
+   be incomplete OR a renderer run.start loop; DF was never live-confirmed. Add the discriminating test.
+2. **Blocked/degraded memo ships CLEAN.** A "Blocked — connect sources" 246-char memo cleared rigor ≥70 →
+   CLEAN. Floor blocked/degraded results to DRAFT regardless of Verifier score (or Verifier fails no-substance).
+3. **WF-1 live-verify still owed (throttle-batched, ~8 min/run; isolated inference is 12s → load-driven, not
+   an outage).** quick_read (retry the 6-way Overloaded), stakeholder_1_1 (clean U2 — last smoke grabbed the
+   board_narrative memo), open_qa (Q&A bar has NO tile → needs a harness path), gtm_realloc. FORBID strings in
+   build-log "WF-1 batch 2".
+
+**THE high-value next FRONT (advisor): GROUNDING.** `buildLensBundle` returns `contextDocuments:[]` → six-lens
+memos are honestly UNKNOWN-heavy (correct, but not useful). Wiring vault + connector data into
+`contextDocuments` is what makes memos worth grading — the real next leg (WF-2/Ch.7). Buildable + replay-
+testable OFFLINE; only final verify needs live.
+
+**DEFERRED:** Verifier-prompt "Chasen" strip (P0 trust anchor; needs a LIVE canary — `verifier-canary.spec.ts`
+is REPLAY-only and can't guard a prompt change; AC-7b live planted-claim may be inactive).
+
+**ABI:** left at Electron 130 (app/proof-ready). `npx vitest` flips better-sqlite3 to Node-137 →
+`pnpm rebuild:electron` before any app/e2e/live proof; `pnpm rebuild:node` before vitest if you need DB-test
+green. `pnpm --filter @c-suite/utility build` does NOT flip it (but IS required to compile src→dist before any
+live proof — the app runs utility from `apps/utility/dist/`).
+
+---
+### (Prior session-2 handoff below — historical; U1 + O3 done)
+
 ## Headline: the Phase-3 catastrophic-risk core is PROVEN
 
 A live `pre_mortem` run through the **assembled Electron app** produced a real, rigor-scored,
