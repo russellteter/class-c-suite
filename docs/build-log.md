@@ -1927,3 +1927,29 @@ makes its own real inference calls producing the existing failureModes/defense s
 needs no O1/O3). Surfaced in tasks/handoff.md with options A/B/C. Remaining WF-1 fixes (O2/O3/O5/U2-U6)
 + the workflow program (WF-2/4/5, GATE-6) queued there. Checkpointed here: the catastrophic-risk core
 is proven (sequencing-law priority met); U1 + the rest are scoped for a focused continuation.
+
+### U1 DONE — FULL GATE-3 proven (real lens inference)
+
+U1 (2075448) closed the inference half. pre_mortem is adversarial-only, so the shared six-lens
+RedTeam/Steelman schemas (challenge-the-claims) don't fit — it got dedicated prompts
+(`RedTeam.preMortem.prompt.md` / `Steelman.preMortem.prompt.md`) + local zod schemas producing the
+failureModes/defense shapes the memo-builder reads. Prompts were authored + adversarially reviewed by
+the `u1-premortem-inference-authoring` workflow (the review caught: use the full anti-fabrication
+prompt bodies not terse ones; `../../prompts` path depth; fail-loud no-stub-fallback; *.preMortem
+naming). LIVE = two sequential RealClaudeClient generations (RedTeam→Steelman, Sonnet), each validated
++ failed-loud; REPLAY/RECORD keeps the original literals (existing tests green).
+
+**Proven end-to-end:** live pre_mortem via the assembled app → RedTeam (Sonnet) → Steelman (Sonnet) →
+Verifier (Opus) → CLEAN 7749-char memo with NOVEL model-generated failure modes (groupthink,
+unowned-findings — nothing like the stub) → shipped_clean in runtime.db. No mocks/stubs in the live
+path; no fabricated present-state facts (the anti-fabrication prompt held; failure modes are
+process-grounded, tripwires forward-looking). **Phase-3 core is complete.** Required a 540s poll (the
+full pipeline ≈ 6 min). Note: pre_mortem's 30s auto-approve countdown double-fires alongside a manual
+Approve click (the 2nd run failed 'max turns 1') — clicking Approve should cancel the countdown
+(PlanApproval fix); and the Agent SDK maxTurns:1 can error mid-generation. Both tracked.
+
+REMAINING (WF-1 remainder + program): O3 (load real agent prompts → real six-lens generic-path
+inference — the big one, U1-like care + a six-lens live run to verify), O2/U3/U4 (open_qa/quick_read
+real lens output), U2 (stakeholder_1_1 use COS output), O5 (cash_lever fail-loud on Verifier
+violation), U5 (gtm_realloc STUBBED_SOURCES unblock live), U6 (board_narrative covenant → UNKNOWN).
+Then WF-2 connectors → WF-4 surfaces → WF-5 autonomy → GATE-6 demos.
