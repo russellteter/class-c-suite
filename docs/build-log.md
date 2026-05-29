@@ -2361,3 +2361,26 @@ the real `runtime.db` has no leftover rows from this session.
 STILL OPEN (unchanged from prior entries): real memo content (live+grounded run); Gap A2 (Ch.7 in-memory
 `visitedStates` → no persisted transitions); `*.set` IPC writes + `app_settings` table; `connector.netsuite.connect`
 OAuth; Gap D (app connector credential provisioning).
+
+**Real-app seed (Russell-approved) + cleanup — so the on-Mac app has a working clickable entry:**
+Russell chose "seed 1 demo memo + remove dead rows." Executed against the REAL vault/db (one-time seed
+script, since deleted):
+- Ran Cash Lever once with NO `VAULT_PATH` override (real vault, git-init'd) → seed memo
+  `memos/2026-05-29-cash_lever-bb235f24.md` (280B placeholder) + aligned run row (rigor 85). Then PROVED
+  click→render against the REAL vault: reload → Recent Runs → click → MemoViewer rendered the body
+  (`seed-real-memo-viewer.png`).
+- Removed the 2 dead test rows (`d979b72c`, `3357ed48`) whose memo files never existed in the real vault
+  (FK-safe: PRAGMA off + child tables + runs, after killing the lingering app that held the WAL —
+  first attempt silently failed on the lock). Final real db: **25 runs, exactly 1 valid memo'd row**
+  (`bb235f24`, file present). Smoke against the real vault/db (`home-initial.png`): Recent Runs shows the
+  single working "Cash Lever · 5M AGO · 85 · VIEW →"; all 19 probes [ok], 0 page errors, no regression.
+- **CORRECTION + NEW FINDING:** I told Russell the seed would be "git-committed via SafeWrite." It is NOT —
+  the file is written but **untracked** in the vault git. Root cause: `apps/utility/src/safewrite/index.ts:205-208`
+  attempts `commitToVault` but catches any failure as **non-fatal** ("write succeeded; git commit failure is
+  logged but not surfaced"). The commit succeeds in a fresh temp vault (render-leg-proof) but **fails silently
+  against the real Obsidian vault** (reason not captured — the error went to the main log, not the
+  `vault_commit_failures` table, which lacks the columns to record it). So real-vault memos land on disk but
+  are **not versioned** — a SafeWrite durability gap that applies to ALL real-vault writes, not just this seed.
+  Still fully reversible (untracked → `rm`). NEW OPEN THREAD: SafeWrite git-commit silently fails on the real
+  vault; investigate `commitToVault` (git.js) against a large Obsidian vault (hook? lock? path/staging?), and
+  make the failure surface (it is swallowed today).

@@ -31,13 +31,20 @@ in the app (Home tiles read real runs → route to MemoViewer)." DONE + PROVEN t
   but is empty/dead until a real-vault run lands an aligned memo.
 - **Deployed:** local only; auto-pushed to origin/main. ABI Electron-130 (app-runnable).
 
-## PENDING DECISION (asked Russell; gated = writing to his real Obsidian vault)
-How to set up the real app's Recent Runs:
-- (A) Seed one labeled demo memo into the real vault + remove the 2 dead test rows → 1 working clickable entry now.
-- (B) Remove the 2 dead test rows, leave the vault clean → Recent Runs empty until the next real playbook run.
-Either way the 2 dead rows should go (they cause dead clicks). Not yet executed.
+## Real-app state (Russell chose "seed + remove dead rows" — DONE)
+- Seeded `memos/2026-05-29-cash_lever-bb235f24.md` (replay placeholder, rigor 85) into the REAL vault;
+  proved click→render against it (`screenshots/seed-real-memo-viewer.png`).
+- Removed the 2 dead rows (`d979b72c`,`3357ed48`). Final real db: 25 runs, 1 valid memo'd row. Smoke
+  (`home-initial.png`): Recent Runs = single "Cash Lever · 5M AGO · 85 · VIEW →"; 19/19 probes ok, no regression.
+- **NEW FINDING (correction):** the seed memo is NOT git-committed — it's UNTRACKED in the vault. SafeWrite
+  (`apps/utility/src/safewrite/index.ts:205-208`) catches `commitToVault` failures as non-fatal; the commit
+  succeeds in a fresh temp vault but silently FAILS against the real Obsidian vault. Real-vault memos land on
+  disk but aren't versioned. Reversible (`rm`). → new open thread below.
 
-## Open threads (unchanged from prior)
+## Open threads
+- **NEW: SafeWrite git-commit silently fails on the real vault** (`safewrite/index.ts:207` swallows it; reason
+  not recorded — `vault_commit_failures` lacks columns). Investigate `commitToVault` (git.js) vs a large Obsidian
+  vault (hook/lock/staging) + make the failure surface. Memos currently unversioned in the real vault.
 - Real memo content (live+grounded run). · Gap A2 (Ch.7 in-memory visitedStates → no persisted transitions).
 - `*.set` IPC writes + `app_settings` table. · `connector.netsuite.connect` OAuth. · Gap D (connector creds in vault).
 
