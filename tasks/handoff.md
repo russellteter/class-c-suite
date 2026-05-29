@@ -1,59 +1,34 @@
-# Handoff — C-Suite — 2026-05-29 (session: "rendering leg — make a produced memo visible")
+# Handoff — C-Suite — 2026-05-29 (session: rendering leg + CLAUDE.md improve + compound-learning)
 
-Trigger: resume from prior handoff. Next step was the rendering leg: "make a produced memo visible
-in the app (Home tiles read real runs → route to MemoViewer)." DONE + PROVEN this session.
-
-## What was done this session (commit 3ffe0a8)
-- **Closed the 2 real blockers.** `runs:list` returned no `memo_path`/`rigor_score`; no channel could
-  read a memo body by path (`onViewMemo` sent a dead one-way `vault.openFile`).
-- **`apps/main/src/ipc/handlers.ts`** — extended `runs:list` (+`memo_path, rigor_score, finished_at`) +
-  new **`memo:read`** channel: vault-relative path → path-traversal-guarded + `.md`-only file read +
-  run-row lookup (runId/rigor) → ready `MemoViewerMemo` payload, or `null` (renderer no-navs). Vault root
-  replicated *textually identical* to the authoritative writer `getVaultPath()` (utility safewrite:22) to
-  avoid prod 404-drift.
-- **`apps/renderer/src/hooks/useRuns.ts`** (new) — `runs:list` fetch (sec→ms) + refresh on `agent.*`/`run.failed`.
-- **`Home.tsx`** — real per-playbook freshness (replaced `lastRunAt:null`); **Recent Runs** rail surface
-  (always-visible, Token Meter → Recent Runs → Scheduled Jobs) → click `onViewMemo(memo_path)`.
-- **`App.tsx`** — `handleViewMemo`: `memo:read` → existing `memo-viewer` Screen variant; killed the dead send.
-- **PROVEN** — `tests/e2e/render-leg-proof.mjs` (new), real app, STUB_MODE=replay, persistent temp vault.
-  6/6: app up → Cash Lever→Approve → memo (280B) → `runs:list` has memo_path → Recent Runs lists it →
-  click → MemoViewer renders body. Screenshots: `tests/e2e/screenshots/render-leg-{home-recent-runs,memo-viewer}.png`.
-  Self-cleaning (FK-safe row delete + rm vault). typecheck green ×9; main rebuilt (tsc, ABI untouched).
+## What was done
+- **Rendering leg DONE + PROVEN** (commit `3ffe0a8`): a produced memo is now visible in the app.
+- Main: extended `runs:list` (+`memo_path,rigor_score,finished_at`) + new path-guarded **`memo:read`** channel (vault root replicated textually from `getVaultPath()` to avoid prod drift).
+- Renderer: `useRuns.ts` (new); Home tiles show real per-playbook freshness + a **Recent Runs** rail surface → click; `App.handleViewMemo` routes `memo:read` → existing `memo-viewer` screen (killed the dead `vault.openFile` send).
+- Proof `tests/e2e/render-leg-proof.mjs` (new, 6/6): Cash Lever→Approve→memo persists→Recent Runs→click→MemoViewer renders. Self-cleaning. typecheck green ×9; main rebuilt (tsc, ABI-130 untouched).
+- **Real-app seed (you approved):** seeded `memos/2026-05-29-cash_lever-bb235f24.md` into the REAL vault + removed 2 dead test rows → app shows 1 working clickable Recent Run (smoke 19/19, `home-initial.png`).
+- **Retracted an overclaim** (`b84d387`): memos are untracked BY DESIGN (`memo` zone `commitVault:false`, zonePolicy.ts/ADR-0003 §2) — NOT a commit failure.
+- CLAUDE.md improved (`8abd049`): main-from-dist + render-paths + memos-untracked gotchas; dropped stale "renderer not assembled" bullet; added e2e/rebuild commands.
+- compound-learning (`c9bb662` + global rule): see Open threads.
 
 ## Current state
-- **Working (proven in-harness):** the full chain run→persist→list→click→render. Tiles show real
-  freshness ("<1h ago", "Never run", green/gray). Rail "RECENT RUNS" lists completed memos w/ rigor + VIEW→.
-  MemoViewer shows "Seed Memo · CLEAN · RIGOR 85/100" + body.
-- **NOT working / honest gaps:** (1) memo content is the replay SEED PLACEHOLDER — real grounded content
-  needs STUB_MODE=live + `buildLensBundle contextDocuments:[]` (open thread). (2) In Russell's REAL app
-  (VAULT_PATH unset) the 2 pre-existing test rows (`d979b72c`, `3357ed48`) point at memo files that don't
-  exist in the real vault (0 memos) → Recent Runs shows them but click no-ops. So on-Mac the surface works
-  but is empty/dead until a real-vault run lands an aligned memo.
-- **Deployed:** local only; auto-pushed to origin/main. ABI Electron-130 (app-runnable).
+- **Working/proven:** run→persist→list→click→render chain; tiles show real freshness; Recent Runs renders + routes. App boots/navigates all 11 screens (smoke 19/19, 0 page errors).
+- **Not / honest gaps:** memo content is a replay PLACEHOLDER (real grounded content = open thread); Recent Runs **live-refresh on completion is wired but UNTESTED** (proof used reload).
+- **Deployed:** local only; 6 commits auto-pushed to `origin/main` (0 ahead). ABI Electron-130 (app-runnable).
 
-## Real-app state (Russell chose "seed + remove dead rows" — DONE)
-- Seeded `memos/2026-05-29-cash_lever-bb235f24.md` (replay placeholder, rigor 85) into the REAL vault;
-  proved click→render against it (`screenshots/seed-real-memo-viewer.png`).
-- Removed the 2 dead rows (`d979b72c`,`3357ed48`). Final real db: 25 runs, 1 valid memo'd row. Smoke
-  (`home-initial.png`): Recent Runs = single "Cash Lever · 5M AGO · 85 · VIEW →"; 19/19 probes ok, no regression.
-- **CORRECTION (no bug — by design):** the seed memo is UNTRACKED in the vault, and that's intentional, NOT a
-  failure. SafeWrite only commits zones with `commitVault: true`; the `memo` zone is `commitVault: false`
-  (`safewrite/zonePolicy.ts:45`, ADR-0003 §2), so `commitToVault` is never called for memos
-  (`safewrite/index.ts:203` guard). Memos land untracked by design; reversible (`rm`). (Earlier draft
-  claimed "commit silently fails" — retracted; that was an unverified root cause.)
+## Files touched (commits `d72b238..c9bb662`)
+handlers.ts +57 · useRuns.ts (new) · Home.tsx +96 · App.tsx +27 · render-leg-proof.mjs (new) · CLAUDE.md · build-log.md · lessons.md · handoff.md. Plus global rule `~/.claude/rules/dont-assert-root-cause-from-a-symptom.md` (not a repo file). Working tree: only unrelated pre-existing files (entitlements D, untracked briefs/png/yaml/preview) — leave them.
 
 ## Open threads
-- Real memo content (live+grounded run). · Gap A2 (Ch.7 in-memory visitedStates → no persisted transitions).
-- `*.set` IPC writes + `app_settings` table. · `connector.netsuite.connect` OAuth. · Gap D (connector creds in vault).
+- **Real memo content:** one STUB_MODE=live run (throttled) + wire `buildLensBundle` grounding (`contextDocuments:[]`). Placeholders until then.
+- **Recent Runs live-refresh** (useRuns on `agent.complete`) is unverified — prove it updates without a reload, or accept reload-on-mount.
+- Gap A2 (Ch.7 in-memory `visitedStates` → no persisted transitions); `*.set` IPC writes + `app_settings` table; `connector.netsuite.connect` OAuth; Gap D (connector creds in vault).
+- Minor policy Q: should memos be git-versioned? (currently `commitVault:false` by design, ADR-0003 §2).
+
+## Next step
+Real memo content: run one **live + grounded** Cash Lever pass so the visible memo carries real findings (the render path is already proven).
 
 ## Resume recipe (cold)
-1. `cd "/Users/russellteter/Claude Code Projects/c-suite"` (branch `main`). Read this file + `docs/build-log.md`
-   2026-05-29 "Phase 1c" entry.
-2. Confirm ABI-130 before any app run: if `npx vitest` ran since, `pnpm rebuild:electron`. If you edited
-   `apps/main/src`, rebuild main: `pnpm --filter @c-suite/main build` (dist is gitignored; app runs from dist).
-   Ensure vite up: `pnpm --filter @c-suite/renderer dev` (:5273).
-3. Prove the render leg: `pkill -f "electron@33.4.11"; node tests/e2e/render-leg-proof.mjs` → 6/6 + 2 screenshots.
-4. Baseline the real app (real vault/db): `node tests/e2e/electron-renderer-smoke.mjs`.
-5. If the pending decision is resolved: dead-row cleanup is FK-safe (PRAGMA foreign_keys=OFF; delete child
-   tables by run_id then `runs`) on `~/Library/Application Support/@c-suite/main/runtime.db`. A real-vault
-   seed = run `render-leg-proof` logic without `VAULT_PATH` override (real vault is git-init'd) and keep the row/file.
+1. `cd "/Users/russellteter/Claude Code Projects/c-suite"` (branch `main`). Read this file + `docs/build-log.md` "Phase 1c" entry.
+2. ABI guard: if `npx vitest` ran since, `pnpm rebuild:electron`. If you edited `apps/main/src`, `pnpm --filter @c-suite/main build`. Vite up: `pnpm --filter @c-suite/renderer dev` (:5273).
+3. Re-prove render leg: `pkill -f "electron@33.4.11"; node tests/e2e/render-leg-proof.mjs` (6/6).
+4. For real content: STUB_MODE=live + grounding in `apps/utility/src/orchestrator/run-loop.ts` (`buildLensBundle` contextDocuments). Verify in-app via the smoke + a click.
