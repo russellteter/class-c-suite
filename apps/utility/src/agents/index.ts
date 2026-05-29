@@ -1,6 +1,9 @@
 // apps/utility/src/agents/index.ts
 // Source: docs/decisions/0004-ch3-runtime-spine.md §2
-// 12 AgentDefinitions: skeletons with stub systemPrompts (Ch.4 fills in prompts + rigor).
+// 12 AgentDefinitions. O3: the 6 lenses (CEO/CFO/CRO/CMO/CPO/COS) + Synthesizer now load their
+// real system prompts at dispatch time via agents/agentPrompts.ts (dispatch.ts reads
+// loadAgentPrompt(role), NOT def.systemPrompt) — so the `'STUB — see Ch.4'` literal on those defs
+// is inert. Verifier/Handoff/RedTeam/Steelman/RunCritic load their prompts in their own runners.
 import { z } from 'zod';
 import type { AgentDefinition, ZodLike } from '@c-suite/shared-types/agent-definition';
 import type {

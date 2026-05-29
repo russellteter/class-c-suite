@@ -76,10 +76,16 @@ try {
   const pb = page.getByRole('button', { name: new RegExp(TILE.split(' ')[0], 'i') }).first();
   if (!(await pb.count())) throw new Error(`playbook tile not found: ${TILE}`);
   await pb.click({ timeout: 5000 });
+  // Some playbooks (e.g. quick_read) auto-fan-out with no manual plan-approve gate.
+  // Wait briefly; click if the gate appears, otherwise the run is already executing — proceed.
   const approve = page.getByTestId('plan-approve-btn');
-  await approve.waitFor({ timeout: 8000 });
-  console.log('[live] Approve & Run — LIVE inference begins…');
-  await approve.click({ timeout: 5000 });
+  try {
+    await approve.waitFor({ timeout: 8000 });
+    console.log('[live] Approve & Run — LIVE inference begins…');
+    await approve.click({ timeout: 5000 });
+  } catch {
+    console.log('[live] no plan-approve gate (auto-fan-out playbook) — LIVE inference already running, polling…');
+  }
 
   const memosDir = join(VAULT, 'memos');
   let memoFile = null;

@@ -1953,3 +1953,64 @@ inference — the big one, U1-like care + a six-lens live run to verify), O2/U3/
 real lens output), U2 (stakeholder_1_1 use COS output), O5 (cash_lever fail-loud on Verifier
 violation), U5 (gtm_realloc STUBBED_SOURCES unblock live), U6 (board_narrative covenant → UNKNOWN).
 Then WF-2 connectors → WF-4 surfaces → WF-5 autonomy → GATE-6 demos.
+
+### O3 DONE — generic six-lens prompts schema-aligned + honest + wired (real inference proven)
+
+O3 was "load real agent prompts → real six-lens generic-path inference." The 6 lens prompts
+(CEO/CFO/CRO/CMO/CPO/COS) + Synthesizer existed as `.md` files but were never wired: all 12
+AgentDefinitions carried `systemPrompt: 'STUB — see Ch.4'`, AND the `.md` output contracts didn't
+match the zod `outputSchema` the runtime validates (CEO emitted `position/evidence/risks`; the schema
+wants `summary/positions/citations/confidence`; Synthesizer said "produce a markdown document" but the
+schema wants a strict structured object). The frames also hardcoded Class financials/entities a live
+model would emit as unsourced claims (DOCTRINE #1).
+
+**Resolution (evidence-driven):** the `seed-run-001` fixtures conform exactly to the thin
+`BaseLensOutputSchema`, and the whole system (replay, RedTeam/Synthesizer/Verifier inputs, all tests)
+already speaks it → align prompt→schema, NOT enrich-schema (which would ripple through fixtures + every
+consumer + tests for zero gain). Authored + adversarially schema-graded by the `o3-lens-prompt-authoring`
+workflow (7 Sonnet authors → 7 Opus graders, writer≠grader). 5 passed first try; CRO + Synthesizer
+failed the fabrication gate (residual named entities) and were fixed per the graders' exact defects. The
+LIVE proof then caught a leak BOTH the author and grader missed: `cos.prompt.md` hardcoded
+"Chasen"/"Holdco"/"MIP" → COS emitted "Chasen" under empty grounding. Neutralized to role-based framing
+across `cos` + `ceo` prompts.
+
+**Wiring:** new `agents/agentPrompts.ts` (`loadAgentPrompt(role)`, call-time `readFileSync` mirroring
+verifier-runner — no fs-at-import in the registry, replay path untouched). `dispatch.ts` live/record
+branches load the real prompt and pre-inject `role`+`runId` BEFORE `onSubagentStop` (model emits only
+content fields; mirrors pre-mortem trust-known-input). `copy-utility-assets` already globs prompts to
+dist; the stub literals are now inert for the 7 wired roles (index.ts header updated).
+
+**Proven live (STUB_MODE=live, no mocks):**
+- 6 lens prompts: two `quick_read` runs (parallel `dispatchLens`×6) → all 6 `completed`, real 4-7KB
+  outputs, ZERO `AgentOutputSchemaViolation`, ALL entity-clean. Honest under empty grounding
+  (`contextDocuments:[]`): CEO `confidence 0.25` + "not grounded in Class actuals"; CFO emitted
+  `value:"UNKNOWN — needs Cash Lever Model"` not an invented number (`confidence 0.1`); COS reasons from
+  ROLES + tells the Synthesizer to weight it low. CLEAN memo, `shipped_clean` in runtime.db.
+- Synthesizer prompt: proven via ISOLATION (`tests/e2e/live-synthesizer-isolation.mjs`) — fed the 6 REAL
+  lens outputs from the cash_lever run, RealClaudeClient (Sonnet) → `SynthesizerOutputSchema` safeParse
+  PASS (memoMarkdown 8956, executiveSummary 562, keyDecisions 3, citations 5, positionMetadata 16, all 6
+  sections, fabrication-clean). `dispatchSynthesizer`'s inject+onSubagentStop is byte-identical to the
+  proven lens path. The full-app generic-path end-to-end was NOT run to completion (latency, below) — the
+  basis is the composite: isolation prompt proof + identical dispatch wiring.
+
+**Observed (not an O3 blocker):** the Synthesizer live call took 628s for ~6K output tokens (~10 tok/s,
+5-10x slow). The generic run-loop dispatches the 6 lenses SEQUENTIALLY (`run-loop:230`), so a full-app
+cash_lever run (6 sequential lenses + Synthesizer) blew past the harness 540s ceiling (Synthesizer left
+`in_progress`). SUSPECT Max-subscription throttling in this heavy session (~856K workflow tokens + ~30
+live calls in a tight window) — re-measure in a clean session before treating as a fixed perf blocker.
+`quick_read` (parallel fan-out) completes in ~110s.
+
+**Grounding gap (newly surfaced, separate unit):** `buildLensBundle` returns `contextDocuments:[]` — the
+six-lens path has NO vault/financial grounding and no tools, so live lens output is honestly
+UNKNOWN-heavy (correct behavior, not a defect). Wiring vault/connector data into `contextDocuments` is a
+WF-2/Ch.7 concern, not O3.
+
+**Next hygiene item:** `Verifier.prompt.md` still hardcodes "Chasen" — the grader's own prompt carrying
+entities partially defeats fabrication detection. Strip next (out of O3 scope; on the proven GATE-3 path,
+handle carefully).
+
+Harness: patched `live-engine-proof.mjs` to tolerate auto-fan-out playbooks (no plan-approve gate). Unit
+suite: orchestrator + agents 159/159 green. DEFERRED dependent patches (now unblocked): O2+U4 (open_qa
+real Synthesizer merge), U3 (quick_read stop overwriting real lens output — confirmed live: its memo
+still shows templated stubs), U2 (stakeholder COS), U5 (gtm honest-UNKNOWN). Then WF-2 → WF-4 → WF-5 →
+GATE-6.

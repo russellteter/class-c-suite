@@ -10,6 +10,7 @@ import { buildLensContextBundleSchema } from '@c-suite/shared-types/lens-context
 import { AGENT_REGISTRY } from '../agents/registry.js';
 import { createHooks, type IpcEmit } from './hooks.js';
 import { modelClientFromEnv } from '../agents/modelClient.js';
+import { loadAgentPrompt } from '../agents/agentPrompts.js';
 
 // ── Stub mode routing ─────────────────────────────────────────────────────────
 
@@ -109,12 +110,19 @@ export async function dispatchLens<R extends LensRole>(
   // safeParses its argument against the lens output schema, so it must receive the UNWRAPPED
   // structuredOutput — passing the raw envelope fails the schema and throws on EVERY live/record
   // invocation (O1). Mirrors the correct unwrap in verifier-runner.ts:69-71.
+  // O3: systemPrompt is the real lens prompt (loadAgentPrompt), not the 'STUB — see Ch.4' literal.
   const envelope = await client.invoke(
-    { role: def.role, systemPrompt: def.systemPrompt },
+    { role: def.role, systemPrompt: loadAgentPrompt(role) },
     bundle,
   );
 
-  const output = await onSubagentStop(envelope.structuredOutput);
+  // O3: inject the authoritative role + runId before validation. The lens prompts emit only the
+  // content fields (summary/positions/citations/confidence); the runtime owns role + runId — same
+  // trust-known-input idiom as pre-mortem/index.ts ({...parsed.data, proposedAction}). Validation
+  // happens INSIDE onSubagentStop (hooks.ts:165), so the injection must precede it.
+  const so = envelope.structuredOutput;
+  const injected = so && typeof so === 'object' ? { ...(so as Record<string, unknown>), role, runId: bundle.runId } : so;
+  const output = await onSubagentStop(injected);
   return output as LensOutput;
 }
 
@@ -202,12 +210,17 @@ export async function dispatchSynthesizer(
     {},
   );
 
+  // O3: real Synthesizer prompt via loadAgentPrompt (not the 'STUB — see Ch.4' literal).
   const envelope = await client.invoke(
-    { role: def.role, systemPrompt: def.systemPrompt },
+    { role: def.role, systemPrompt: loadAgentPrompt('Synthesizer') },
     { runId, question, playbook: playbookId, lensOutputs },
   );
 
   // Unwrap structuredOutput from the envelope before schema validation in onSubagentStop (O1).
-  const output = (await onSubagentStop(envelope.structuredOutput)) as SynthesizerOutput;
+  // O3: inject role + runId BEFORE onSubagentStop — the strict SynthesizerOutputSchema (role
+  // literal + runId) validates inside the hook, so the post-spread below alone would be too late.
+  const so = envelope.structuredOutput;
+  const injected = so && typeof so === 'object' ? { ...(so as Record<string, unknown>), role: 'Synthesizer', runId } : so;
+  const output = (await onSubagentStop(injected)) as SynthesizerOutput;
   return { ...output, role: 'Synthesizer', runId };
 }
