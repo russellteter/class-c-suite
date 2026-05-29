@@ -234,6 +234,23 @@ export function App(): React.ReactElement {
 
   const navigateTo = (next: Screen) => setScreen(next);
 
+  // Open a produced memo: load its markdown by vault-relative path (memo:read, main owns the
+  // vault), then route to the MemoViewer. Shared by the Home Recent Runs list, TripwireBanner,
+  // and JobsStrip (all call onViewMemo(path)). Null = unsafe/missing path → stay put (no blank view).
+  const handleViewMemo = async (memoPath: string): Promise<void> => {
+    if (!memoPath || typeof window === 'undefined' || !window.ipc?.invoke) return;
+    try {
+      const memo = (await window.ipc.invoke('memo:read', memoPath)) as MemoViewerMemo | null;
+      if (memo && typeof memo.memoMarkdown === 'string' && memo.memoMarkdown.length > 0) {
+        navigateTo({ name: 'memo-viewer', memo });
+      } else {
+        console.warn('[App] memo:read returned no content for', memoPath);
+      }
+    } catch (err) {
+      console.warn('[App] memo:read failed for', memoPath, err);
+    }
+  };
+
   // Ch.9 — subscribe to handoff.preview.ready from Runtime.
   // When generated brief arrives, push HandoffPreview screen preserving current return point.
   // TODO ch9-runtime-ship: Runtime sub-agent emits this on handoff.preview.requested trigger.
@@ -335,15 +352,7 @@ export function App(): React.ReactElement {
             }
             onWritebacksClick={() => navigateTo({ name: 'writeback' })}
             onJobClick={(jobId) => navigateTo({ name: 'settings-scheduler', selectedJobId: jobId })}
-            onViewMemo={(memoPath) => {
-              // Ch.10: open MemoViewer with the path — MemoViewer already exists from Ch.7.
-              // Navigate to the memo path; MemoViewer handles rendering from vault path.
-              // For now, send via IPC since MemoViewer routing is not yet in Screen union.
-              // TODO ch10-renderer-extend: add 'memo-viewer' Screen variant; navigate directly.
-              if (typeof window !== 'undefined' && window.ipc) {
-                window.ipc.send({ kind: 'vault.openFile', payload: { path: memoPath } });
-              }
-            }}
+            onViewMemo={(memoPath) => { void handleViewMemo(memoPath); }}
             onSettingsScheduler={() => navigateTo({ name: 'settings-scheduler' })}
             onSettingsNotifications={() => navigateTo({ name: 'settings-notifications' })}
           />

@@ -4,6 +4,9 @@
 // Main process owns the DB handle — no direct SQLite access from renderer.
 
 import { ipcMain } from 'electron';
+import * as path from 'path';
+import * as os from 'os';
+import { existsSync, readFileSync } from 'fs';
 import type Database from 'better-sqlite3';
 import { validateIpc } from '@c-suite/shared-types/ipc';
 
@@ -12,8 +15,11 @@ interface RunRow {
   playbook: string;
   question: string;
   started_at: number;
+  finished_at: number | null;
   current_state: string;
   status: string | null;
+  memo_path: string | null;
+  rigor_score: number | null;
 }
 
 /** Structural type for the utility MessagePort (Electron.MessagePortMain in prod). */
@@ -31,10 +37,12 @@ export function registerIpcHandlers(
   // Kinds the renderer emits that the utility process handles. Relayed below.
   const UTILITY_BOUND = new Set(['run.start', 'handoff.preview.requested']);
 
-  // List all runs — read-only SQLite view.
+  // List all runs — read-only SQLite view. Includes memo_path + rigor_score + finished_at
+  // so the Home tiles can show real freshness and the Recent Runs list can render + route a
+  // completed run to the MemoViewer (memo:read below loads the body on click).
   ipcMain.handle('runs:list', (_event) => {
     const rows = db.prepare(
-      'SELECT run_id, playbook, question, started_at, current_state, status FROM runs ORDER BY started_at DESC LIMIT 100'
+      'SELECT run_id, playbook, question, started_at, finished_at, current_state, status, memo_path, rigor_score FROM runs ORDER BY started_at DESC LIMIT 100'
     ).all() as RunRow[];
     return rows;
   });
@@ -75,6 +83,51 @@ export function registerIpcHandlers(
       "SELECT service_id, expires_at FROM credentials WHERE service_id = 'netsuite'"
     ).get() as { service_id: string; expires_at: number | null } | undefined;
     return { connected: Boolean(row), expiresAt: row?.expires_at ?? null };
+  });
+
+  // Vault root for memo reads. MUST match apps/utility/src/safewrite getVaultPath() — that
+  // is the authoritative writer (index.ts SafeWrites every memo under it), so the same memo_path
+  // must resolve identically here or memo:read 404s in production. Replicated (same path.join +
+  // os.homedir() construction) rather than imported, to avoid a main→utility layering dependency.
+  const vaultRoot =
+    process.env.VAULT_PATH ??
+    path.join(os.homedir(), 'Documents', 'Claude', 'Projects', 'Business Planning');
+
+  // Load a produced memo's markdown by its vault-relative path, for the MemoViewer. Read-only,
+  // path-traversal-guarded (must stay inside the vault), .md-only. Returns a ready MemoViewerMemo
+  // payload (runId/status/rigor from the owning run row), or null if the path is unsafe/missing —
+  // the renderer treats null as "do not navigate". This is what makes a produced memo visible.
+  ipcMain.handle('memo:read', (_event, arg: { path?: string } | string) => {
+    const memoPath = typeof arg === 'string' ? arg : arg?.path;
+    if (!memoPath || typeof memoPath !== 'string') return null;
+    const abs = path.resolve(vaultRoot, memoPath);
+    const rootWithSep = path.resolve(vaultRoot) + path.sep;
+    if (!abs.startsWith(rootWithSep) || !abs.toLowerCase().endsWith('.md')) return null;
+    if (!existsSync(abs)) return null;
+    let memoMarkdown: string;
+    try {
+      memoMarkdown = readFileSync(abs, 'utf8');
+    } catch {
+      return null;
+    }
+    // Owning run row (memo_path is stored vault-relative) → runId + rigor.
+    const run = db.prepare(
+      'SELECT run_id, status, rigor_score FROM runs WHERE memo_path = ?'
+    ).get(memoPath) as { run_id: string; status: string | null; rigor_score: number | null } | undefined;
+    const filename = memoPath.split('/').pop() ?? memoPath;
+    // Clean vs draft derives from the .draft.md filename suffix (more reliable than the status string).
+    const status: 'clean' | 'draft' = filename.toLowerCase().endsWith('.draft.md') ? 'draft' : 'clean';
+    const h1 = memoMarkdown.split('\n').find((l) => l.startsWith('# '));
+    const memoTitle = h1 ? h1.slice(2).trim() : filename;
+    return {
+      runId: run?.run_id ?? '',
+      memoMarkdown,
+      status,
+      rigorScore: run?.rigor_score ?? null,
+      memoPath,
+      filename,
+      memoTitle,
+    };
   });
 
   // Tool-call detail for the MemoViewer side panel.
