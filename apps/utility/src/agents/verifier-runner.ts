@@ -10,6 +10,9 @@ import type { VerifierInput } from '@c-suite/shared-types/verifier-input';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { createLogger } from '../logger.js';
+
+const vlog = createLogger();
 
 // Resolve __dirname in ESM context
 const _dirname =
@@ -122,6 +125,14 @@ export async function runVerifier(
 
   const parsed = VerifierOutputSchema.safeParse(rawResponse);
   if (!parsed.success) {
+    // Permanent production diagnostic: log WHAT the invoker handed us so a recurrence on Russell's
+    // Mac is classifiable (parser grabbed the wrong object vs the model emitted the wrong shape)
+    // without re-running. Paired with RealClaudeClient's raw-text `sample` warn on the same run.
+    vlog.error({
+      message: 'Verifier output failed VerifierOutputSchema — failing the run (no fabricated fallback)',
+      extractedKeys: rawResponse && typeof rawResponse === 'object' ? Object.keys(rawResponse) : [],
+      extracted: JSON.stringify(rawResponse).slice(0, 1500),
+    });
     throw new VerifierOutputContractViolation(parsed.error);
   }
   return parsed.data;

@@ -210,6 +210,9 @@ export class RealClaudeClient {
         role: definition.role,
         model,
         rawLength: text.length,
+        // Diagnostic sample of the RAW model text (head+tail) — lets us classify a downstream
+        // schema failure as "parser grabbed the wrong object" vs "model emitted the wrong shape".
+        sample: text.length > 1400 ? `${text.slice(0, 700)}\n…[snip ${text.length - 1400} chars]…\n${text.slice(-700)}` : text,
       });
       structuredOutput = extracted;
     }

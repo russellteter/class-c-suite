@@ -38,9 +38,15 @@ console.log('[verif] invoking REAL Verifier (claude-opus-4-7) with representativ
 const t0 = Date.now();
 try {
   const out = await new RealClaudeClient().invoke({ role: 'Verifier', systemPrompt }, context);
-  console.log('[verif] PARSED OK in', Date.now() - t0, 'ms — strict JSON.parse succeeded.');
-  console.log('[verif] structuredOutput:', JSON.stringify(out.structuredOutput).slice(0, 400));
-  process.exit(0);
+  console.log('[verif] invoke returned in', Date.now() - t0, 'ms.');
+  const so = out.structuredOutput;
+  const keys = so && typeof so === 'object' ? Object.keys(so) : [];
+  const expected = ['rigor_score', 'ship_status', 'dimensions', 'failure_reasons', 'verifier_notes'];
+  const hasAll = expected.every((k) => keys.includes(k));
+  console.log('[verif] extracted top-level keys:', JSON.stringify(keys));
+  console.log('[verif] matches VerifierOutput shape (has all 5 required keys):', hasAll, hasAll ? '→ scenario OK/B-ok' : '→ scenario A (parser grabbed wrong object) OR B (wrong shape)');
+  console.log('[verif] extracted object:', JSON.stringify(so, null, 2).slice(0, 2500));
+  process.exit(hasAll ? 0 : 3);
 } catch (err) {
   if (err instanceof ClaudeOutputParseError || err?.code === 'CLAUDE_OUTPUT_PARSE_ERROR') {
     const raw = err.raw ?? '';
