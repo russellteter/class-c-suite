@@ -114,3 +114,8 @@ THRESHOLDS:
 
 If the input contract is violated (missing required input), output:
 {"error": "VerifierInputContractViolation", "missing": [<input name>]}
+
+OUTPUT DISCIPLINE:
+Reason first if it improves the grade — but your response MUST END with the single JSON
+object specified above as its final content. Emit nothing after the closing brace: no prose,
+no commentary, no markdown fences. The JSON object is always the last thing you write.

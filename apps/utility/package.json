@@ -9,7 +9,7 @@
     "lint": "echo 'lint: no linter configured in Ch.0'",
     "test:unit": "echo 'no unit tests in apps/utility at Ch.0'",
     "test:integration": "echo 'no integration tests in apps/utility at Ch.0'",
-    "build": "tsc",
+    "build": "tsc && node ../../scripts/copy-utility-assets.mjs",
     "dev": "tsc --watch"
   },
   "dependencies": {

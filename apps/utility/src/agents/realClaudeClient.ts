@@ -4,6 +4,9 @@
 // ADR-0017.
 
 import type { AgentDefinitionLike, ContextBundleLike, AgentOutputLike } from '@c-suite/stub-harness/stub';
+import { createLogger } from '../logger.js';
+
+const log = createLogger();
 
 // ── SDK type (narrow — only what we need) ─────────────────────────────────────
 
@@ -58,6 +61,54 @@ export class ClaudeOutputParseError extends Error {
     );
     this.name = 'ClaudeOutputParseError';
   }
+}
+
+/**
+ * Extract a JSON object from model output that wraps it in reasoning preamble or markdown
+ * fences. Real models — especially Opus (the Verifier role) — reason in prose and emit the
+ * JSON answer LAST. The strict JSON.parse fast path in invoke() stays primary; this is the
+ * fallback. Returns undefined if no balanced top-level object parses, so the caller fails
+ * loud (ClaudeOutputParseError) rather than coercing prose into a fake structured output.
+ * Brace scan is string/escape aware so braces inside string literals don't break balancing.
+ */
+export function extractJsonObject(text: string): unknown {
+  const candidates: string[] = [];
+  // Prefer an explicit fenced ```json block when present.
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence && fence[1]) candidates.push(fence[1].trim());
+  // Collect every balanced top-level {...} object.
+  let depth = 0;
+  let start = -1;
+  let inStr = false;
+  let esc = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (c === '}') {
+      if (depth > 0 && --depth === 0 && start >= 0) {
+        candidates.push(text.slice(start, i + 1));
+        start = -1;
+      }
+    }
+  }
+  // The model emits its answer last → try candidates from the end.
+  for (let i = candidates.length - 1; i >= 0; i--) {
+    try {
+      return JSON.parse(candidates[i]);
+    } catch {
+      /* try an earlier candidate */
+    }
+  }
+  return undefined;
 }
 
 // ── Model policy (cost-aware) ─────────────────────────────────────────────────
@@ -150,7 +201,17 @@ export class RealClaudeClient {
     try {
       structuredOutput = JSON.parse(text);
     } catch (err) {
-      throw new ClaudeOutputParseError(text, err);
+      // Real models (esp. the Opus Verifier) wrap their JSON answer in reasoning preamble
+      // or fences. Extract the trailing JSON object before failing; fail loud if none parses.
+      const extracted = extractJsonObject(text);
+      if (extracted === undefined) throw new ClaudeOutputParseError(text, err);
+      log.warn({
+        message: 'model output had non-JSON preamble — recovered trailing JSON object',
+        role: definition.role,
+        model,
+        rawLength: text.length,
+      });
+      structuredOutput = extracted;
     }
 
     return {
