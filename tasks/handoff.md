@@ -1,78 +1,54 @@
-# Handoff — Make the C-Suite app actually run (2026-05-28)
+# Handoff — C-Suite production drive (2026-05-28, late session)
 
-Trigger: Russell — "nothing really works at all... try to do anything." Prior work verified
-connectors in isolation but never drove the assembled app. Two keystone fixes landed; renderer
-IPC contract hygiene + E2E proof remain.
+Driving the production plan (`docs/PRODUCTION_PLAN.md`) to a working V1. Full execution
+authority granted by Russell — no approval gates; only genuine hard gates (on-Mac, his OAuth
+consents, real product-shape forks). Operating model: continuous workflow-driven execution,
+**agents edit + report, orchestrator (main thread) reviews + commits serially, only one actor
+on `main` at a time** (lesson from the auto-commit incident — see `tasks/lessons.md`).
 
-## What was done this session
-- Diagnosed why the prior session died: extended-thinking 400 (corrupted thinking block after
-  interrupt/compaction). That session is unrecoverable by typing; use this one (`d3ceebb0`).
-- Fixed boot chain (`3d8fe41`): restored `apps/main/package.json` regression from `269effe`
-  (dropped `type:module`/`main`/deps), rebuilt better-sqlite3 for Electron 33 ABI, cleared stale
-  single-instance lock, and gave `writeback-engine`/`vault-writer`/`vault-watcher` a `tsc` build +
-  `main→dist` (they pointed at raw `.ts` → utility crash-looped → every screen dead).
-- Fixed renderer IPC bridge (`872f25a`): preload was ESM under `sandbox:true` → never loaded →
-  `window.ipc` absent. Renamed `preload.ts`→`preload.cts` (emits true CommonJS `preload.cjs`).
-- Built repeatable Electron E2E harness `tests/e2e/` (playwright `_electron`, drives the REAL
-  window). Verified: utility stays alive, `window.ipc` round-trips (`runs:list → array(0)`).
-- Ran static IPC audit + live baseline: enumerated all renderer↔shared-types↔main drift.
+## Where we are (all committed + pushed)
+- **Phase 0 DONE** — DB tests seed from real migrations; drift now fails a test; `tool_calls`
+  P0 fixed; DOCTRINE codifies the APP-PROOF gate. Suite was 2068 pass / 0 fail.
+- **Phase 1 DONE (code + unit-proven)** — shared `runtime.db` persistence (utility opens its own
+  connection via `C_SUITE_DB_PATH`; runs persist; resume-status fix); fabrication killed across
+  ALL playbooks; health-score deprecated→raw-usage dormancy; Home missing-table crash fixed
+  (migration 008 + `home.workstreams` IPC). Live run-persistence APP-PROOF is BATCHED into Phase 3.
+- **Phase 2 connector code DONE** — SF/NetSuite schema-drift advisories (`{expectRows:true}` →
+  flag empty-but-expected, never silent); PowerBI `preflight.ts` 4-state classification (8e3dc2e).
+- **PowerBI LIVE-VERIFIED (real data)** — reused the working `token.pickle` from
+  `dashboards/customer-dashboard-poc/.secrets/` → copied to `customer-dashboard/.secrets/`. A real
+  fetch pulled 688 sheet rows / 668 accounts / real names (Pecos Cyber Academy, Rheem, FanDuel) +
+  CSVs. No consent needed. Token is self-contained (own client_id+refresh).
 
-## Current state
-- WORKING: app boots, utility alive (0 crashes), IPC bridge live, all 11 screens render cleanly
-  (Home/Connectors/Scheduler screenshots look polished). Both fixes committed + auto-pushed to main.
-- NOT working / by design: 8 invoke channels have no main handler (settings, netsuite connect,
-  tool-call) — **intentionally deferred to Ch.10** (UI labels them "Pending Ch.10"). `cost.usage`
-  only emits during a run, so "USAGE LOADING…" + empty rail at idle is expected (no runs yet).
-- NOT fixed yet: 5 renderer-emitted IPC kinds missing from the `ipc.ts` union + 2 `as never` casts
-  → runtime ZodErrors (`run.cancelled` reproduced live).
+Commit chain this session: 06b839f→8e3dc2e (see `git log`). Plan + ledger: `docs/PRODUCTION_PLAN.md`,
+`docs/build-log.md`. Phase tasks: TaskList (#7 Phase2, #8 Phase3, #9-11 Phases 4-6, #12 Phase0-tail).
 
-## Files touched
-- `git status`: untracked preview harness (`vite.preview.config.ts`, `apps/renderer/preview.html`),
-  `csuite-home.png`, `.playwright-mcp/`, `build/config.gypi`, several `tasks/*.md`; modified
-  `CLAUDE.md`; deleted `build/entitlements.mac.plist`. None are mine-pending except the resume doc.
-- `git diff --stat HEAD~2`: apps/main/package.json, preload.ts→preload.cts, window.ts, 3 package
-  pkgs, root package.json, pnpm-lock.yaml, tests/e2e/* (+268/-30).
+## CRITICAL STATE
+- **better-sqlite3 ABI = NODE right now** (Phase 0/unit mode). Before ANY app/e2e/live-Electron
+  run: rebuild for Electron 33 ABI. The rebuild tooling is BROKEN — `scripts/rebuild-electron-native.mjs`
+  reads `node_modules/electron` (hoisted/absent at root); `electron-rebuild -v 33.4.11 -o better-sqlite3`
+  reports complete but the pnpm-hoisted copy stays Node ABI. FIX THIS FIRST in Phase 3 (resolve electron
+  from apps/main; confirm the hoisted `.pnpm/better-sqlite3@12.10.0` copy actually switches to ABI 130).
+- **PowerBI projectPath**: C-Suite's connector `projectPath` is configurable. BOTH
+  `customer-dashboard` (clone, Russell's credentials.json + copied token) and
+  `dashboards/customer-dashboard-poc` (original, token) now have a working token. Confirm/point the
+  C-Suite connector at one (check `apps/utility/src/mcp/powerbi/subprocess.ts` + buildDeps).
+- **CLAUDE_CODE_OAUTH_TOKEN** is stored in `apps/main/.env.local` (gitignored) and live-validated (HTTP 200).
+- Pre-existing dirty/untracked (NOT mine, leave): `CLAUDE.md` (M), `build/entitlements.mac.plist` (D),
+  `.playwright-mcp/`, `csuite-home.png`, several `tasks/*-brief.md`, `vite.preview.config.ts`, `build/config.gypi`.
 
-## Open threads
-- A-category IPC fix — DONE + verified + committed (`06b839f`, auto-pushed). Added the 5 kinds to
-  `packages/shared-types/src/ipc.ts`, removed both `as never` casts in `PlanApproval.tsx`, dropped
-  the unused `plan` field from `run.plan.approved`. Verified: typecheck green, `ipc.spec.ts` 63/63
-  (+5 new-kind cases), direct `validateIpc` assertions pass, Electron harness shows the live
-  `run.cancelled` ZodError gone (0 pageerrors). No longer an open thread.
-- **THE BIG ONE — the run path is UNWIRED (not cred/runtime-gated).** Cash Lever E2E cannot run
-  because nothing invokes the orchestrator. Evidence (see build-log 2026-05-28 truth-correction):
-  `startRun` has zero production callers (`grep -rn "startRun" apps` → only the def in
-  `run-loop.ts:60` + dist); the renderer never emits `run.start`; the utility (`apps/utility/src/index.ts`)
-  handles only `__port_init`/`scheduler:reset`/`handoff.preview.requested`; main never relays renderer
-  IPC to the utility; and no caller SafeWrites the Synthesizer memo (`transitions.ts:7` defers it,
-  `state-machine.ts` carries `memoMarkdown: ''` + only a `memoPath` string). The orchestrator is built
-  and unit-tested but never connected. This is a capability build, not a demo run — see Next step.
-- Headless `startRun` E2E is ABI-blocked: `better-sqlite3` is built for Electron 33 ABI →
-  `ERR_DLOPEN_FAILED` under plain-Node vitest. Drive it under Electron's ABI (`ELECTRON_RUN_AS_NODE`)
-  or inside the app, not via `npx vitest`.
-- `tests/e2e/cash-lever-stub.spec.ts` is STALE: it imports a nonexistent `runOrchestrator` from
-  `apps/main/src/orchestrator/index.js`. The real entry is `startRun` in `apps/utility/src/orchestrator/run-loop.ts`.
-- A standalone vite (:5273) may still be running from `tests/e2e/run.sh` — harmless; `pkill -f "electron@33.4.11"; lsof -tiTCP:5273 | xargs kill` to clean.
-
-## Run path — WIRED + PROVEN end-to-end (2026-05-28, commits 06b839f→bcacc48)
-All four legs landed (staged in-memory slice — Russell's pick). Click Cash Lever → Approve
-in the assembled app → real memo lands in the vault. Verified by `tests/e2e/run-path-proof.mjs`
-(assembled app) + `tests/e2e/spine-proof.mjs` (headless), both under Electron 33 ABI. See
-build-log 2026-05-28 (cont.). To re-run the proof: ensure vite :5273 up (`bash tests/e2e/run.sh`
-starts it), then `node tests/e2e/run-path-proof.mjs`.
-
-## Next step (deferred follow-ups, in rough priority)
-1. Shared-DB persistence so runs survive restart + show in main's runs-list (async-proxy
-   refactor vs second utility DB connection — decide then). This retires the in-memory slice.
-2. Migrate the 6 DB unit tests to seed-from-migrations AND run under Electron ABI in CI, so
-   schema drift (the hooks.ts/verifier-assembler.ts class of bug) is caught automatically.
-3. Reconcile the `tool_calls` write path to prod schema (unexercised in replay; needed for live MCP).
-4. Route cash_lever to the bespoke CFO+COS MCP playbook (today it uses the generic 6-lens template).
-5. Real plan-building via run.plan.ready IPC (tiles currently open with a default editable question).
-Still pairs with the open Ch.7 Vite-assembly leg (`thoughts/.../2026-05-28_05-34_*frontend-assembly-gap.yaml`).
+## NEXT (Phase 3 — the big batched live pass; needs Electron ABI)
+1. **Fix the Electron-ABI rebuild tooling** (above) — gates everything live.
+2. **Live run-persistence APP-PROOF**: rebuild electron → launch app → drive Cash Lever → Approve →
+   confirm a `runs` row persists in `runtime.db` + memo in vault + survives restart (runs-list shows it).
+3. **Live Cash Lever in STUB_MODE=live**: real Claude inference (token ready) + real MCP data →
+   sourced memo → Verifier rigor score → SafeWrite. Route cash_lever to its bespoke CFO+COS path; author CPO lens prompt.
+4. **NetSuite + Gmail OAuth consents** (in-app, Russell hard gates) once the app runs live.
+5. PowerBI: run `./scripts/mcp-live-smoke.sh powerbi` to confirm the C-Suite connector returns the real data end-to-end.
+Then Phase 4 (surface integration proofs + write-back loop), Phase 5 (autonomy/native), Phase 6 (8 on-Mac demos = V1 done).
 
 ## Resume recipe
-1. `cd "/Users/russellteter/Claude Code Projects/c-suite"` (branch `main`).
-2. Read this file + the build-log 2026-05-28 truth-correction entry. (`tasks/resume-2026-05-28_nothing-works.md` has the older boot-chain diagnostic.)
-3. Verify app still boots/renders: `bash tests/e2e/run.sh` then `node -e "const r=require('./tests/e2e/report.json');console.log(JSON.stringify(r.summary))"` — expect bridge round-trip ok, 1 console error (font CSP only; run.cancelled ZodError is fixed).
-4. Build the run-path legs above (TDD; mind the better-sqlite3 ABI — run integration under Electron, not plain-Node vitest). Do NOT implement the 8 Ch.10 handlers (deferred).
+1. `cd "/Users/russellteter/Claude Code Projects/c-suite"` (branch main). Read `docs/PRODUCTION_PLAN.md` + the
+   `docs/build-log.md` 2026-05-28 entries + `tasks/lessons.md` (control model).
+2. Confirm clean tree: `git status` (only the pre-existing non-mine files above should be dirty).
+3. Start Phase 3 at step 1 (fix ABI rebuild), then the live pass. Keep the no-auto-commit control.
