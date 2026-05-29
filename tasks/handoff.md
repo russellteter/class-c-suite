@@ -60,16 +60,27 @@ memo-builder reads (the shared six-lens schemas didn't fit adversarial-only pre_
 sequential RealClaudeClient generations, validated + fail-loud; replay keeps the literals. FULL
 GATE-3 proven (real inference → Verifier → CLEAN 7749-char memo, novel failure modes, persisted).
 
-**WF-1 remainder — a patch workflow is in flight** (`wf1-remainder-patches`, run `wf_e77eae0c-0dc`):
-produces exact, adversarially-verified patches for O2+U4 (open_qa real client + merge real lens
-output), O3 (load real agent prompts — flagged to check lens-prompt↔schema alignment; may be
-needs-focused-pass like U1), O5 (cash_lever fail-loud on Verifier contract violation), U2
-(stakeholder_1_1 use COS output), U3 (quick_read use real lens output), U5 (gtm_realloc
-STUBBED_SOURCES unblock live), U6 (board_narrative covenant → UNKNOWN), DF (PlanApproval cancel the
-auto-approve countdown on manual Approve — stops the double-fire). Apply the readyToApply set
-serially (typecheck + commit each); the inference-enablers (O2/O3/U2/U3/U4) need a STUB_MODE=live run
-each to confirm (connector-independent ones verify in this env; six-lens/connector ones may degrade).
-Result JSON: `.../tasks/w674ytjk4.output` (readyToApply / needsFocusedPass / needsChanges buckets).
+**WF-1 remainder — patches delivered** (`wf1-remainder-patches`, run `wf_e77eae0c-0dc`; result JSON
+at `.../tasks/w674ytjk4.output`, 8 patches with exact old/new edits + adversarial verdicts).
+
+BATCH 1 APPLIED + committed (the 3 O3-independent fixes; typecheck-clean, replay-safe, reviewed):
+U6 (board covenant→UNKNOWN), O5 (cash_lever fail-loud on Verifier violation when live), DF
+(PlanApproval cancel auto-approve countdown on manual Approve + at-most-once guard — stops the
+double-fire; 10/10 countdown tests green). DF live-confirmation = next pre_mortem/gtm run shows ONE
+run.start; a discriminating regression test is a noted follow-up.
+
+DEFERRED — the "generic-path real inference" focused pass (do these together, then live-verify once):
+their common blocker is **O3** — the 12 AgentDefinition systemPrompts are all `'STUB — see Ch.4'`, so
+dispatchLens lenses run with no real instructions. O3 was judged **needs-focused-pass**: authoring +
+verifying the 6 lens prompts (+ Synthesizer) against their zod schemas, U1-style (the prompt files may
+not be schema-aligned — the workflow agent flagged this). Until O3, U2/U3/U4 ("use the real lens
+output") are honest+correct but produce stub-prompt-quality output. So the batch = O3 (author/verify
+lens prompts) → O2+U4 (open_qa real client + real Synthesizer merge) → U3 (quick_read) → U2
+(stakeholder COS) → U5 (gtm STUBBED_SOURCES — the workflow's U5 patch was judged INCORRECT; the right
+fix is honest-UNKNOWN for the hardcoded ROI/pipeline, like cash_model). The O2+U4/U3/U2 edits are in
+the result JSON ready to apply; re-derive O3 + U5 (or run a focused authoring workflow like U1's).
+Each needs a STUB_MODE=live run to confirm (a six-lens playbook like quick_read/strategic_option;
+connector-dependent ones degrade in an unauthed env — fine, the inference path is what's proven).
 
 ### Original U1 options (kept for reference — Option C was taken)
   - (C, shipped) pre_mortem-specific real inference producing the existing failureModes/defense shapes.
