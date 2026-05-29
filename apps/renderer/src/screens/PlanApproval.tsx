@@ -58,6 +58,7 @@ export function PlanApproval({ plan, onApprove, onEdit, onCancel }: PlanApproval
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(initialCountdown);
   const [paused, setPaused] = useState(false);
   const approvedRef = useRef(false);
+  const countdownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-approve countdown (Phase R Decision 6 + ADR-0009 §12.4).
   // Pauses on edit, cancellation, or any blocking-degradation guard.
@@ -66,16 +67,35 @@ export function PlanApproval({ plan, onApprove, onEdit, onCancel }: PlanApproval
     if (paused || editMode || approvedRef.current) return;
     if (plan.degradations?.some(d => d.severity === 'block')) return;
     if (secondsRemaining <= 0) {
-      approvedRef.current = true;
+      // handleApprove owns the at-most-once guard (approvedRef) and cancels the
+      // countdown. Do NOT pre-set approvedRef here, or the guard would short-circuit
+      // the auto-approve before onApprove fires.
       handleApprove();
       return;
     }
     const t = setTimeout(() => setSecondsRemaining(s => (s === null ? null : s - 1)), 1000);
+    countdownTimerRef.current = t;
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [secondsRemaining, paused, editMode, plan.degradations]);
 
+  // Cancel the auto-approve countdown: clear any in-flight tick timer and null the
+  // remaining seconds so the effect stops rescheduling and the UI hides the badge.
+  function cancelCountdown() {
+    if (countdownTimerRef.current !== null) {
+      clearTimeout(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    setSecondsRemaining(null);
+  }
+
   function handleApprove() {
+    // DOUBLE-FIRE guard: the auto-approve countdown and a manual Approve click both
+    // call this. Fire run.start at most once per intent. Set the guard BEFORE
+    // cancelling the countdown so a re-entrant call (timer + click) is a no-op.
+    if (approvedRef.current) return;
+    approvedRef.current = true;
+    cancelCountdown();
     // AC-10: No MCP calls fire before run.plan.approved IPC is received.
     // IPC is fire-and-forget — never let it block navigation (the bridge may
     // be absent in dev, or validation may reject the shape). Navigate regardless.
@@ -92,6 +112,7 @@ export function PlanApproval({ plan, onApprove, onEdit, onCancel }: PlanApproval
   }
 
   function handleEdit() {
+    cancelCountdown();
     setEditMode(true);
     setPaused(true);
   }
@@ -103,6 +124,7 @@ export function PlanApproval({ plan, onApprove, onEdit, onCancel }: PlanApproval
   }
 
   function handleCancel() {
+    cancelCountdown();
     // AC-10: Cancel aborts cleanly — no MCP calls, RunState → idle.
     // IPC is fire-and-forget — never let it block the back-navigation.
     try {

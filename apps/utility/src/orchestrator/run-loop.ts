@@ -274,6 +274,12 @@ export async function startRun(
   let computedPassed = true;
   let computedMemoPath = buildMemoPath(playbookId, runId, false);
 
+  // O5: in LIVE (STUB_MODE=live) a contract violation means the run cannot produce a
+  // real rigor score — re-throw to fail the run rather than ship CLEAN with the
+  // fabricated 85 (DOCTRINE law 1). Replay/record keep the fallback so the state
+  // machine keeps moving in tests. Matches U1's isLive idiom (pre-mortem/index.ts).
+  const isLive = (process.env.STUB_MODE ?? 'replay') === 'live';
+
   try {
     // Cast state to synthesizer shape for buildVerifierInput.
     // In stub/replay runs the DB won't be fully seeded, so VerifierInputContractViolation
@@ -301,8 +307,11 @@ export async function startRun(
     computedMemoPath = buildMemoPath(playbookId, runId, !computedPassed);
   } catch (err) {
     if (err instanceof VerifierInputContractViolation) {
-      // DB not fully seeded (expected in stub runs without real synthesizer data).
-      // Fall through with hardcoded score so state machine keeps moving.
+      // O5: LIVE must fail loud — never ship CLEAN with the fabricated 85.
+      if (isLive) throw err;
+      // Replay/record: DB not fully seeded (expected in stub runs without real
+      // synthesizer data). Fall through with hardcoded score so the state machine
+      // keeps moving in tests.
     } else {
       throw err;
     }

@@ -343,7 +343,7 @@ function buildBoardQa(
     },
     'Audit Committee Chair': {
       question: 'Walk me through the cash waterfall and key covenants on the LoC.',
-      recommendedAnswer: `Opening cash: ${financialCtx.cashLabel}; monthly burn: ${financialCtx.burnLabel}; Barclays LoC $5M available, leverage covenant at 3.5× EBITDA. CFO will present the full waterfall in Slide 3.`,
+      recommendedAnswer: `Opening cash: ${financialCtx.cashLabel}; monthly burn: ${financialCtx.burnLabel}; Barclays LoC $5M available, leverage covenant: UNKNOWN (requires the ratified Barclays facility agreement terms). CFO will present the full waterfall in Slide 3.`,
     },
   };
   return qas[boardMember] ?? {
