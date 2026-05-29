@@ -2274,3 +2274,28 @@ Gaps 1 + 4 fixed and verified on the real Electron app (`electron-renderer-smoke
 NEXT (Phase 1b, the meaningful one): Gap 2 — make `index.ts:114` persist memo_path+rigor on ship; prove a real
 memo lands end-to-end (try `tests/e2e/run-path-proof.mjs`, stub mode if it avoids throttling) and find where the
 app renders a produced memo (MemoViewer).
+
+### Phase 1b DONE (data layer) + the run path PROVEN end-to-end (2026-05-29, commit `d85da60`)
+
+- **The run pipeline works end-to-end, PROVEN offline.** `tests/e2e/run-path-proof.mjs` (STUB_MODE=replay,
+  real assembled Electron app, throwaway vault): Cash Lever tile → Approve → run.start → utility orchestrator
+  (renderer received agent.start + agent.complete) → memo SafeWritten to `<vault>/memos/2026-05-29-cash_lever-*.md`
+  → run completes. This refutes "the engine does nothing" — the mechanism works. CAVEAT: in stub/replay the
+  content is a SEED PLACEHOLDER ("# Seed Memo … placeholder for testing", 280 chars); REAL content needs
+  STUB_MODE=live (throttled inference) + grounding (Gap E, contextDocuments:[]).
+- **Gap 2 FIXED + PROVEN.** `index.ts` now persists `memo_path` + `rigor_score` on completion (threaded
+  rigorScore onto FinalRunState top-level since cash_lever ends in a 'handoff' terminal state that carries no
+  score). Verified: the cash_lever run row went from `rigor_score=(empty), memo_path=(empty)` to
+  `rigor_score=85, memo_path=memos/2026-05-29-cash_lever-3357ed48.md`. Run rows are no longer hollow.
+
+**STILL OPEN (next session — the rendering leg):** the DATA now persists, but NO screen renders a produced
+memo. `Home.tsx:80-84` hardcodes `lastRunAt: null` on every tile (always "Never run", ignores runs:list);
+the History screen shows writebacks (AcceptedHistory), not run memos; `MemoViewer` exists but nothing routes
+to it from a completed run. So: (1) wire Home tiles + a run/history list to read runs:list (now incl. memo_path),
+(2) route a completed run / tile-click-with-history → MemoViewer(memo_path), (3) then a live+grounded run for
+real content. Also still open from the trace: Gap A2 (Ch.7 in-memory visitedStates → no persisted transitions),
+the `*.set` IPC writes, connector.netsuite.connect OAuth, and Gap D (app connector credential provisioning).
+
+NOTE: did NOT run `npx vitest` this session (it flips better-sqlite3 to Node ABI 137 and breaks the app per the
+ABI rule); the changes are tsc-clean (main + utility builds green) and proven via the real-app e2e harnesses.
+ABI left at Electron-130 (app-runnable).
