@@ -17,8 +17,54 @@
    survey responses) — leave any health rollup to a later, re-derived definition.
 2. **Account-master Google Sheet (authoritative source-of-truth for the account list):**
    `https://docs.google.com/spreadsheets/d/1CJ7qql7UgUkzYaTTCYb8k_Dcid-F4R7vKxMnQc03Xls/edit?gid=172562421#gid=172562421`
-   This is the sheet `load_commercial_as_base()` reads via `fetch_commercial_data()`. The
-   `credentials.json` OAuth client must have read access to this spreadsheet.
+   This is the sheet `load_commercial_as_base()` reads via `fetch_commercial_data()`.
+
+## AUTH MECHANISM — CONFIRMED (customer-dashboard project, 2026-05-28)
+
+`google_sheets_client.py` is the only thing that touches the sheet, and it uses an **OAuth
+installed-app (desktop client) flow** — NOT a service account. Confirmed details:
+
+- **Credential type:** `credentials.json` has a top-level `installed` key (OAuth desktop
+  client, `*.apps.googleusercontent.com`). Uses `InstalledAppFlow` (`google_sheets_client.py:164,178`).
+- **Identity:** the API calls hit the sheet **as Russell's own Google account** — whoever
+  completes the one-time browser consent. The sheet's service-account share list is irrelevant;
+  the SA was never the caller.
+- **Scope:** `spreadsheets.readonly` only (`google_sheets_client.py:28`).
+- **Durable credential:** the **refresh token at `<customer-dashboard>/.secrets/token.pickle`**
+  (NOT `token.json`). The hourly access token is auto-refreshed via `creds.refresh(Request())`
+  (`:155-157`) — no browser after the first consent.
+
+**What this means for C-Suite:** identical mechanism, nothing new to build. C-Suite spawns the
+same Python, which reads `.secrets/token.pickle` and refreshes silently. The only one-time
+human step is the initial browser consent.
+
+**Two confirmed-path corrections to the wiring (see Changes #1 and #5):**
+- The "first-run writes token.json" note below is wrong — the token lands at
+  `.secrets/token.pickle`.
+- `preflight.ts` must check BOTH `credentials.json` AND `.secrets/token.pickle`. Creds present
+  + pickle absent = consent-not-done; a headless subprocess spawn would then try to open a
+  browser and hang. Distinguish "needs one-time consent" from "creds missing."
+
+**RISK TO PIN (auth expiry):** verify the customer-dashboard GCP OAuth consent screen is
+**published / In production**, NOT "Testing." Testing-mode refresh tokens expire every 7 days,
+forcing weekly re-consent — fatal for an unattended app. Confirm this before promising autonomy.
+
+---
+
+## CONFLICT FLAGGED — commit 1b3392d consumes deprecated health-score fields (2026-05-28)
+
+A live Phase-1 actor committed `1b3392d` ("fix(playbooks): kill fabricated financial data")
+~3 min after directive #1 landed (`417f9c9`). The two commits **crossed in flight** — the
+writer implemented the plan-as-written (old PRODUCTION_PLAN line 65: "yields real health-score
++ at-risk-count"), before the health-score-deprecation directive was in the plan.
+
+Result: `board-narrative/index.ts:184` and `gtm-realloc/index.ts:205,208` now consume
+`health_status` / `health_category` / `health_score` as the at-risk signal — exactly the
+fields directive #1 deprecates. **This must be reworked to use raw usage signals (dormancy:
+`minutes_30d === 0`, or zero `active_days_90d`) before Phase 2 closes.** Not edited here:
+the proper single Phase-1 actor owns those files (concurrent-edit discipline). Surfaced to
+Russell for redirect; the directive is in the plan the loop re-reads, so the actor may
+self-correct on its next pass.
 
 ---
 
