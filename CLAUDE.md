@@ -6,6 +6,27 @@
 
 The C-Suite: a single-user macOS menubar application that operationalizes Russell Teter's Strategic AI Operating Model. The complete product spec is `/Users/russellteter/Documents/Claude/Projects/Business Planning/C_Suite_PRD.md`. The original build mission brief is `/Users/russellteter/Documents/Claude/Projects/Business Planning/C_Suite_CLAUDE.md`. Both are the source of truth; this file is the operating runbook.
 
+## Commands
+
+```bash
+pnpm dev                      # Electron app (main + renderer); dev:full adds utility
+pnpm --filter utility build   # Compile apps/utility (tsc) — needed before live smoke
+npx vitest run                # Full unit suite
+npx vitest run tests/unit/mcp/netsuite/   # Scope to one area
+./scripts/mcp-live-smoke.sh all           # Live 6-connector smoke (salesforce/powerbi/gmail/netsuite/aws/chorus)
+pnpm typecheck                # tsc --noEmit across workspaces
+pnpm --filter @c-suite/main build         # Rebuild main (tsc) — app runs from dist/; do after editing apps/main/src
+bash tests/e2e/run.sh                     # Real-Electron smoke: frees single-instance lock, starts vite :5273, drives the app
+node tests/e2e/render-leg-proof.mjs       # Prove run→memo→render e2e (prereq: vite :5273; pkill -f electron@33.4.11 between runs)
+```
+
+## Architecture (pnpm monorepo)
+
+- `apps/main/` — Electron main process (BrowserWindow, IPC router, tray, supervises utility)
+- `apps/renderer/` — React UI (11 screens under `src/screens/`); entry `src/index.tsx`
+- `apps/utility/` — forked agent runtime: playbooks, MCP clients (`src/mcp/*`), orchestrator
+- `packages/` — shared-types, vault-writer, vault-watcher, writeback-engine, stub-harness
+
 ## Read order at session start
 
 If you are `/goal` or any sub-agent of `/goal`, read these in order before any action:
@@ -108,6 +129,15 @@ Definition of done: each chapter is done when Audit/QA marks every acceptance cr
 ## Note on path with spaces
 
 The repo path contains spaces. In shell commands, quote it: `cd "/Users/russellteter/Claude Code Projects/c-suite"`. In Node/Python code, handle correctly.
+
+## Gotchas
+
+- **ESM extensions:** source imports use `.js` even for `.ts`/`.tsx` files (Node16 ESM). Vite/vitest configs carry a `.js`→`.ts(x)` resolver plugin to compensate.
+- **better-sqlite3 ABI:** ~80 vitest "failures" are a native-module ABI mismatch under plain Node — production runs under Electron's ABI where it's fine. Not real failures. `npx vitest` flips the native module to the Node ABI and breaks the app; if you ran it, `pnpm rebuild:electron` before launching.
+- **Main runs from `dist/`:** `apps/main` loads `dist/index.js`. After editing `apps/main/src/**`, run `pnpm --filter @c-suite/main build` (tsc, ABI-safe) or the running app uses stale code. The renderer is live via the Vite dev server (HMR) — no rebuild needed.
+- **Renderer render paths:** `index.html` wires `src/index.tsx` (not a placeholder); dev loads the Vite dev server on :5273, prod/packaged loads built `dist/index.html` via `loadFile` (`main.ts:90/99`). The dev render path is proven via real-app e2e; the packaged `vite build` path is wired but unexercised.
+- **memos untracked by design:** SafeWrite only git-commits zones with `commitVault: true`; the `memo` zone is `commitVault: false` (`apps/utility/src/safewrite/zonePolicy.ts`, ADR-0003 §2). Memo files land on disk but are NOT versioned — expected, not a failure.
+- **macOS smoke:** `scripts/mcp-live-smoke.sh` needs `gtimeout` (coreutils); it shims `timeout`/`gtimeout`.
 
 ---
 
