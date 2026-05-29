@@ -279,6 +279,11 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
   const options = buildOptions(input.prompt);
   const recommended = options[0]; // recap has highest confidence
 
+  // CFO financials are null until a validated NetSuite query backs them (STUBBED_SOURCES);
+  // bind as number|null and narrow so the memo shows UNKNOWN, never a fabricated figure.
+  const cfoArr = (cfo as { arr: number | null }).arr;
+  const cfoVal = (cfo as { impliedValuationRange: { mid: number } | null }).impliedValuationRange;
+
   const draftMemo = [
     `# Strategic Option Analysis`,
     ``,
@@ -308,7 +313,7 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     ``,
     `${ceo.recommendation}`,
     ``,
-    `CFO context: ARR ${(cfo as { arr: number | null }).arr != null ? `$${((cfo as { arr: number }).arr / 1_000_000).toFixed(1)}M` : 'UNKNOWN (NetSuite degraded)'}; implied valuation ${(cfo as { impliedValuationRange: unknown }).impliedValuationRange != null ? `mid-range $${((cfo as { impliedValuationRange: { mid: number } }).impliedValuationRange.mid / 1_000_000).toFixed(1)}M at 3.4×` : 'UNKNOWN (ARR required)'}.`,
+    `CFO context: ARR ${cfoArr != null ? `$${(cfoArr / 1_000_000).toFixed(1)}M` : 'UNKNOWN (NetSuite degraded)'}; implied valuation ${cfoVal != null ? `mid-range $${(cfoVal.mid / 1_000_000).toFixed(1)}M at 3.4×` : 'UNKNOWN (ARR required)'}.`,
     `CPO catalyst: ${cpo.turnaroundCatalyst}`,
     `COS execution constraint: ${cos.bestExecutionPath}`,
     ``,

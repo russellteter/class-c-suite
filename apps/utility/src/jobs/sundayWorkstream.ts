@@ -188,6 +188,18 @@ export async function runSundayWorkstream(
     throw err;
   }
 
+  // Emit workstream summary to home screen rail.
+  ctx.emitIpc({
+    kind: 'home.workstreams',
+    payload: {
+      workstreams: records.map(r => ({
+        id: r.id,
+        status: r.status,
+        phase: r.phase,
+      })),
+    },
+  });
+
   // Memory consolidation.
   runMemoryConsolidation(ctx.db);
 

@@ -408,6 +408,17 @@ export const IpcMessage = z.discriminatedUnion('kind', [
       editedAt: z.number(),
     }),
   }),
+  // Ch.10: home-screen workstream rail feed (emitted by sunday-workstream job after repopulation).
+  z.object({
+    kind: z.literal('home.workstreams'),
+    payload: z.object({
+      workstreams: z.array(z.object({
+        id: z.string(),
+        status: z.enum(['GREEN', 'YELLOW', 'RED', 'UNKNOWN']),
+        phase: z.string(),
+      })),
+    }),
+  }),
   // Ch.10: home-screen scheduled-jobs feed.
   z.object({
     kind: z.literal('home.scheduledJobs'),

@@ -30,7 +30,10 @@ import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, St
 import type { DegradedSource } from '@c-suite/shared-types/playbook';
 
 // B47 Phase 2: rigorScore now comes from the real Verifier (run-loop / playbookVerifier).
-export const STUBBED_SOURCES: readonly StubbedSource[] = [];
+// CFO severance/comp/savings figures require a validated NetSuite payroll query (not yet
+// wired). Declared here so the live-mode stub guard refuses a CLEAN run rather than ship
+// fabricated dollar figures. Drop once a real NetSuite comp query backs runCfoLens.
+export const STUBBED_SOURCES: readonly StubbedSource[] = ['netsuite'];
 import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
 import { createLogger } from '../../logger.js';
 
@@ -86,15 +89,26 @@ async function runCosLens(runId: string, subjectName: string) {
 
 async function runCfoLens(runId: string, subjectName: string, degraded: DegradedSource[]) {
   log.info({ runId, message: `restructure_decision: CFO lens running — subject: ${subjectName}` });
+  // Severance/comp/savings require a validated NetSuite payroll query (not yet wired).
+  // Emit null + UNKNOWN rather than fabricate dollar figures. The live-mode guard is the
+  // STUBBED_SOURCES=['netsuite'] declaration (static) — NOT a runtime degraded_sources push,
+  // which would wrongly flag "all deps available" runs as degraded.
+  const financialImplications: {
+    severanceCost: number | null;
+    costSavings: number | null;
+    replacementCost: number | null;
+    netCashImpact90d: number | null;
+    netCash12m: number | null;
+  } = {
+    severanceCost: null,
+    costSavings: null,
+    replacementCost: null,
+    netCashImpact90d: null,
+    netCash12m: null,
+  };
   return {
     role: 'CFO',
-    financialImplications: {
-      severanceCost: 320_000,       // 3-month base + accelerated vest estimated
-      costSavings: 285_000,         // annualized salary + benefits if role is eliminated
-      replacementCost: 180_000,     // estimated search + onboarding cost
-      netCashImpact90d: -215_000,   // severance outweighs near-term savings
-      netCash12m: 105_000,          // savings exceed replacement cost after 12 months if role filled
-    },
+    financialImplications,
     pipelineImpact: 'UNKNOWN — verify if subject owns pipeline accounts before finalizing',
     degraded_sources: degraded,
   };
@@ -233,6 +247,9 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
 
   // 4. Synthesizer — inline draft memo
   const cfoFin = (cfo as typeof cfo).financialImplications;
+  // Render real dollar figures only when sourced; otherwise UNKNOWN — never fabricate.
+  const fmtUsd = (n: number | null) =>
+    n != null ? `$${n.toLocaleString()}` : 'UNKNOWN — requires validated NetSuite payroll query';
   const draftMemo = [
     `# Restructure Decision: ${subjectName}`,
     ``,
@@ -241,11 +258,11 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     ``,
     `## Financial Implications`,
     ``,
-    `- **Severance cost:** $${cfoFin.severanceCost.toLocaleString()}`,
-    `- **Annualized cost savings (if role eliminated):** $${cfoFin.costSavings.toLocaleString()}`,
-    `- **Replacement cost (if backfill):** $${cfoFin.replacementCost.toLocaleString()}`,
-    `- **Net cash impact (90 days):** $${cfoFin.netCashImpact90d.toLocaleString()}`,
-    `- **Net cash impact (12 months):** +$${cfoFin.netCash12m.toLocaleString()}`,
+    `- **Severance cost:** ${fmtUsd(cfoFin.severanceCost)}`,
+    `- **Annualized cost savings (if role eliminated):** ${fmtUsd(cfoFin.costSavings)}`,
+    `- **Replacement cost (if backfill):** ${fmtUsd(cfoFin.replacementCost)}`,
+    `- **Net cash impact (90 days):** ${fmtUsd(cfoFin.netCashImpact90d)}`,
+    `- **Net cash impact (12 months):** ${fmtUsd(cfoFin.netCash12m)}`,
     `- **Pipeline impact:** ${(cfo as typeof cfo).pipelineImpact}`,
     ``,
     `## Organizational Implications`,

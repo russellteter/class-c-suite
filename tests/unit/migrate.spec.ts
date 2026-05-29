@@ -47,8 +47,8 @@ describe('runMigrations — idempotency + schema correctness (§9 row 4)', () =>
     runMigrations(db);
     const row = db.prepare('SELECT COUNT(*) AS n FROM schema_version').get() as { n: number };
     // 001_initial + 002_conflicts + 003_state_transitions + 004_vault_commit_failures
-    // + 005_writebacks + 006_credentials + 007_scheduled_jobs = 7 migrations.
-    expect(row.n).toBe(7);
+    // + 005_writebacks + 006_credentials + 007_scheduled_jobs + 008_workstream_amounts_mirror = 8 migrations.
+    expect(row.n).toBe(8);
   });
 
   it('is idempotent — second run produces no duplicate schema_version rows', () => {
@@ -56,8 +56,8 @@ describe('runMigrations — idempotency + schema correctness (§9 row 4)', () =>
     runMigrations(db);
     const row = db.prepare('SELECT COUNT(*) AS n FROM schema_version').get() as { n: number };
     // 001_initial + 002_conflicts + 003_state_transitions + 004_vault_commit_failures
-    // + 005_writebacks + 006_credentials + 007_scheduled_jobs = 7 migrations.
-    expect(row.n).toBe(7);
+    // + 005_writebacks + 006_credentials + 007_scheduled_jobs + 008_workstream_amounts_mirror = 8 migrations.
+    expect(row.n).toBe(8);
   });
 
   it('second run produces no SQL errors', () => {
