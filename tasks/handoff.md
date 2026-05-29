@@ -36,15 +36,13 @@ in the app (Home tiles read real runs → route to MemoViewer)." DONE + PROVEN t
   proved click→render against it (`screenshots/seed-real-memo-viewer.png`).
 - Removed the 2 dead rows (`d979b72c`,`3357ed48`). Final real db: 25 runs, 1 valid memo'd row. Smoke
   (`home-initial.png`): Recent Runs = single "Cash Lever · 5M AGO · 85 · VIEW →"; 19/19 probes ok, no regression.
-- **NEW FINDING (correction):** the seed memo is NOT git-committed — it's UNTRACKED in the vault. SafeWrite
-  (`apps/utility/src/safewrite/index.ts:205-208`) catches `commitToVault` failures as non-fatal; the commit
-  succeeds in a fresh temp vault but silently FAILS against the real Obsidian vault. Real-vault memos land on
-  disk but aren't versioned. Reversible (`rm`). → new open thread below.
+- **CORRECTION (no bug — by design):** the seed memo is UNTRACKED in the vault, and that's intentional, NOT a
+  failure. SafeWrite only commits zones with `commitVault: true`; the `memo` zone is `commitVault: false`
+  (`safewrite/zonePolicy.ts:45`, ADR-0003 §2), so `commitToVault` is never called for memos
+  (`safewrite/index.ts:203` guard). Memos land untracked by design; reversible (`rm`). (Earlier draft
+  claimed "commit silently fails" — retracted; that was an unverified root cause.)
 
 ## Open threads
-- **NEW: SafeWrite git-commit silently fails on the real vault** (`safewrite/index.ts:207` swallows it; reason
-  not recorded — `vault_commit_failures` lacks columns). Investigate `commitToVault` (git.js) vs a large Obsidian
-  vault (hook/lock/staging) + make the failure surface. Memos currently unversioned in the real vault.
 - Real memo content (live+grounded run). · Gap A2 (Ch.7 in-memory visitedStates → no persisted transitions).
 - `*.set` IPC writes + `app_settings` table. · `connector.netsuite.connect` OAuth. · Gap D (connector creds in vault).
 

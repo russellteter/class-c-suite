@@ -2325,7 +2325,9 @@ proven on the real Electron window with screenshots.
 **Renderer wiring:**
 - `apps/renderer/src/hooks/useRuns.ts` (new) — invokes `runs:list`, maps rows (seconds→ms Date), re-fetches
   on `agent.start`/`agent.complete`/`run.failed` (the signals that flow utility→renderer; there is no
-  run-level success event). Explicit reload is the authoritative read.
+  run-level success event). The fetch-on-mount + explicit reload IS proven (the harness reloads); the
+  **event-driven live refresh is wired but UNTESTED** — the proof did not assert the list updates without a
+  reload. Treat "Recent Runs updates live when a run finishes" as unverified.
 - `Home.tsx` — replaced the `lastRunAt: null` hardcode with real per-playbook last-run timestamps
   (freshness dots now reflect the 26 real runs); added a **Recent Runs** rail surface (always-visible,
   below Token Meter, above Scheduled Jobs) listing completed runs with memos → click calls the existing
@@ -2374,13 +2376,16 @@ script, since deleted):
   first attempt silently failed on the lock). Final real db: **25 runs, exactly 1 valid memo'd row**
   (`bb235f24`, file present). Smoke against the real vault/db (`home-initial.png`): Recent Runs shows the
   single working "Cash Lever · 5M AGO · 85 · VIEW →"; all 19 probes [ok], 0 page errors, no regression.
-- **CORRECTION + NEW FINDING:** I told Russell the seed would be "git-committed via SafeWrite." It is NOT —
-  the file is written but **untracked** in the vault git. Root cause: `apps/utility/src/safewrite/index.ts:205-208`
-  attempts `commitToVault` but catches any failure as **non-fatal** ("write succeeded; git commit failure is
-  logged but not surfaced"). The commit succeeds in a fresh temp vault (render-leg-proof) but **fails silently
-  against the real Obsidian vault** (reason not captured — the error went to the main log, not the
-  `vault_commit_failures` table, which lacks the columns to record it). So real-vault memos land on disk but
-  are **not versioned** — a SafeWrite durability gap that applies to ALL real-vault writes, not just this seed.
-  Still fully reversible (untracked → `rm`). NEW OPEN THREAD: SafeWrite git-commit silently fails on the real
-  vault; investigate `commitToVault` (git.js) against a large Obsidian vault (hook? lock? path/staging?), and
-  make the failure surface (it is swallowed today).
+- **CORRECTION (was an overclaim — retracted):** I told Russell the seed would be "git-committed via
+  SafeWrite." It is NOT — the file is written but **untracked**, and that is **BY DESIGN, not a failure.**
+  Verified the actual cause (the prior draft of this note guessed "commit attempted but silently fails" —
+  wrong, and an unverified root cause): SafeWrite only commits zones whose policy sets `commitVault: true`.
+  The `memo` zone is `commitVault: false` (`apps/utility/src/safewrite/zonePolicy.ts:45`, ADR-0003 §2 —
+  memos/predictions/handoffs are deliberately NOT auto-committed). `zoneFor('…/memos/…') → 'memo'`
+  (`packages/shared-types/src/parseArtifact.ts:82`), so at `safewrite/index.ts:203` `if (policy.commitVault)`
+  is false → `commitToVault` is **never called** (no error, nothing logged). The empty `vault_commit_failures`
+  table is NOT evidence either way — the catch at `:207` only `log.error`s, it never inserts a row. So the seed
+  memo (and every memo) lands **untracked on disk by design**; fully reversible (`rm`). There is **no
+  silent-commit-failure bug** — the earlier "durability gap / affects all writes / investigate commitToVault"
+  claim is retracted. The only real (minor) open question: whether memos SHOULD be versioned is an ADR-0003 §2
+  policy choice, not a bug.
