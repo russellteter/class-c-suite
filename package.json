@@ -19,7 +19,9 @@
     "test:integration": "echo 'no integration tests at Ch.0'",
     "build:packages": "pnpm --filter @c-suite/shared-types build && pnpm --filter @c-suite/stub-harness build && pnpm --filter @c-suite/soql-builder build && pnpm --filter @c-suite/vault-writer build && pnpm --filter @c-suite/vault-watcher build && pnpm --filter @c-suite/writeback-engine build",
     "dev": "pnpm build:packages && concurrently -k -n main,renderer -c blue,green \"pnpm --filter @c-suite/main dev\" \"pnpm --filter @c-suite/renderer dev\"",
-    "dev:full": "concurrently -k -n main,utility,renderer -c blue,magenta,green \"pnpm --filter @c-suite/main dev\" \"pnpm --filter @c-suite/utility dev\" \"pnpm --filter @c-suite/renderer dev\""
+    "dev:full": "concurrently -k -n main,utility,renderer -c blue,magenta,green \"pnpm --filter @c-suite/main dev\" \"pnpm --filter @c-suite/utility dev\" \"pnpm --filter @c-suite/renderer dev\"",
+    "rebuild:electron": "node scripts/rebuild-electron-native.mjs electron",
+    "rebuild:node": "node scripts/rebuild-electron-native.mjs node"
   },
   "devDependencies": {
     "@electron/notarize": "^2.5.0",
