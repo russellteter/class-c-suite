@@ -69,18 +69,34 @@ U6 (board covenant→UNKNOWN), O5 (cash_lever fail-loud on Verifier violation wh
 double-fire; 10/10 countdown tests green). DF live-confirmation = next pre_mortem/gtm run shows ONE
 run.start; a discriminating regression test is a noted follow-up.
 
-DEFERRED — the "generic-path real inference" focused pass (do these together, then live-verify once):
-their common blocker is **O3** — the 12 AgentDefinition systemPrompts are all `'STUB — see Ch.4'`, so
-dispatchLens lenses run with no real instructions. O3 was judged **needs-focused-pass**: authoring +
-verifying the 6 lens prompts (+ Synthesizer) against their zod schemas, U1-style (the prompt files may
-not be schema-aligned — the workflow agent flagged this). Until O3, U2/U3/U4 ("use the real lens
-output") are honest+correct but produce stub-prompt-quality output. So the batch = O3 (author/verify
-lens prompts) → O2+U4 (open_qa real client + real Synthesizer merge) → U3 (quick_read) → U2
-(stakeholder COS) → U5 (gtm STUBBED_SOURCES — the workflow's U5 patch was judged INCORRECT; the right
-fix is honest-UNKNOWN for the hardcoded ROI/pipeline, like cash_model). The O2+U4/U3/U2 edits are in
-the result JSON ready to apply; re-derive O3 + U5 (or run a focused authoring workflow like U1's).
-Each needs a STUB_MODE=live run to confirm (a six-lens playbook like quick_read/strategic_option;
-connector-dependent ones degrade in an unauthed env — fine, the inference path is what's proven).
+**O3 DONE (918f1e8) — 2026-05-29 session 2.** The 6 lens prompts (CEO/CFO/CRO/CMO/CPO/COS) +
+Synthesizer are schema-aligned to their zod `outputSchema`, honest under empty grounding (no hardcoded
+Class financials/entities — all stripped to UNKNOWN-on-source), and WIRED: new `agents/agentPrompts.ts`
+`loadAgentPrompt(role)` + `dispatch.ts` loads it and injects role+runId before `onSubagentStop`. Proven
+live: `quick_read` (dispatchLens×6) all schema-valid + entity-clean + honest (CFO emits UNKNOWN not
+invented numbers); Synthesizer via `tests/e2e/live-synthesizer-isolation.mjs` (fed 6 real lens outputs →
+SynthesizerOutputSchema PASS). Authored/graded by the `o3-lens-prompt-authoring` workflow; the live run
+caught a COS "Chasen" leak the grader missed. Full build-log entry: "O3 DONE" section.
+
+NOW UNBLOCKED — the dependent WF-1 remainder patches (the O2+U4/U3/U2 edits are in the WF-1 result JSON
+`.../tasks/w674ytjk4.output`, ready to apply; U5 needs re-derivation):
+- **O2+U4** open_qa: real model client + real Synthesizer merge (currently does its own inline synth).
+- **U3** quick_read: stop overwriting the real dispatchLens output with the templated stub (CONFIRMED
+  live this session — quick_read's memo still shows "Operational lens: execution feasibility is high…"
+  stub text even though the 6 lens dispatches now return real schema-valid output).
+- **U2** stakeholder_1_1: use the COS output it currently discards.
+- **U5** gtm_realloc: honest-UNKNOWN for the hardcoded ROI/pipeline (the workflow's STUBBED_SOURCES
+  patch was judged INCORRECT — do the cash_model-style honest-UNKNOWN instead).
+Each needs a STUB_MODE=live confirm. Two NEW items surfaced by O3:
+- **Verifier-prompt hygiene (next):** `Verifier.prompt.md` still hardcodes "Chasen" — the grader's own
+  prompt carrying entities partially defeats fabrication detection. Strip it (handle carefully; it's on
+  the proven GATE-3 path).
+- **Grounding gap (WF-2/Ch.7):** `buildLensBundle` returns `contextDocuments:[]` — the six-lens path has
+  no vault/financial grounding + no tools, so live lens output is honestly UNKNOWN-heavy (correct, not a
+  bug). Wiring vault/connector data into `contextDocuments` is the real next leg for grounded memos.
+- **Latency:** Synthesizer live call took 628s this session (generic run-loop dispatches lenses
+  SEQUENTIALLY); SUSPECT Max-subscription throttling in a heavy session — re-measure clean before
+  treating as a perf blocker. quick_read (parallel) is ~110s.
 
 ### Original U1 options (kept for reference — Option C was taken)
   - (C, shipped) pre_mortem-specific real inference producing the existing failureModes/defense shapes.
@@ -105,8 +121,12 @@ data-layer already proven; just the UI render). board_narrative needs authed con
 to produce a memo — it degraded to no-memo in this unauthed env (not a bug; environment).
 
 ## Resume recipe
+0. **ABI STATE: the tree is ABI-137 right now** (session 2 ran `npx vitest`). Before ANY app/e2e/live
+   proof run `pnpm rebuild:electron` first, or you'll eat a `firstWindow timeout` (app launches, no
+   window). `pnpm --filter @c-suite/utility build` does NOT flip it.
 1. `cd "/Users/russellteter/Claude Code Projects/c-suite"` (branch main). Read this file +
-   `docs/WORKFLOW_PROGRAM.md` + `docs/build-log.md` 2026-05-29 entries + `tasks/lessons.md`.
+   `docs/WORKFLOW_PROGRAM.md` + `docs/build-log.md` 2026-05-29 entries (incl. the "O3 DONE" section) +
+   `tasks/lessons.md`. **U1 + O3 are DONE** — resume-recipe step 3 below (U1) is historical.
 2. `git status` — only the pre-existing non-mine files should be dirty (CLAUDE.md M,
    build/entitlements.mac.plist D, .playwright-mcp/, csuite-home.png, several tasks/*-brief.md,
    vite.preview.config.ts, build/config.gypi, thoughts/...yaml). Leave them.
