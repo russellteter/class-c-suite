@@ -1903,3 +1903,27 @@ dispatch path. Therefore the two GATE-3 vehicles have DISJOINT blocker sets:
 autonomy → GATE-6 demos. Control model: workflow agents return findings/edit-in-worktree, never
 commit; main thread commits serially. Fixing forward now in WF-1's serial order: S2 → S1 →
 board_narrative gate → O1 → U1 → pre_mortem gate → remaining quality fixes.
+
+### Outcome — GATE-3 cheap slice PROVEN; the Phase-3 core works end-to-end
+
+Fixed + committed S1+S2 (67f9c51), O1+M1 (6073e8c), the ABI tooling (b42fa2b), proof harnesses
+(992e6fa). M1 was a NEW blocker found in the live run (not in WF-1's per-playbook scope): the Ch.7
+early-return never propagated memoMarkdown/memoPath to index.ts, so all 8 Ch.7 playbook memos were
+silently dropped ("no memo produced"). Also caught a mid-session **ABI flip**: `npx vitest` rebuilt
+better-sqlite3 to Node ABI 137, breaking app boot (no window) until `pnpm rebuild:electron` restored
+130 — codified in tasks/handoff.md (run rebuild:electron before any live proof after vitest).
+
+**Proven:** a live `pre_mortem` run via the assembled app (STUB_MODE=live) → real Opus Verifier
+rigor score → CLEAN `2026-05-29-pre_mortem-<id>.md` (2772 chars) SafeWritten to the throwaway vault
+→ run row `shipped_clean` persisted in the real runtime.db. The renderer→main→utility→Verifier→vault
+round-trip works with no mocks. board_narrative degraded to no-memo (connectors unauthed in this env;
+not a bug). tool_calls audit trail = 0 for pre_mortem (adversarial-only, no MCP tools — expected).
+
+**Honest gap (the inference half):** the memo's analytical content (Red-Team/Steelman) is still the
+hardcoded stub — real Verifier + memo + persistence proven, NOT real lens inference. U1 closes it but
+is a DESIGN FORK, not mechanical: the shared RedTeam/Steelman schemas are six-lens-challenge-shaped,
+incompatible with pre_mortem's adversarial-only failure-mode model. Recommended Option C (pre_mortem
+makes its own real inference calls producing the existing failureModes/defense shapes; self-contained,
+needs no O1/O3). Surfaced in tasks/handoff.md with options A/B/C. Remaining WF-1 fixes (O2/O3/O5/U2-U6)
++ the workflow program (WF-2/4/5, GATE-6) queued there. Checkpointed here: the catastrophic-risk core
+is proven (sequencing-law priority met); U1 + the rest are scoped for a focused continuation.
