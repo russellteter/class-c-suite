@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import type Database from 'better-sqlite3';
 import { randomUUID } from 'crypto';
 import { createLogger } from './logger.js';
+import { getDbPath } from './db/open.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -73,6 +74,8 @@ export function forkUtility(): Electron.UtilityProcess {
       // CLAUDE_CODE_OAUTH_TOKEN is inherited from process.env via the spread above.
       // Set it in apps/main/.env.local via `claude setup-token`.
       // ANTHROPIC_API_KEY must NOT be set — RealClaudeClient strips it to prevent pay-per-token billing.
+      // B47 keystone: shared runtime.db path so utility writes runs to main's persistent DB.
+      C_SUITE_DB_PATH: getDbPath(),
     },
     stdio: 'pipe',    // utility stderr+stdout piped to main for crash logging
   });

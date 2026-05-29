@@ -54,10 +54,12 @@ function makeMockDeps(): PlaybookDeps {
     },
     powerbi: {
       serviceId: 'powerbi',
+      // Raw usage fields per directive #1 (health_score/health_status deprecated).
+      // acc2 has minutes_30d: 0 — dormant, counts as at-risk.
       runFullExport: vi.fn().mockResolvedValue([
-        { account_id: 'acc1', account_name: 'Acme', health_score: 78, health_status: 'Healthy', arr_usd: 60000 },
-        { account_id: 'acc2', account_name: 'Beta', health_score: 28, health_status: 'At-Risk', arr_usd: 25000 },
-        { account_id: 'acc3', account_name: 'Gamma', health_score: 55, health_status: 'Healthy', arr_usd: 40000 },
+        { account_id: 'acc1', account_name: 'Acme', minutes_30d: 95000, minutes_90d: 280000, arr_usd: 60000 },
+        { account_id: 'acc2', account_name: 'Beta', minutes_30d: 0, minutes_90d: 8000, arr_usd: 25000 },
+        { account_id: 'acc3', account_name: 'Gamma', minutes_30d: 42000, minutes_90d: 130000, arr_usd: 40000 },
       ]),
       getAccountUsage: vi.fn().mockResolvedValue(null),
       isAuthenticated: vi.fn().mockResolvedValue(true),

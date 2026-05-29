@@ -8,14 +8,15 @@ import {
 } from '../../../../apps/utility/src/mcp/powerbi/schema.js';
 
 // Minimal valid record (all critical fields optional — passthrough)
+// health_score / health_category removed: deprecated per directive #1.
 const validRecord = {
   account_id: '001Fk00000AbcDE18X',
   account_name: 'Acme University',
   arr_usd: 95000,
-  health_score: 72,
-  health_category: 'Healthy',
   minutes_30d: 120000,
   minutes_90d: 350000,
+  minutes_per_user: 45.5,
+  active_days_90d: 62,
   renewal_date: '2026-12-31',
   account_manager: 'Jane Smith',
   // extra passthrough field
@@ -45,10 +46,26 @@ describe('CustomerDashboardRecordSchema', () => {
     const result = CustomerDashboardRecordSchema.safeParse({
       account_id: '001XYZ',
       arr_usd: null,
-      health_score: null,
       minutes_30d: null,
+      minutes_per_user: null,
     });
     expect(result.success).toBe(true);
+  });
+
+  it('passes through deprecated health_score / health_status fields (passthrough mode, not in typed contract)', () => {
+    // health_score/health_status/health_category are removed from the typed schema (directive #1)
+    // but .passthrough() means the Python pipeline can still emit them without breaking parsing.
+    const result = CustomerDashboardRecordSchema.safeParse({
+      account_id: '001XYZ',
+      health_score: 72,
+      health_status: 'Healthy',
+      health_category: 'Green',
+    });
+    expect(result.success).toBe(true);
+    // They pass through but must not be accessed via typed fields.
+    if (result.success) {
+      expect((result.data as Record<string, unknown>)['health_score']).toBe(72);
+    }
   });
 
   it('rejects non-object input', () => {

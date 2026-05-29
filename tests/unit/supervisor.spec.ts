@@ -57,6 +57,8 @@ vi.mock('electron', () => {
   return {
     utilityProcess: { fork: mockFork },
     MessageChannelMain: vi.fn(makeChannel),
+    // supervisor.ts now imports getDbPath() from db/open.js, which calls app.getPath().
+    app: { getPath: vi.fn(() => '/tmp/c-suite-test') },
   };
 });
 

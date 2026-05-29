@@ -35,20 +35,27 @@ export const CustomerDashboardRecordSchema = z.object({
   // Commercial
   arr_usd: z.number().nullable().optional(),
   renewal_date: z.union([z.string(), z.null()]).optional(),
-  // Health
-  health_score: z.number().nullable().optional(),
-  health_status: z.string().nullable().optional(),
-  health_category: z.string().nullable().optional(),
-  // Usage (30/90-day Class minutes)
+  // Raw usage signals (directive #1: health_score/health_status/health_category deprecated)
+  // Usage (30/90-day Class minutes) — kit DATA_SCHEMA fields
   minutes_30d: z.number().nullable().optional(),
   minutes_90d: z.number().nullable().optional(),
+  // Derived engagement metrics
+  minutes_per_user: z.number().nullable().optional(),
+  usage_trend_pct: z.number().nullable().optional(),   // 30d-vs-90d momentum
+  active_days_90d: z.number().nullable().optional(),
   // Users
   max_users_30d: z.number().nullable().optional(),
   max_users_90d: z.number().nullable().optional(),
-  // Renewal urgency
+  // Renewal
   renewal_urgency: z.string().nullable().optional(),
-  // Account manager
+  days_until_renewal: z.number().nullable().optional(),
+  // Account metadata
+  product_category: z.string().nullable().optional(),  // 'Class for Zoom' | 'Class for Microsoft Teams'
+  subdomain: z.string().nullable().optional(),
   account_manager: z.string().nullable().optional(),
+  // Support signals
+  open_cases: z.number().nullable().optional(),
+  avg_rating: z.number().nullable().optional(),
 }).passthrough();
 
 export type CustomerDashboardRecord = z.infer<typeof CustomerDashboardRecordSchema>;

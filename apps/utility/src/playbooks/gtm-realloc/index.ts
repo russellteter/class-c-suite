@@ -23,15 +23,16 @@
 // STUBBED_SOURCES declaration:
 //   - 'aws_product_usage': AWS client exposes only getCostExplorer/getOrganizationAccounts;
 //     activeAccountsPct + featureAdoptionRate are NOT available via AWS MCP. Guarded.
-//   - 'powerbi_financials': PowerBI runFullExport yields health_score + at-risk count only
-//     (per docs/research/powerbi-integration-kit-analysis.md). NRR, grossChurnRate, and
-//     expansionRevenue are financial metrics sourced from NetSuite/Salesforce — they are
-//     NOT present in PowerBI per-account data. powerbi_financials is STUBBED; aggregatePbiMetrics()
-//     derives ONLY health_score + atRiskCount from real records.
+//   - 'powerbi_financials': NRR, grossChurnRate, expansionRevenue are financial metrics
+//     sourced from NetSuite/Salesforce — NOT present in PowerBI per-account data. STUBBED.
+//     aggregatePbiMetrics() derives at-risk count from raw dormancy (minutes_30d === 0)
+//     per powerbi-integration-kit-analysis.md §4. health_score is DEPRECATED (directive #1).
 //
 // B47 fix: removed stub factories that silently emitted fabricated financial data under
 // STUB_MODE=live with a CLEAN stamp. Real fetchers (fetchSalesforcePipeline,
 // fetchNetSuiteGtmPayroll) call real ctx.deps clients with honest degradation.
+// Directive #1: health_score / health_status / health_category deprecated — at-risk derived
+// from raw dormancy signal (minutes_30d === 0) per powerbi-integration-kit-analysis.md §4.
 
 import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, StubbedSource } from '@c-suite/shared-types/playbook';
 import type { DegradedSource } from '@c-suite/shared-types/playbook';
@@ -42,7 +43,7 @@ import type { DegradedSource } from '@c-suite/shared-types/playbook';
 //   (only getCostExplorer + getOrganizationAccounts exist — no usage metrics).
 // 'powerbi': NRR, grossChurnRate, expansionRevenue are financial metrics NOT present
 //   in PowerBI per-account data (per docs/research/powerbi-integration-kit-analysis.md).
-//   aggregatePbiMetrics() yields health_score + atRiskCount ONLY.
+//   aggregatePbiMetrics() yields dormancy-based at-risk count ONLY (directive #1: health_score deprecated).
 export const STUBBED_SOURCES: readonly StubbedSource[] = ['aws', 'powerbi'];
 
 import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
@@ -155,9 +156,10 @@ async function fetchNetSuiteGtmPayroll(
 
 /**
  * PowerBI full export — yields CustomerDashboardRecord[] from real customer-dashboard pipeline.
- * CRITICAL (docs/research/powerbi-integration-kit-analysis.md): PowerBI data contains
- * health_score and at-risk counts ONLY. NRR / grossChurnRate / expansionRevenue are
- * financial metrics NOT present in PowerBI records — never source them from here.
+ * CRITICAL (docs/research/powerbi-integration-kit-analysis.md): NRR / grossChurnRate /
+ * expansionRevenue are financial metrics NOT present in PowerBI records — never source them here.
+ * At-risk is derived from raw usage signals (dormancy: minutes_30d === 0), NOT health_score
+ * (deprecated, directive #1).
  */
 async function fetchPowerBiRecords(
   ctx: PlaybookContext,
@@ -190,29 +192,28 @@ async function fetchPowerBiRecords(
 }
 
 /**
- * Aggregate PowerBI health metrics from real records.
- * DOCTRINE #1: derives ONLY health_score and at-risk-count from PowerBI data.
+ * Aggregate PowerBI usage metrics from real records.
+ * Directive #1: health_score / health_status / health_category are DEPRECATED.
+ * At-risk is derived from raw usage signals only:
+ *   - dormant: minutes_30d === 0 (zero usage in 30 days) — kit DATA_SCHEMA field, raw signal
  * NRR / churn / expansion revenue are NOT computed here (wrong data source).
+ * (docs/research/powerbi-integration-kit-analysis.md §4)
  */
 function aggregatePbiMetrics(records: CustomerDashboardData): {
   atRiskCount: number;
   totalAccounts: number;
   atRiskPct: number;
-  avgHealthScore: number | null;
+  dormantCount: number;
 } {
   const total = records.length;
-  const atRisk = records.filter(
-    (r) => r.health_status === 'At-Risk' || r.health_category === 'Red' || r.health_status === 'Critical',
-  ).length;
-  const scores = records
-    .map((r) => r.health_score)
-    .filter((s): s is number => typeof s === 'number' && s !== null);
-  const avgHealthScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+  // At-risk = dormant: zero Class minutes in the last 30 days.
+  // Raw, explainable signal — not derived from a composite health score.
+  const atRisk = records.filter((r) => (r.minutes_30d ?? 0) === 0).length;
   return {
     atRiskCount: atRisk,
     totalAccounts: total,
     atRiskPct: total > 0 ? atRisk / total : 0,
-    avgHealthScore,
+    dormantCount: atRisk,
   };
 }
 
@@ -281,8 +282,9 @@ async function runCpoLens(ctx: PlaybookContext) {
   const ts = new Date().toISOString().slice(0, 10);
   const pbiResult = await fetchPowerBiRecords(ctx, `pbi-health-${ts}`);
 
-  // DOCTRINE #1: derive ONLY health metrics from PowerBI. aws_product_usage (activeAccountsPct,
-  // featureAdoptionRate) is NOT available from any current client — declared in STUBBED_SOURCES.
+  // Directive #1: derive at-risk from raw usage signals, not health_score (deprecated).
+  // aws_product_usage (activeAccountsPct, featureAdoptionRate) is NOT available from any
+  // current client — declared in STUBBED_SOURCES.
   const pbiMetrics = pbiResult.result ? aggregatePbiMetrics(pbiResult.result) : null;
 
   return {
@@ -291,13 +293,14 @@ async function runCpoLens(ctx: PlaybookContext) {
     // any current PlaybookDeps client — omitted, not fabricated.
     activeAccountsPct: 'UNKNOWN (aws_product_usage not available — see STUBBED_SOURCES)',
     featureAdoptionRate: 'UNKNOWN (aws_product_usage not available — see STUBBED_SOURCES)',
-    // PowerBI real metrics (health only — not financial):
+    // PowerBI raw-usage metrics (directive #1: health_score deprecated — at-risk from dormancy):
     atRiskCount: pbiMetrics?.atRiskCount ?? 'UNKNOWN (powerbi degraded)',
     totalAccounts: pbiMetrics?.totalAccounts ?? 'UNKNOWN (powerbi degraded)',
     atRiskPct: pbiMetrics?.atRiskPct ?? 'UNKNOWN (powerbi degraded)',
-    avgHealthScore: pbiMetrics?.avgHealthScore ?? 'UNKNOWN (powerbi degraded)',
+    // dormantCount: accounts with zero minutes_30d (same as atRiskCount — explicit label for memo clarity)
+    dormantCount: pbiMetrics?.dormantCount ?? 'UNKNOWN (powerbi degraded)',
     expansionSignal: 'Accounts in top-usage quartile expand at higher rate — requires real usage data from aws_product_usage (STUBBED).',
-    reallocReco: 'Add 0.5 FTE PLG motion in CS targeting at-risk accounts for expansion plays; product-led expansion signals require real usage data (currently STUBBED).',
+    reallocReco: 'Add 0.5 FTE PLG motion in CS targeting dormant accounts (zero usage last 30d) for expansion plays; product-led expansion signals require real usage data (currently STUBBED).',
     _pbiDegraded: pbiResult.degraded,
   };
 }

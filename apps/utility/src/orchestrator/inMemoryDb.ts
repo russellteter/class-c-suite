@@ -1,13 +1,14 @@
 // apps/utility/src/orchestrator/inMemoryDb.ts
-// Staged run-path slice (2026-05-28): the orchestrator (startRun) needs a SYNCHRONOUS
-// better-sqlite3 handle, but the utility only has the async SQL proxy to main's single
-// handle. Rather than refactor the whole state machine to the async proxy (deferred —
-// see build-log 2026-05-28), each run opens its own in-memory DB seeded from the same
-// migrations main applies. Run state lives only for the run's duration.
 //
-// DEFERRED by this approach (logged, not silent): crash-resume across restarts and the
-// run appearing in main's persistent runs-list. Both require the shared DB (a later
-// async-proxy or second-connection decision).
+// @deprecated B47 keystone (2026-05-28): the run.start handler in index.ts now uses
+// the shared runtime.db connection (apps/utility/src/db/sharedDb.ts) instead of a
+// per-run in-memory DB. openRunScopedDb() is no longer called in production code.
+//
+// This file is retained (not deleted) because:
+//   1. It may be imported by future tests that need an isolated in-memory schema.
+//   2. It serves as the migration-aware DB factory for tests that predate sharedDb.ts.
+//
+// DO NOT call openRunScopedDb() from index.ts or run-loop.ts — use getSharedDb() instead.
 
 import Database from 'better-sqlite3';
 import * as fs from 'fs';

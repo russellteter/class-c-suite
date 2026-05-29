@@ -13,13 +13,12 @@ declare const process: NodeJS.Process & {
 };
 
 import { join } from 'node:path';
-import type DatabaseType from 'better-sqlite3';
 import { createLogger } from './logger.js';
 import { initSqlProxy, type IpcPort } from './sql/proxy.js';
 import { checkAndResumeInProgressRun } from './orchestrator/index.js';
 import { handleHandoffPreviewRequested, startRun } from './orchestrator/run-loop.js';
 import type { IpcEmit } from './orchestrator/hooks.js';
-import { openRunScopedDb } from './orchestrator/inMemoryDb.js';
+import { initSharedDb, getSharedDb } from './db/sharedDb.js';
 import { initScheduler, getScheduler } from './scheduler/index.js';
 import { initSafeWrite, safeWrite, getVaultPath } from './safewrite/index.js';
 import type { HandoffGeneratorInput } from '@c-suite/shared-types/handoff';
@@ -54,6 +53,12 @@ process.parentPort.once('message', (e) => {
     // Initialize SQL proxy with the port.
     initSqlProxy(ipcPort);
 
+    // B47 keystone: open shared runtime.db so runs persist to main's DB file.
+    // C_SUITE_DB_PATH is injected by supervisor.ts forkUtility().
+    // initSharedDb logs and throws if the env var is absent — the uncaughtException
+    // handler below will catch it and call process.exit(1), triggering supervisor restart.
+    initSharedDb();
+
     // Initialize scheduler with IPC emission capability.
     initScheduler((msg) => {
       ipcPort!.postMessage(msg);
@@ -86,10 +91,9 @@ process.parentPort.once('message', (e) => {
       }
 
       // run.start — drive a playbook through the orchestrator and SafeWrite its memo.
-      // Staged slice (2026-05-28): each run uses its own in-memory DB seeded from
-      // migrations (the orchestrator needs a sync better-sqlite3 handle; the utility
-      // only has the async SQL proxy). Crash-resume + persistent runs-list are
-      // DEFERRED to a later shared-DB decision — see build-log 2026-05-28.
+      // B47 keystone: uses the shared runtime.db connection (initSharedDb above) so
+      // the runs row and agent_invocations rows persist to main's file-backed DB.
+      // Crash-resume and home runs-list now work because rows survive process restart.
       if (msg?.kind === 'run.start') {
         const payload = msg.payload as { runId?: string; playbook?: string; question?: string } | undefined;
         if (!payload?.runId || !payload.playbook || !payload.question) {
@@ -98,10 +102,11 @@ process.parentPort.once('message', (e) => {
         }
         const { runId, playbook, question } = payload;
         const emit: IpcEmit = (m) => ipcPort!.postMessage(m);
-        let runDb: DatabaseType.Database | null = null;
         try {
-          runDb = openRunScopedDb();
-          const result = await startRun(runId, playbook, question, runDb, emit);
+          // getSharedDb() returns the single shared connection opened at initSharedDb().
+          // Do NOT close it here — closing after run #1 would kill every subsequent run.
+          const sharedDb = getSharedDb();
+          const result = await startRun(runId, playbook, question, sharedDb, emit);
           if (result.memoMarkdown && result.memoPath) {
             const absPath = join(getVaultPath(), result.memoPath);
             const writeResult = await safeWrite({
@@ -124,8 +129,6 @@ process.parentPort.once('message', (e) => {
         } catch (err) {
           log.error({ runId, message: 'run.start failed', err: String(err) });
           ipcPort!.postMessage({ kind: 'run.failed', payload: { runId, reason: String(err), stage: 'run-loop' } });
-        } finally {
-          runDb?.close();
         }
         return;
       }

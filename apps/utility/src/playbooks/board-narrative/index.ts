@@ -32,9 +32,11 @@
 // Note on financial data sourcing:
 //   - Cash position / burn / ARR / NRR / gross churn: NetSuite SuiteQL (env-gated query)
 //   - Committed pipeline: Salesforce SOQL query
-//   - Active account health: PowerBI runFullExport → aggregatePbiMetrics()
+//   - Active account health: PowerBI runFullExport → aggregatePbiMetrics() (raw dormancy signal)
 //   - NRR / churn from PowerBI: PROHIBITED — these are financial metrics not in PowerBI data
 //     (docs/research/powerbi-integration-kit-analysis.md)
+//   - health_score / health_status / health_category: DEPRECATED per directive #1 — at-risk
+//     derived from minutes_30d === 0 (dormancy), not a composite score.
 
 import type { PlaybookInput, PlaybookContext, PlaybookResult, PlaybookModule, StubbedSource } from '@c-suite/shared-types/playbook';
 import type { DegradedSource } from '@c-suite/shared-types/playbook';
@@ -170,24 +172,22 @@ async function fetchPowerBiRecords(
 }
 
 /**
- * Derive health metrics from PowerBI records.
- * DOCTRINE #1: yields health_score and at-risk-count ONLY.
+ * Derive at-risk metrics from PowerBI records using raw usage signals.
+ * Directive #1: health_score / health_status / health_category are DEPRECATED — do not read.
+ * At-risk = dormant: minutes_30d === 0 (zero Class usage in last 30 days).
  * NRR / churn / expansion are NOT in PowerBI data.
+ * (docs/research/powerbi-integration-kit-analysis.md §4)
  */
 function aggregatePbiMetrics(records: CustomerDashboardData): {
   atRiskCount: number;
   totalAccounts: number;
-  avgHealthScore: number | null;
+  dormantCount: number;
 } {
   const total = records.length;
-  const atRisk = records.filter(
-    (r) => r.health_status === 'At-Risk' || r.health_category === 'Red' || r.health_status === 'Critical',
-  ).length;
-  const scores = records
-    .map((r) => r.health_score)
-    .filter((s): s is number => typeof s === 'number' && s !== null);
-  const avgHealthScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
-  return { atRiskCount: atRisk, totalAccounts: total, avgHealthScore };
+  // At-risk = dormant: accounts with zero Class minutes in last 30 days.
+  // Raw, explainable signal — not derived from a composite health score.
+  const atRisk = records.filter((r) => (r.minutes_30d ?? 0) === 0).length;
+  return { atRiskCount: atRisk, totalAccounts: total, dormantCount: atRisk };
 }
 
 // ── Lens runners ──────────────────────────────────────────────────────────────
@@ -281,24 +281,22 @@ async function runCpoLens(ctx: PlaybookContext) {
   const ts = new Date().toISOString().slice(0, 10);
   const pbiResult = await fetchPowerBiRecords(ctx, `pbi-health-${ts}`);
 
-  // DOCTRINE #1: derive ONLY health metrics from PowerBI. NRR/expansion not here.
+  // Directive #1: derive at-risk from raw usage signals, not health_score (deprecated).
   const pbiMetrics = pbiResult.result ? aggregatePbiMetrics(pbiResult.result) : null;
-  const activeLabel = pbiMetrics
-    ? `${pbiMetrics.totalAccounts} total accounts, ${pbiMetrics.atRiskCount} at risk [^cpo-usage]`
-    : 'UNKNOWN (PowerBI degraded)';
-  const healthLabel = pbiMetrics?.avgHealthScore != null
-    ? `avg health score: ${pbiMetrics.avgHealthScore.toFixed(1)} [^cpo-usage]`
+  const usageLabel = pbiMetrics
+    ? `${pbiMetrics.totalAccounts} total accounts, ${pbiMetrics.atRiskCount} dormant (zero usage last 30d) [^cpo-usage]`
     : 'UNKNOWN (PowerBI degraded)';
 
   return {
     role: 'CPO',
-    productAdoptionHighlights: `${activeLabel}; AI reporting feature on track for Q3 GA`,
-    accountHealth: healthLabel,
+    productAdoptionHighlights: `${usageLabel}; AI reporting feature on track for Q3 GA`,
+    // accountHealth: removed — health_score deprecated (directive #1); raw dormancy signal above replaces it
+    dormantAccounts: pbiMetrics?.dormantCount ?? 'UNKNOWN (PowerBI degraded)',
     // NRR driver requires expansion data — not from PowerBI
     nrrDriver: 'UNKNOWN (expansion rate requires financial data from NetSuite/Salesforce, not PowerBI)',
     boardConcernAnticipated: 'Board will ask about AI feature differentiation vs. competitors and timeline risk.',
     slideDataPoints: [
-      'Usage cohort analysis (health score distribution)',
+      'Usage cohort: dormant vs. active accounts (raw minutes_30d signal)',
       'AI feature roadmap milestone status',
       'At-risk account count and renewal urgency',
     ],
