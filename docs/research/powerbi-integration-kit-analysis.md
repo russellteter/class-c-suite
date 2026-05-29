@@ -7,6 +7,21 @@
 
 ---
 
+## RUSSELL'S DIRECTIVES (2026-05-28) — these override the kit
+
+1. **DO NOT expose or compute health-score metrics.** The kit's health-score methodology
+   (`04_DEFINITIONS_AND_METHODOLOGY/`) is **stale and no longer accurate**. The connector must
+   NOT surface `health_score`, `health_category`, `health_score_method`, or
+   `health_score_confidence`, and must NOT drive any lens/playbook off them. Expose only the
+   raw usage signals (minutes, sessions, users, active days, support cases, feature adoption,
+   survey responses) — leave any health rollup to a later, re-derived definition.
+2. **Account-master Google Sheet (authoritative source-of-truth for the account list):**
+   `https://docs.google.com/spreadsheets/d/1CJ7qql7UgUkzYaTTCYb8k_Dcid-F4R7vKxMnQc03Xls/edit?gid=172562421#gid=172562421`
+   This is the sheet `load_commercial_as_base()` reads via `fetch_commercial_data()`. The
+   `credentials.json` OAuth client must have read access to this spreadsheet.
+
+---
+
 ## Data source and architecture
 
 The kit describes a **CSV-on-disk pipeline**, not a live API. Usage data flows:
@@ -62,14 +77,15 @@ The connector exposes **per-account records** (one row per ~330 Class customers)
 | `collab_monthly_minutes.csv` | monthly Collab minutes per PSID | PSID → Account ID |
 | `survey_by_period.csv` | per-period (30d/90d/12mo) Apdex, NPS, rating | subdomain → Account ID (registry) |
 
-**Derived fields after metrics pipeline:**
-- `health_score` (0–100), `health_category` (Excellent/Healthy/Needs Attention/Health Risk)
-- `health_score_method` (session-based / collaborate-specific / user-based-fallback)
-- `health_score_confidence` (high/medium/low/insufficient-data)
-- `usage_trend_pct`, `minutes_per_user`, `renewal_urgency`, `days_until_renewal`
-- Health score modifiers: satisfaction (+/-5), support (up to -15), coverage (up to -10)
+**Derived fields to expose (raw usage only — NO health score, per Russell's directive #1):**
+- `usage_trend_pct` (30d-vs-90d momentum), `minutes_per_user` (engagement depth)
+- `renewal_urgency`, `days_until_renewal` (from commercial/account data, not usage)
+- `active_days_90d`, `max_users_30d`/`max_users_90d` (authoritative from `account_velocity.csv`)
 
-(`04_DEFINITIONS_AND_METHODOLOGY/HEALTH_SCORE_METHODOLOGY.md`, `DATA_SCHEMA.md`)
+**EXCLUDED (stale, do not surface):** `health_score`, `health_category`,
+`health_score_method`, `health_score_confidence`, and all health-score modifiers. The
+pipeline still computes these internally; the connector must drop them from the exposed
+contract and no lens/playbook may consume them. (`DATA_SCHEMA.md`; methodology doc deprecated.)
 
 ---
 
@@ -119,14 +135,16 @@ No C-Suite code change is needed; this is an environment check.
 
 ### 3. Expand the Zod schema to include critical missing fields
 
-`schema.ts` validates only 12 fields from a 100+ field record. Key fields consumed by lenses and playbooks that are not currently listed in the schema:
+`schema.ts` validates only 12 fields from a 100+ field record. Add the **raw usage** fields lenses consume — and REMOVE the three existing health-score fields (`health_score`, `health_status`, `health_category`) per Russell's directive #1:
 
 ```typescript
-// Add to CustomerDashboardRecordSchema in apps/utility/src/mcp/powerbi/schema.ts
-health_score_method: z.string().nullable().optional(),     // 'session-based' | 'collaborate-specific' | 'user-based-fallback'
-health_score_confidence: z.string().nullable().optional(), // 'high' | 'medium' | 'low' | 'insufficient-data'
+// In CustomerDashboardRecordSchema (apps/utility/src/mcp/powerbi/schema.ts):
+// REMOVE these (stale — must not be in the exposed contract):
+//   health_score, health_status, health_category
+// ADD these raw usage signals:
 minutes_per_user: z.number().nullable().optional(),
 usage_trend_pct: z.number().nullable().optional(),
+active_days_90d: z.number().nullable().optional(),
 days_until_renewal: z.number().nullable().optional(),
 product_category: z.string().nullable().optional(),        // 'Class for Zoom' | 'Class for Microsoft Teams'
 subdomain: z.string().nullable().optional(),
@@ -135,9 +153,13 @@ open_cases: z.number().nullable().optional(),
 avg_rating: z.number().nullable().optional(),
 ```
 
-The `.passthrough()` on the record schema means unknown fields are not stripped, so this change is additive and non-breaking. It documents the contract and enables typed consumption downstream.
+The `.passthrough()` on the record schema means the Python pipeline's health-score fields will
+still pass through in the raw JSON; the connector layer must **strip** them (or the consuming
+lens must ignore them) so a deprecated score never reaches a memo. Removing them from the Zod
+contract is the first guard; add an explicit strip in `runFullExport`/`getAccountUsage` as the
+second (defense-in-depth).
 
-(`schema.ts`, `DATA_SCHEMA.md`, `HEALTH_SCORE_METHODOLOGY.md §6`)
+(`schema.ts`, `DATA_SCHEMA.md`; health-score methodology deprecated per directive #1)
 
 ### 4. Replace `stubPowerBiDashboard()` in `gtm-realloc/index.ts` with real data
 
@@ -145,29 +167,33 @@ The `.passthrough()` on the record schema means unknown fields are not stripped,
 
 The `PowerBIClient.runFullExport()` returns per-account records; it does NOT directly return aggregate NRR/churn. An aggregation layer is needed. Proposed addition in `gtm-realloc/index.ts`:
 
+Aggregate from **raw usage signals only** — no health score (directive #1). Define "low-usage"
+by a raw, explainable threshold (e.g. zero minutes in 30d, or no active days in 90d), not a
+health category:
+
 ```typescript
 async function aggregatePbiMetrics(deps: PlaybookDeps, runId: string) {
   if (!deps.powerbi) return null;
   const records = await deps.powerbi.runFullExport({ runId });
-  const active = records.filter(r => r.health_category !== 'Health Risk' && r.health_score != null);
-  const atRisk = records.filter(r => r.health_category === 'Health Risk');
-  const avgHealth = active.length
-    ? active.reduce((s, r) => s + (r.health_score ?? 0), 0) / active.length
+  const withUsage = records.filter(r => (r.minutes_90d ?? 0) > 0);
+  const dormant = records.filter(r => (r.minutes_30d ?? 0) === 0); // raw, explainable signal
+  const avgMinutesPerUser = withUsage.length
+    ? withUsage.reduce((s, r) => s + (r.minutes_per_user ?? 0), 0) / withUsage.length
     : null;
   return {
     source: 'powerbi' as const,
     totalAccounts: records.length,
-    atRiskAccounts: atRisk.length,
-    atRiskPct: records.length ? atRisk.length / records.length : null,
-    avgHealthScore: avgHealth,
-    // NRR and gross churn are NOT in the per-account usage records —
-    // they must come from a financial source (NetSuite/Salesforce).
-    // Do not fabricate them. Mark as UNKNOWN until wired.
+    activeAccounts: withUsage.length,
+    dormantAccounts: dormant.length,          // zero usage last 30d — raw signal, not a score
+    dormantPct: records.length ? dormant.length / records.length : null,
+    avgMinutesPerUser: avgMinutesPerUser,
+    // NRR / gross churn / expansion are NOT in usage data — financial source or UNKNOWN.
+    // Health score is DEPRECATED (directive #1) — do not compute or expose it.
   };
 }
 ```
 
-The stub fields `nrr` and `grossChurnRate` are **not in the PowerBI usage data**. They come from the commercial/financial layer. The memo should source them from Salesforce pipeline data or be marked UNKNOWN rather than hardcoded. This is a cross-playbook data-model correction, not just a PowerBI fix.
+Two corrections in one: (a) `nrr`/`grossChurnRate`/`expansionRevenue` are **financial**, not PowerBI — source from Salesforce/NetSuite or mark UNKNOWN, never fabricate onto `source: 'powerbi'`; (b) the at-risk rollup is expressed as a **raw dormancy signal**, not a health category, per directive #1.
 
 (`gtm-realloc/index.ts:72–80, 190–200`)
 
@@ -233,12 +259,12 @@ result = subprocess.run(
 if result.returncode == 0:
   data = json.loads(open('/tmp/cdash-verify.json').read())
   r = data[0]
-  print(f'accounts={len(data)}, first={r.get(\"account_name\",\"?\")[:20]}, health={r.get(\"health_score\")}, method={r.get(\"health_score_method\")}')
+  print(f'accounts={len(data)}, first={r.get(\"account_name\",\"?\")[:20]}, minutes_90d={r.get(\"minutes_90d\")}, max_users_90d={r.get(\"max_users_90d\")}')
 else:
   print('FAILED:', result.stderr[-500:])
 "
 ```
-A PASS shows real account names (not stub), a real health score, and a non-null `health_score_method` (`session-based`, `collaborate-specific`, or `user-based-fallback`).
+A PASS shows real account names (not stub) and real raw usage values (`minutes_90d`, `max_users_90d`). Do NOT validate against health-score fields — they are deprecated (directive #1).
 
 **Step 6 — Confirm lens consumption (after wiring change #4):**
 After replacing `stubPowerBiDashboard()`, run `npx vitest run apps/utility/src/playbooks/gtm-realloc/` and verify the test no longer uses the hardcoded nrr=1.08 value.
@@ -251,7 +277,7 @@ After replacing `stubPowerBiDashboard()`, run `npx vitest run apps/utility/src/p
 |------|----------|-----------|
 | **Google Sheets credentials missing** — `credentials.json` not present; `load_commercial_as_base()` raises `DataLoadError`; pipeline cannot start at all. Currently BLOCKED. | Critical | Russell places credentials.json and runs manual first-run auth (Step 1 above). No code workaround exists. |
 | **OneDrive sync staleness** — Power Automate flow runs weekly. If OneDrive is paused or the flow fails, CSVs are up to 7+ days old. The pipeline has no freshness guard; it silently uses stale data. | High | Add mtime check in preflight for `meeting_minutes.csv` (>8 days old → DEGRADED). |
-| **Primary vs alt OneDrive path** — `settings.py` auto-detect logic picks the first existing path. If `OneDrive-SharedLibraries-ClassEDU` is absent (e.g., Mac synced to alt), settings picks the alt which has only 10 CSVs, dropping `class_sessions`, `account_velocity`, and 5 others. Health scoring silently degrades from session-based to user-based-fallback for all ~208 Class accounts. | High | Add CSV presence check in preflight (Change #5). Log which path was selected. |
+| **Primary vs alt OneDrive path** — `settings.py` auto-detect logic picks the first existing path. If `OneDrive-SharedLibraries-ClassEDU` is absent (e.g., Mac synced to alt), settings picks the alt which has only 10 CSVs, dropping `class_sessions`, `account_velocity`, and 5 others. Raw signals silently disappear: no session counts, and `MaxUsersLast30` (the authoritative user count) is lost for all ~208 Class accounts. | High | Add CSV presence check in preflight (Change #5). Log which path was selected. |
 | **`user_stats.csv` overcounts users (gotcha E4)** — summing `count` across rows massively overcounts unique users. `account_velocity.csv`'s `MaxUsersLast30` is the authoritative source. If the schema or lens code reads `user_stats` for user counts, numbers are wrong. | Medium | Use `MaxUsersLast30` from `account_velocity.csv`. Do not sum `user_stats.csv`. Cite: `05_RULES_LEARNINGS_GOTCHAS.md §E4`. |
 | **Serialization gate** — any new field added to `CustomerDashboardRecordSchema` or any `enrich_with_*` method that is not threaded through `_prepare_records()` in `data_processor.py` silently disappears from JSON output. 33+ bugs in the source project. | Medium | Per `05_RULES_LEARNINGS_GOTCHAS.md §C1`: any field added to the schema must be verified to actually appear in the output JSON before declaring done. |
 | **NRR/gross-churn are not in usage data** — `stubPowerBiDashboard()` puts financial metrics (nrr, grossChurnRate, expansionRevenue) on a `source: 'powerbi'` object. These fields do not exist in per-account usage records; they must come from a financial source (NetSuite AR, Salesforce opportunities). The stub masks a data-model gap. | Medium | `aggregatePbiMetrics()` in Change #4 explicitly marks them UNKNOWN. Wire financial metrics from NetSuite/Salesforce in a later chapter. |
