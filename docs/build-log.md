@@ -2389,3 +2389,48 @@ script, since deleted):
   silent-commit-failure bug** — the earlier "durability gap / affects all writes / investigate commitToVault"
   claim is retracted. The only real (minor) open question: whether memos SHOULD be versioned is an ADR-0003 §2
   policy choice, not a bug.
+
+---
+
+## 2026-05-29 (late) — session recovery + first proven live completion + cash_lever moment-of-truth relaunch
+
+**Recovery context.** The prior orchestrating session froze on `API Error: ECONNRESET` — the
+*orchestrator's own* Claude Code connection dropping (`✻ Brewed 1h22m` then ECONNRESET), NOT the
+C-Suite app. Its in-flight `docs/world-class-backlog.md` Write failed and was lost. Reconstructed
+from the runtime DB, `/tmp/live-cash-real-vault.log`, and source reads.
+
+**Three misdiagnoses corrected (the frozen session was about to ship these as fact):**
+1. "Live run died on a network blip; retry will fix it." The retry (`realClaudeClient.ts:192-214`,
+   `67910fa`) is sound but was not the blocker — a relaunch *with* retry still produced no memo.
+2. "Double-dispatch / twin runs." No double-dispatch. `runs.started_at` is **seconds** via
+   `unixepoch()` (not ms) — my own `/1000` made the bogus `1970` display; real deltas are
+   698-9745s apart (separate relaunches). `PlanApproval.tsx:96` `approvedRef` guards re-fire.
+3. "App has never run live / all stub." False, nearly shipped. Inferred from `model=NULL` + empty
+   `cost_ledger`/`tool_calls` — but **none of those columns have a writer** (`hooks.ts:178` UPDATE
+   sets only status/output/completed_at; `RealClaudeClient` sets `allowedTools:[]` so live runs log
+   zero tool_calls). Absence proved nothing. (Caught by advisor — my own empty-table rule turned on me.)
+
+**PROVEN this session — live inference completes end-to-end.** Relaunched the live harness
+(`STUB_MODE=live`, real vault). A run shipped a real memo: `memos/2026-05-30-quick_read-d0bb0a5b.md`
+(3809B) — log shows `quick_read: all 6 lens dispatches complete` → `safewrite written` →
+`run.start complete — final state shipped-clean`. The run→6 live Sonnet lenses→synthesizer→SafeWrite
+→shipped-clean pipeline works. Separately, cash_lever grounding fires (`cash_lever grounding: 10
+lever rows from Class_Cash_Lever_Model_v5_2026-05-18.xlsx`) and its lenses produce real cited
+analysis (CEO: $14.36M collections, $6.96M costs, $8.05M Class/Collaborate AR, BME $1.4M overdue).
+
+**The real blocker (verified):** cash_lever carries the Opus Verifier + RedTeam/Steelman, so a full
+run is ~40 min; the harness polled only 900s then `app.close()` killed it mid-run. Compounding it,
+`checkAndResumeInProgressRun()` (`index.ts:79`) resumed the day's in_progress backlog on boot, and the
+faster no-Verifier quick_read memo won the "any new .md" race so the harness exited before cash_lever
+finished.
+
+**Fixes applied:** (a) harness now waits for a `cash_lever`-prefixed memo specifically and polls up to
+~60 min (`live-cash-real-vault.mjs`); (b) cleared 12 zombie `in_progress` runs → `failed` (app off,
+`busy_timeout`, `changes()=12` verified) so boot-resume gives cash_lever isolation + full token budget;
+(c) relaunched the isolated cash_lever run (background; run `3ff94c74` in_progress 21:53). `docs/world-class-backlog.md`
+rewritten, evidence-grounded.
+
+**Open (for when the relaunch returns):** confirm the cash_lever memo ships CLEAN or DEGRADED
+(`cash_model` still stubbed in the playbook path, `cash-lever/index.ts:335,396` — DEGRADED unless
+`ALLOW_STUBBED_LIVE=1`); wire telemetry (model/tokens/`cost_ledger` have no writers); log the silent
+`playbookVerifier.ts:129` catch.
