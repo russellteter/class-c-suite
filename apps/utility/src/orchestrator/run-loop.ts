@@ -12,7 +12,7 @@ import { LENS_ROLES } from '@c-suite/shared-types/agent-definition';
 import type { PlaybookId, PlaybookInput, PlaybookContext } from '@c-suite/shared-types/playbook';
 import { PlaybookIdSchema } from '@c-suite/shared-types/playbook';
 import { transition, type RunEvent } from './state-machine.js';
-import { dispatchLens, dispatchSynthesizer } from './dispatch.js';
+import { dispatchLens, dispatchSynthesizer, dispatchAdversarial } from './dispatch.js';
 import type { IpcEmit } from './hooks.js';
 import { buildVerifierInput, VerifierInputContractViolation } from '../verifier-assembler.js';
 import { runVerifier, StubVerifierInvoker } from '../agents/verifier-runner.js';
@@ -275,6 +275,19 @@ export async function startRun(
   if ('code' in afterFanOut) return makeFailedReturn(runId, visitedStates, agentRolesInvoked, afterFanOut);
   state = afterFanOut;
   visitedStates.push(state.kind);
+
+  // red-team-steelman: ACTUALLY dispatch the adversarial pair so each persists a 'completed'
+  // agent_invocations row. buildVerifierInput (verifier-assembler.ts:103-114) FAILS CLOSED without
+  // RedTeam/Steelman rows — the live cash_lever run died exactly here (VerifierInputContractViolation:
+  // missing redTeam.output, steelman.output). This is the same recorded-but-never-run bug
+  // dispatchSynthesizer fixed at :289. Gated to live: replay/record deliberately leave the DB
+  // unseeded and fall through the verifier catch (:343), so dispatching there would change the
+  // stub state-machine path; live MUST be fully seeded (it fails loud at :342).
+  const isLive = (process.env.STUB_MODE ?? 'replay') === 'live';
+  if (isLive) {
+    await dispatchAdversarial('RedTeam', runId, question, playbookId, lensOutputs, db, emit);
+    await dispatchAdversarial('Steelman', runId, question, playbookId, lensOutputs, db, emit);
+  }
   agentRolesInvoked.push('RedTeam', 'Steelman');
 
   // red-team-steelman → synthesizer
@@ -309,7 +322,7 @@ export async function startRun(
   // real rigor score — re-throw to fail the run rather than ship CLEAN with the
   // fabricated 85 (DOCTRINE law 1). Replay/record keep the fallback so the state
   // machine keeps moving in tests. Matches U1's isLive idiom (pre-mortem/index.ts).
-  const isLive = (process.env.STUB_MODE ?? 'replay') === 'live';
+  // (isLive is computed once above, hoisted for the red-team-steelman dispatch gate.)
 
   try {
     // Cast state to synthesizer shape for buildVerifierInput.

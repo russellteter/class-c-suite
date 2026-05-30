@@ -14,9 +14,10 @@ const _dirname =
     ? __dirname
     : dirname(fileURLToPath(import.meta.url));
 
-// role → prompt filename. Only the roles the live/record path actually dispatches:
-// the 6 strategic lenses (via dispatchLens) and the Synthesizer (via dispatchSynthesizer).
-// Verifier/Handoff/pre-mortem RedTeam+Steelman load their own prompts in their own runners.
+// role → prompt filename. The roles the live/record path dispatches: the 6 strategic lenses
+// (via dispatchLens), the Synthesizer (via dispatchSynthesizer), and the generic RedTeam/Steelman
+// adversarial pair (via dispatchAdversarial — distinct from the pre-mortem prompts, which the
+// pre-mortem runner loads itself). Verifier/Handoff load their own prompts in their own runners.
 const PROMPT_FILES: Readonly<Record<string, string>> = {
   CEO: 'ceo.prompt.md',
   CFO: 'cfo.prompt.md',
@@ -25,6 +26,8 @@ const PROMPT_FILES: Readonly<Record<string, string>> = {
   CPO: 'cpo.prompt.md',
   COS: 'cos.prompt.md',
   Synthesizer: 'Synthesizer.prompt.md',
+  RedTeam: 'RedTeam.prompt.md',
+  Steelman: 'Steelman.prompt.md',
 };
 
 /**

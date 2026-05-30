@@ -224,3 +224,81 @@ export async function dispatchSynthesizer(
   const output = (await onSubagentStop(injected)) as SynthesizerOutput;
   return { ...output, role: 'Synthesizer', runId };
 }
+
+// ── dispatchAdversarial — RedTeam / Steelman ────────────────────────────────────
+//
+// The adversarial pair are NOT lenses: each receives every lens output (no lens-isolation
+// guard applies) and challenges (RedTeam) or defends (Steelman) the positions. They MUST
+// persist a 'completed' agent_invocations row — buildVerifierInput (verifier-assembler.ts:103-114)
+// FAILS CLOSED without RedTeam/Steelman rows, which is exactly where the live cash_lever run died
+// (VerifierInputContractViolation: missing redTeam.output, steelman.output). Mirrors
+// dispatchSynthesizer's STUB_MODE branching. The generic system prompts (RedTeam.prompt.md /
+// Steelman.prompt.md) emit the generic RedTeamOutput/SteelmanOutput shape, not the pre-mortem one.
+
+export interface AdversarialOutput {
+  role: 'RedTeam' | 'Steelman';
+  runId: string;
+  [k: string]: unknown;
+}
+
+export async function dispatchAdversarial(
+  role: 'RedTeam' | 'Steelman',
+  runId: string,
+  question: string,
+  playbookId: string,
+  lensOutputs: Record<string, unknown>,
+  db: Database.Database,
+  ipcEmit?: IpcEmit,
+): Promise<AdversarialOutput> {
+  const emit: IpcEmit = ipcEmit ?? (() => void 0);
+  const { onSubagentStart, onSubagentStop } = createHooks({ runId, role, db, ipcEmit: emit });
+
+  const mode = getStubMode();
+
+  if (mode === 'replay') {
+    const { join } = await import('path');
+    const { existsSync, readFileSync } = await import('fs');
+
+    const fixturePaths = [
+      join(process.cwd(), 'tests', 'fixtures', 'lens-outputs', 'seed-run-001', `${role}.json`),
+      join(process.cwd(), 'tests', 'fixtures', 'lens-outputs', runId, `${role}.json`),
+    ];
+
+    for (const fixturePath of fixturePaths) {
+      if (existsSync(fixturePath)) {
+        const raw = JSON.parse(readFileSync(fixturePath, 'utf8')) as { output: Record<string, unknown> };
+        await onSubagentStart(
+          { hook_event_name: 'SubagentStart', agent_id: `${role}-stub`, agent_type: 'adversarial' },
+          'stub',
+          {},
+        );
+        // Runtime owns role + runId; the fixture's embedded runId is ignored (same idiom as the lenses).
+        const output = await onSubagentStop({ ...raw.output, role, runId });
+        return output as AdversarialOutput;
+      }
+    }
+
+    throw new Error(`dispatchAdversarial(${role}): no replay fixture found for run ${runId}`);
+  }
+
+  // record / live: route through the model-client factory with the assembled context.
+  const client = modelClientFromEnv();
+
+  await onSubagentStart(
+    { hook_event_name: 'SubagentStart', agent_id: `${role}-live`, agent_type: 'adversarial' },
+    'live',
+    {},
+  );
+
+  const envelope = await client.invoke(
+    { role, systemPrompt: loadAgentPrompt(role) },
+    { runId, question, playbook: playbookId, lensOutputs },
+  );
+
+  // Inject the authoritative role + runId before validation in onSubagentStop — the prompts emit
+  // only the content fields (challenges/overallRisk or steelmen); the runtime owns role + runId.
+  const so = envelope.structuredOutput;
+  const injected = so && typeof so === 'object' ? { ...(so as Record<string, unknown>), role, runId } : so;
+  const output = await onSubagentStop(injected);
+  return output as AdversarialOutput;
+}
