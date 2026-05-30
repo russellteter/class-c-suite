@@ -243,13 +243,24 @@ export async function startRun(
       groundingDocs = [];
     }
   }
+  // PARALLEL fan-out: dispatch all 6 lenses CONCURRENTLY (each is an independent live LLM call;
+  // lens isolation holds — bundles carry no cross-lens data). This cuts a live run from ~15 min
+  // (sequential await-in-loop) to ~3 min, which is both the speed the product needs and what makes
+  // a run reliably COMPLETE before competition/supervisor-restart windows bite. State transitions
+  // stay SEQUENTIAL after the gather, preserving the state machine's per-lens fan-out accounting.
+  // (The Scheduler's token-budget cap still bounds true concurrency by queueing overflow.)
   const lensOutputs: Record<string, unknown> = {};
-  for (const role of LENS_ROLES) {
-    const bundle = buildLensBundle(role, runId, question, playbookId);
-    if (groundingDocs.length > 0) {
-      (bundle as { contextDocuments: ContextDoc[] }).contextDocuments = groundingDocs;
-    }
-    lensOutputs[role] = await dispatchLens(role, bundle, db, emit);
+  const lensResults = await Promise.all(
+    LENS_ROLES.map((role) => {
+      const bundle = buildLensBundle(role, runId, question, playbookId);
+      if (groundingDocs.length > 0) {
+        (bundle as { contextDocuments: ContextDoc[] }).contextDocuments = groundingDocs;
+      }
+      return dispatchLens(role, bundle, db, emit).then((output) => ({ role, output }));
+    }),
+  );
+  for (const { role, output } of lensResults) {
+    lensOutputs[role] = output;
     agentRolesInvoked.push(role);
 
     const lensEvent: RunEvent = { kind: 'lens.complete', role, output: {} };

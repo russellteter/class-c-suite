@@ -147,6 +147,34 @@ async function loadSdkQuery(): Promise<QueryFn> {
  *
  * Matches the StubClaudeClient.invoke() interface exactly.
  */
+/**
+ * Classify an error as a transient API/network failure worth retrying. Known-fatal error TYPES
+ * (auth missing, output parse) never retry regardless of message. We hit "API Error: The socket
+ * connection was closed unexpectedly" mid-Synthesizer, which aborted a fully-grounded 10-min run.
+ */
+function isTransientApiError(err: unknown): boolean {
+  if (err instanceof ClaudeOutputParseError || err instanceof ClaudeAuthMissingError) return false;
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return (
+    msg.includes('socket connection was closed') ||
+    msg.includes('socket hang up') ||
+    msg.includes('econnreset') ||
+    msg.includes('etimedout') ||
+    msg.includes('econnrefused') ||
+    msg.includes('fetch failed') ||
+    msg.includes('network error') ||
+    msg.includes('overloaded') ||
+    msg.includes('rate limit') ||
+    msg.includes('429') ||
+    msg.includes('502') ||
+    msg.includes('503') ||
+    msg.includes('504') ||
+    msg.includes('timed out') ||
+    msg.includes('timeout') ||
+    msg.includes('api error') // the SDK surfaces transient upstream failures as "API Error: ..."
+  );
+}
+
 export class RealClaudeClient {
   constructor(
     private readonly modelOverride?: string,
@@ -156,7 +184,36 @@ export class RealClaudeClient {
     this.assertAuth();
   }
 
+  /**
+   * Resilient invoke: retry transient API/network errors with exponential backoff. A single blip
+   * on one of a run's ~8 live calls must NOT abort the whole run (the failure that lost a fully
+   * grounded run mid-Synthesizer). Non-transient errors (auth, parse) fail loud immediately.
+   */
   async invoke(
+    definition: AgentDefinitionLike,
+    context: ContextBundleLike,
+  ): Promise<AgentOutputLike> {
+    const MAX_ATTEMPTS = 4;
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        return await this._invokeOnce(definition, context);
+      } catch (err) {
+        lastErr = err;
+        if (attempt === MAX_ATTEMPTS || !isTransientApiError(err)) throw err;
+        const backoffMs = Math.min(1000 * 2 ** (attempt - 1), 8000); // 1s, 2s, 4s, 8s
+        log.warn({
+          message: `transient API error — retrying (attempt ${attempt}/${MAX_ATTEMPTS} in ${backoffMs}ms)`,
+          role: definition.role,
+          err: String(err),
+        });
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+      }
+    }
+    throw lastErr;
+  }
+
+  private async _invokeOnce(
     definition: AgentDefinitionLike,
     context: ContextBundleLike,
   ): Promise<AgentOutputLike> {
