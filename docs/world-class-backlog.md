@@ -90,11 +90,18 @@ is a test driver, not the product path.
   its own token spend or per-run cost; the cost/usage UI has nothing to read. Wire the SDK `usage`
   (`realClaudeClient.ts:251-254` already captures `tokensIn/tokensOut`) through `onSubagentStop`
   into the invocation row + a `cost_ledger` insert.
-- **`cash_model` still stubbed in the playbook (P1).** `cash-lever/index.ts:335` still calls
-  `stubCashModelQuery`; `STUBBED_SOURCES = ['cash_model']` (`:396`) makes `STUB_MODE=live` carry a
-  **DEGRADED** stamp unless `ALLOW_STUBBED_LIVE=1`. The real xlsx reader feeds *grounding* but the
-  playbook-internal lens path still stubs. Drop `cash_model` from STUBBED_SOURCES once the
-  playbook-internal path reads the real model, so live cash_lever can ship **CLEAN**, not DEGRADED.
+- **`cash_model` stub is DEAD CODE on the interactive path (P2 — prior P1 framing was wrong; corrected
+  2026-06-01, artifact-verified).** `stubCashModelQuery` (`cash-lever/index.ts:335`) + `STUBBED_SOURCES =
+  ['cash_model']` (`:396`) are **never reached** by interactive live cash_lever: it's excluded from
+  `KNOWN_CH7_PLAYBOOK_IDS` (`run-loop.ts:39-41`) and takes the Ch.5 grounding path (`buildCashLeverGrounding`
+  → real `readXlsxLeverRows`), bypassing `runPlaybookGuarded` (`:127`). So live cash_lever already ships
+  legitimately **CLEAN on real data** — it is NOT "DEGRADED-eligible / guard-refused" (the prior claim, and the
+  matching CLAUDE.md gotcha, were wrong for this path; proven by `tool_calls=0` + real-model citations + zero
+  stub strings across the 4 clean runs). Still worth un-stubbing to remove the dead-code/doc liability and make
+  the cron path (`mondayTripwire.ts:168`, the only live caller of the stub) legit — see `tasks/followup-specs.md`
+  Thread 3(b). **The REAL latent honesty gap (do this):** Ch.5 grounding swallows a read failure → `[]`
+  (`run-loop.ts:242-244`), so a missing/renamed xlsx ships an **ungrounded memo CLEAN at rigor 90+** — fix with a
+  degrade-on-empty-grounding stamp (Thread 3(d): stamp DEGRADED, don't throw).
 - **Silent verifier catch (P2).** `playbookVerifier.ts:129` `catch {}` swallows any tool-call audit
   error to an empty trail. The prior `id`-alias schema bug (now fixed at `:109-111`) hid here for a
   while. Log the caught error instead of swallowing it.

@@ -2477,3 +2477,80 @@ poor UX (~34-min run); trim the synth output. (b) ONE successful run; cross-run 
 + occasional SDK stall) not yet characterized. (c) the other 7 V1 outcomes (other playbooks) not yet run
 live end-to-end, though the run-engine fixes benefit every generic-run-loop playbook. (d) telemetry gap +
 `cash_model` still stubbed (DEGRADED-eligible) remain open from the prior entry.
+
+---
+
+## 2026-06-01 — Cross-run reliability characterized: 4/4 live cash_lever ships CLEAN (open thread #1 CLOSED)
+
+Ran the live `cash_lever` harness 3 more times against the real vault (resume-recipe next step) to settle
+the "ONE successful run, reliability not characterized" caveat. **Result: 4/4 consecutive `shipped_clean`,
+100% on commit `9b5db30`.**
+
+| run | status | rigor | synth_s | synth_B | memo |
+|-----|--------|-------|---------|---------|------|
+| f617c0ed (baseline) | shipped_clean | 92 | 722 | 38327 | 11.8KB |
+| a9d30924 | shipped_clean | 90 | 659 | 38117 | 12.9KB |
+| 82650c08 | shipped_clean | 91 | 415 | 34907 | 11.4KB |
+| e439c7fa | shipped_clean | 91 | 366 | 36342 | 10.2KB |
+
+- **Rigor 90–92 every run** — all real Opus verifier scores (none the hardcoded-85 fallback); all reached
+  `handoff`. Every run grounded in 10 real lever rows + produced a real multi-lens reconciliation (varied
+  phrasing, consistent substance: collections-over-cost-cuts, $8.05M Class/Collaborate AR, BME $1.4M
+  write-off escalation, contractor/subscription immediate pulls).
+- **Synth 366–722s (6–12 min)** — none approached the role-aware 25m=1500s ceiling. Margin vs this session's
+  max (722s) = 2.05×; vs the historical max synth (1027s, `00259e19`) = 1.46× — adequate, zero false-aborts,
+  and the synth-size trim would widen it. Synth trended faster across the session (722→659→415→366).
+- **Synth structured output is consistently 34.9–38.3KB** → renders to 10–13KB memos. This size — not
+  reliability — is the real remaining issue (open thread #2, UX). The "9–17 min / 38KB" worst case is bounded.
+- **No SDK stalls, no retries, no failures across 4 runs.** The role-aware timeout + adversarial-dispatch
+  fixes from 2026-05-31 hold up across runs.
+- **Method (per advisor):** serial by design (one Electron lock / DB / token budget); each run launched in
+  background, verified from the DB (status + rigor + `agent_invocations` synth duration), log preserved to
+  `/tmp/live-run-N.log` before the next launch (the harness truncates its own log at `:39`). No concurrent
+  workflow during the runs — protects the measurement from self-induced token-quota contention. Per-run data
+  in `tasks/reliability-runs.md`.
+- **One honesty flag (NOT a reliability issue, mechanism unconfirmed):** all 4 ship `shipped_clean` despite
+  `cash_model` still stubbed and no `ALLOW_STUBBED_LIVE` set. Either the stub guard (`runPlaybookGuarded`/
+  `guardStubbedSourcesLive`, `stubGuard.ts`) isn't wired into the cash_lever live path, or `stubCashModelQuery`
+  returns `degraded:false`. If the guard is un-wired, the app is stamping stubbed-data memos CLEAN — exactly
+  what the guard was built (mock-reliance audit) to prevent. Flagged for the follow-up design pass; needs the
+  discriminating check (grep `runPlaybookGuarded` callers + read the stub's degraded flag) before any claim.
+
+**Next:** design pass (workflow) over the three independent follow-up threads — synth-size trim (constrain
+the 35–38KB `SynthesizerOutput` without breaking the schema), telemetry writers (model/tokens/`cost_ledger`
+have no writers; `realClaudeClient.ts:251-254` already captures the usage), and cash_model un-stub + the
+stub-guard wiring question above — producing implementation specs for a later clean build phase.
+
+### Design-research workflow (`wf_4f03e8a0`) — 3 threads investigated + adversarially verified
+
+Ran a 3-thread investigate→verify workflow (Opus for the cash_model honesty diagnosis, Sonnet for the two
+implementation specs + a Sonnet adversarial verifier per thread; 6 agents, ~31 min). Corrected, vetted specs
+in `tasks/followup-specs.md`. The verifiers caught two would-have-broken-the-build bugs:
+
+- **Synth-size:** `positionMetadata` is 52% of the output (~20KB; the model carries 20–24 of 23 lens
+  positions; no prompt ceiling, no schema cap). **Tier 1 (prompt cap to ≤12 entries) ships** (~24% projected
+  cut, must be live-measured). **Tier 2 `.max(16)` REJECTED** by the verifier — it sits BELOW the measured
+  baseline (the 4 clean runs had 22/23/24/20 entries) and would have failed every proven-good run at
+  `onSubagentStop` validation. Textbook `calibrate-guards-against-measured-baseline`: any cap must sit above
+  the observed max (24) — use `.max(28-30)` or measure-after-Tier-1. (`SynthesizerOutputSchema` is also not
+  exported — blocks the proposed test.)
+- **Telemetry:** usage is discarded at 3 dispatch sites and the Verifier (the Opus call) writes no
+  `agent_invocations` row at all; zero `cost_ledger` INSERT sites. Changes 1–4 sound (cost_usd stays NULL —
+  Max-subscription OAuth, never fabricate USD). **Change 5 CRITICAL fix:** the original (change
+  `VerifierInvoker.invoke()` to return the usage wrapper) would throw `VerifierOutputContractViolation` on
+  every live run — `runVerifier:147` parses that return directly. Use a `lastUsage` field instead.
+- **cash_model / stub-guard — HONESTY RESOLVED, artifact-verified (not agent prose):** `cash_lever` is
+  **deliberately excluded from `KNOWN_CH7_PLAYBOOK_IDS`** (`run-loop.ts:39-41`), so it takes the Ch.5
+  generic grounding path and **never reaches `runPlaybookGuarded`** (`:127`, inside the Ch.7 block). The stub
+  guard, `STUBBED_SOURCES=['cash_model']`, and `stubCashModelQuery` are **dead code on the interactive path**
+  (live only via the cron `mondayTripwire.ts:168`). I hand-verified the honesty claim against artifacts:
+  `tool_calls = 0` across all 4 runs (the stub's INSERT never fired); the f617c0ed memo has **0 stub
+  fingerprints and 5 real xlsx markers**; all 4 cite real line items present only in the real model. **This is
+  NOT a DOCTRINE #1 violation — the memos are honestly grounded.** The "DEGRADED-eligible / guard-refuses live"
+  framing in CLAUDE.md + the backlog P1 was wrong for the interactive path (corrected below).
+  **NEW real latent gap surfaced:** Ch.5 grounding never blocks (`run-loop.ts:242-244` swallows failure → `[]`),
+  so a missing/renamed xlsx would ship an **ungrounded memo CLEAN at rigor 90+**. The genuine honesty fix is a
+  degrade-on-empty-grounding stamp (stamp DEGRADED, don't throw) — speced in `tasks/followup-specs.md` Thread 3(d).
+
+No source was changed this session — the 4/4 reliability result stays attached to commit `9b5db30`. Specs are
+for a later clean build phase, each re-verified with a live run.
