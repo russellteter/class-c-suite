@@ -138,6 +138,10 @@ The repo path contains spaces. In shell commands, quote it: `cd "/Users/russellt
 - **Renderer render paths:** `index.html` wires `src/index.tsx` (not a placeholder); dev loads the Vite dev server on :5273, prod/packaged loads built `dist/index.html` via `loadFile` (`main.ts:90/99`). The dev render path is proven via real-app e2e; the packaged `vite build` path is wired but unexercised.
 - **memos untracked by design:** SafeWrite only git-commits zones with `commitVault: true`; the `memo` zone is `commitVault: false` (`apps/utility/src/safewrite/zonePolicy.ts`, ADR-0003 §2). Memo files land on disk but are NOT versioned — expected, not a failure.
 - **macOS smoke:** `scripts/mcp-live-smoke.sh` needs `gtimeout` (coreutils); it shims `timeout`/`gtimeout`.
+- **Synthesizer is slow, not hung:** a live Synthesizer call legitimately takes 9-17 min — it emits a 30-38KB memo (measured 546s/1027s completions). Don't read synth silence as a stall; the role-aware `RealClaudeClient` timeout (Synth 25m / Verifier 20m / others 8m) covers it. First live grounded+verified memo shipped 2026-05-31: `f617c0ed`, rigor 92 CLEAN. (Follow-up: the 38KB synth is too large — trim for UX.)
+- **`runs.started_at` is SECONDS via `unixepoch()`, not ms:** query with `datetime(started_at,'unixepoch','localtime')`; dividing by 1000 yields a bogus 1970 date. Same for `agent_invocations` timestamps.
+- **`STUB_MODE` defaults to `live` in the forked utility** (`apps/main/src/supervisor.ts:73`, `?? 'live'`); `CLAUDE_CODE_OAUTH_TOKEN` is loaded from `apps/main/.env.local` by `loadEnv.ts`. The real app runs real inference by default — CI/vitest set `STUB_MODE=replay`. cash_lever still guard-refuses live unless `ALLOW_STUBBED_LIVE=1` only while `cash_model` stays stubbed (`cash-lever/index.ts:396`).
+- **`resumeRun` is a skeleton:** it only re-dispatches incomplete lenses from the `fan-out` state (`apps/utility/src/orchestrator/index.ts`); it does NOT drive verifier/ship from a post-synth state, so crash-resume of a near-done run won't finish it.
 
 ---
 
