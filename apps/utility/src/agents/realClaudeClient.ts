@@ -224,12 +224,17 @@ export class RealClaudeClient {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { ANTHROPIC_API_KEY: _stripped, ...safeEnv } = process.env as Record<string, string | undefined>;
 
-    // A stalled SDK stream emits NO message and NO error — without a bound the `for await` hangs
-    // forever (observed: a Synthesizer call silent for 15+ min, the whole run stuck in_progress).
-    // Bound each attempt; on timeout throw an error whose message contains "timed out" so
-    // isTransientApiError() classifies it transient and invoke()'s retry re-issues the call (the
-    // prior attempt's stream is abandoned). 5 min is generous — real lens/synth calls finish in ~2-4 min.
-    const INVOKE_TIMEOUT_MS = 5 * 60 * 1000;
+    // Bound each attempt so a genuinely STALLED stream (no message, no error) can't hang forever;
+    // on timeout we throw "timed out" → isTransientApiError() → invoke() retries (the prior attempt's
+    // stream is abandoned). The ceiling MUST exceed legit per-role generation time or it false-aborts
+    // healthy calls: the Synthesizer emits a 30-38KB memo and measured 9-17 min end-to-end
+    // (run 3ff94c74 = 546s, 00259e19 = 1027s), so a flat 5 min aborted every healthy synth into
+    // retry-failure. Role-aware: generous for the big generators, tighter for the fast lens/adversarial
+    // calls (which finish in 2-6 min). [follow-up: the 38KB synth is itself too large — trim for UX.]
+    const INVOKE_TIMEOUT_MS =
+      definition.role === 'Synthesizer' ? 25 * 60 * 1000 :
+      definition.role === 'Verifier' ? 20 * 60 * 1000 :
+      8 * 60 * 1000;
 
     const consume = async (): Promise<{ text: string; usage?: { input_tokens?: number; output_tokens?: number } }> => {
       let text = '';
