@@ -63,10 +63,16 @@ dogfood fails. De-risk this FIRST, standalone, before any engine integration.
   vault/data context (he can name ≥1 dated vault item that changed his thinking) — not generic advice.
 
 ## Phased plan (de-risk the edge first → dogfood fast)
-- **Phase 0 — Vault-retriever quality spike** (standalone, ~½ day, no Electron/run-loop/UI). Build a plain
-  Node retriever (vault walk + TF-IDF + recency-weighted top-K, lifting stakeholder-1-1's date parse), run
-  it over the REAL vault on 1–2 real decisions, print top-K beside `vault_related`'s. **Gate:** top-K judged
-  relevant AND current. If junk, fix ranking before any integration. *This single gate blocks the dogfood.*
+- **Phase 0 — De-risk BOTH load-bearing premises** (standalone, ~½ day, no integration).
+  (a) **Retriever quality:** build a plain Node retriever (vault walk + TF-IDF + recency-weighted top-K,
+  lifting stakeholder-1-1's date parse), run over the REAL vault on 1–2 real decisions. **The gate is
+  Russell's judgment** ("yes, those are the notes I'd reach for") — `vault_related` overlap is only a
+  sanity-check, NOT a pass condition (it's also TF-IDF; agreement proves keyword matchers agree, not
+  relevance). **Escalation bar, pre-decided:** if TF-IDF top-K is mediocre, switch to embeddings (a personal
+  markdown vault is small → cheap + semantically better); do not rationalize a keyword match as "good enough."
+  (b) **Viable-path check:** a 5-min live run confirming `open_qa` ad-hoc ships a real non-empty memo live
+  (currently UNVERIFIED — only cash_lever is proven live). Both gates pass before any integration spend.
+  *Phase 0 blocks the dogfood.*
 - **Phase 1 — First grounded dogfoodable memo (C1+C2+C5).** OpenQABar → arbitrary decision → 6-lens
   reconciled memo ships live, grounded in the Phase-0 retriever's top-K, renders with a "Vault context used
   (dates)" block. Bypass the decomposer's strategic_option route (keep strategic Qs in `open_qa` ad-hoc);
@@ -82,10 +88,14 @@ dogfood fails. De-risk this FIRST, standalone, before any engine integration.
   + set the two SuiteQL queries; CFO financials pull live; optionally add RedTeam/Steelman to lift rigor toward 92.
   Last because NetSuite schema validation is L-effort and NOT on the dogfood critical path.
 
-**Open scope fork (deliberate, override if wrong):** V1_TARGET "Done=" includes the CoWork roundtrip, but the
-plan reaches the **first dogfood at Phase 1 with render-in-app only** (CoWork = Phase 3). Rationale: the EDGE
-is vault grounding (Phases 0–1); CoWork is a hand-off mechanic that can follow. If week-1 dogfood must include
-CoWork, pull Phase 3 into Phase 1.
+**Two open questions for Russell (his constraints to set, not mine to assume):**
+1. **CoWork in the first dogfood?** His "Done=" includes the CoWork roundtrip, but the plan reaches the first
+   dogfood at Phase 1 with **render-in-app only** (CoWork = Phase 3). Rationale: the edge is vault grounding.
+   If the first usable version must include the CoWork hand-back, Phase 3 pulls into Phase 1.
+2. **NetSuite ordering follows his first decision.** NetSuite is parked last (Phase 4 — L-effort schema
+   validation, off the dogfood critical path) ON THE ASSUMPTION the first decision is servable by
+   SF+AWS+cash+vault. If his real first decision hinges on cash/runway/board financials, NetSuite reorders UP.
+   The decision drives the plan, not the reverse.
 
 ## Completion contract
 - Frozen scope. New ideas → `tasks/V2_BACKLOG.md`, never into V1.
