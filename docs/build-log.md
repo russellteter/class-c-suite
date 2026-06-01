@@ -2434,3 +2434,46 @@ rewritten, evidence-grounded.
 (`cash_model` still stubbed in the playbook path, `cash-lever/index.ts:335,396` — DEGRADED unless
 `ALLOW_STUBBED_LIVE=1`); wire telemetry (model/tokens/`cost_ledger` have no writers); log the silent
 `playbookVerifier.ts:129` catch.
+
+---
+
+## 2026-05-31 — FIRST live grounded verified memo shipped (Ch.5 moment-of-truth PASSED)
+
+A full live `cash_lever` run completed end-to-end against the real vault and shipped a real, grounded,
+Opus-verified memo — the first time the C-Suite has produced a complete live deliverable.
+
+- **Run `f617c0ed`: `shipped_clean`, rigor 92/100, final state `handoff`.** Memo
+  `memos/2026-06-01-cash_lever-f617c0ed.md` (11.8KB), grounded in 10 real lever rows from
+  `Class_Cash_Lever_Model_v5_2026-05-18.xlsx`. Full chain ran with NO stubs/fallbacks: 6 lenses (real
+  cited analysis) → RedTeam (real challenges) → Steelman (real best-cases) → Synthesizer (reconciled
+  memo) → Opus Verifier (`claude-opus-4-7`, score 92 — NOT the hardcoded-85 fallback) → SafeWrite →
+  handoff. Memo verified by read: exec summary, reconciled position (resolves the 6-lens conflicts,
+  e.g. overrules CPO on BME), claims+evidence (citations c1-c15 to the real model), risks, write-backs,
+  open questions, falsifiers. Grounded, sound, complete.
+
+**Three run-engine fixes landed this session (commits `b9bb0b9`, `8ac3705`, `e7b7481`):**
+1. **RedTeam/Steelman never dispatched.** The generic run-loop transitioned through `red-team-steelman`
+   but only *recorded* the roles (same bug `dispatchSynthesizer` fixed at :289); `buildVerifierInput`
+   fails closed without their rows, so every run died at the Verifier. Added `dispatchAdversarial`,
+   wired it at the state (gated to live). THEN found it loaded the multi-mode `RedTeam.prompt.md` (emits
+   `failure_modes`) not the generic `RedTeamOutput` (challenges/overallRisk) the schema validates →
+   wrote dedicated `RedTeam.sixLens`/`Steelman.sixLens` prompts. Both now validate live with sharp
+   grounded output (RedTeam challenged the 34-week-vs-90-day gap; Steelman framed BME Saudi as a
+   value-impairment emergency).
+2. **Synthesizer is SLOW, not hung — corrected misdiagnosis.** A synth "silent 15+ min" looked hung; the
+   completion durations in the DB (`3ff94c74`=546s, `00259e19`=1027s, both completed, 30-38KB memos)
+   prove it's a long generation. My first fix (flat 5-min timeout, `8ac3705`) false-aborted every healthy
+   synth into retry-failure — and I'd killed `00259e19` ~2 min after its synth completed, just as it
+   reached the Verifier. Corrected to role-aware ceilings (`e7b7481`). Lesson: measure the legit duration
+   distribution before adding a guard that aborts slow work (see `dont-assert-root-cause-from-a-symptom`).
+3. **`RealClaudeClient` had no invocation timeout** — a genuine SDK stall would hang forever. Added one
+   (Promise.race; "timed out" → existing transient-retry path).
+
+Also: `resumeRun` is a skeleton (only re-dispatches from `fan-out`; does NOT drive verifier/ship from a
+post-synth state — crash-resume of a near-done run won't finish it). Harness now logs incrementally.
+
+**Honest caveats / follow-ups:** (a) synth memo size/speed varies 11-38KB / 9-17 min — the 38KB case is
+poor UX (~34-min run); trim the synth output. (b) ONE successful run; cross-run reliability (slow-synth
++ occasional SDK stall) not yet characterized. (c) the other 7 V1 outcomes (other playbooks) not yet run
+live end-to-end, though the run-engine fixes benefit every generic-run-loop playbook. (d) telemetry gap +
+`cash_model` still stubbed (DEGRADED-eligible) remain open from the prior entry.

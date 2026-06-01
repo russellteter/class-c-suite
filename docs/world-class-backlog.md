@@ -27,9 +27,21 @@ From `/tmp/live-cash-real-vault.log` (run launched 2026-05-29 20:19):
 
 This is real live inference against real business data. The lens layer is **done and proven**.
 
-## P0 — the one blocker: live runs never complete in time
+## P0 — RESOLVED 2026-05-31: first live grounded memo shipped CLEAN (rigor 92)
 
-**Symptom:** every recent live `cash_lever` run is `status=in_progress`, no memo.
+**RESOLUTION.** A full live `cash_lever` run completed end-to-end and shipped a real grounded,
+Opus-verified memo: `memos/2026-06-01-cash_lever-f617c0ed.md` (11.8KB, rigor **92/100** CLEAN, final
+state `handoff`). Chain ran with no stubs/fallbacks: 6 grounded lenses → RedTeam → Steelman →
+Synthesizer → Opus Verifier (`claude-opus-4-7`, real score, not the 85 fallback) → SafeWrite. Three
+fixes beyond the harness-timeout below got it there: (1) the generic run-loop never *dispatched*
+RedTeam/Steelman (only recorded them) and loaded the wrong multi-mode prompts → added
+`dispatchAdversarial` + dedicated `RedTeam.sixLens`/`Steelman.sixLens` prompts; (2) a flat 5-min stall
+timeout false-aborted the legit 9-17 min Synthesizer (a 30-38KB memo gen — SLOW, not hung; that "hang"
+call was a symptom-without-discriminator error) → role-aware ceilings (Synth 25m / Verifier 20m / rest
+8m); (3) `RealClaudeClient` had no timeout at all → added one. Commits `b9bb0b9`, `8ac3705`, `e7b7481`.
+The original symptom + harness-timeout analysis below is kept for history.
+
+**Original symptom:** every recent live `cash_lever` run was `status=in_progress`, no memo.
 DB: 10 in_progress / 10 failed / 10 shipped_clean (shipped_clean are replay/stub seeds, e.g. the 280B
 placeholder `bb235f24`). Only one memo file exists on disk (the placeholder seed).
 
