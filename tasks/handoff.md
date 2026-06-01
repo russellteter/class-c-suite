@@ -41,9 +41,17 @@
 
 ## Next step
 Implement Synth-size Tier 1 (the smallest, vetted, recipe-next change): edit the 2 lines in
-`apps/utility/src/prompts/Synthesizer.prompt.md` per `tasks/followup-specs.md` Thread 1, rebuild utility,
-run the live harness ONCE, and measure the new Synthesizer `length(structured_output_json)` + positionMetadata
-count + confirm `shipped_clean` at rigor ~90.
+`apps/utility/src/prompts/Synthesizer.prompt.md` per `tasks/followup-specs.md` Thread 1, **then
+`pnpm --filter utility build`** (prompts are read from `dist/prompts/` — the build copies src→dist via
+`copy-utility-assets.mjs`; editing src WITHOUT rebuilding makes the live run test the STALE dist prompt and
+report a false "cap didn't work"), run the live harness ONCE, and measure the new Synthesizer
+`length(structured_output_json)` + positionMetadata count + confirm `shipped_clean` at rigor ~90.
+
+**UX-scope caveat (clarify the actual target first):** Tier 1 trims `positionMetadata` — INTERNAL structured
+data that feeds the Verifier; Russell never reads it. It cuts the structured-JSON size (~38KB→~30KB) and synth
+run-time/token-budget, but the **`memoMarkdown` Russell actually reads (10–13KB) is UNCHANGED**. So Tier 1 fixes
+"runs take too long / token budget," NOT "the memo is too long to read." If the real complaint is memo reading
+length, that's a SEPARATE prose-length prompt change (cap section paragraph counts) — not this ticket.
 
 ## Resume recipe
 1. `cd "/Users/russellteter/Claude Code Projects/c-suite"` — read `docs/build-log.md` (last 2 entries) +

@@ -27,8 +27,17 @@ validation (`dispatch.ts:220`). Violates `calibrate-guards-against-measured-base
 ship now, use **`.max(28)`–`.max(30)`** (above the observed max 24, pathological-blowup guard only). Otherwise
 **defer any cap until 2–3 post-Tier-1 live runs measure the new distribution**, then set above that max.
 
+**UX scope (clarify the target before implementing):** `positionMetadata` is INTERNAL data feeding the
+Verifier — not read by Russell. Tier 1 cuts the structured-JSON size (~38KB→~30KB) and synth run-time/token
+budget; the `memoMarkdown` Russell reads (10–13KB) is UNCHANGED. Tier 1 ≠ a "shorter memo to read" fix — that
+is a separate prose-length prompt change (cap section paragraph counts). Decide which UX problem you're solving.
+
+**Build note (mandatory):** prompts are read from `dist/prompts/` (the build's `copy-utility-assets.mjs` copies
+src→dist). After editing `src/prompts/Synthesizer.prompt.md` you MUST `pnpm --filter utility build` or the live
+run tests the stale dist prompt and reports a false "cap didn't work."
+
 **Verification required:** the 24% cut is a PROJECTION (no track record of the model honoring a prose count
-cap on this surface). After editing, run the live harness once, measure the new Synthesizer
+cap on this surface). After editing + rebuilding, run the live harness once, measure the new Synthesizer
 `length(structured_output_json)` + `positionMetadata` count + confirm rigor stays ~90 and status `shipped_clean`.
 
 **Test:** `SynthesizerOutputSchema` is **not exported** (`agents/index.ts:220` is `const`, not `export const`)
