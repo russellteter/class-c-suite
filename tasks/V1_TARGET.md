@@ -103,5 +103,28 @@ dogfood fails. De-risk this FIRST, standalone, before any engine integration.
 - **Hard stop:** all 5 pass on-Mac AND dogfood passes → V1 DONE. Declared, shipped, used.
 
 ## Status
-2026-06-01: target frozen, gap audited (0/5). **Next: Phase 0 retriever spike** — needs 1–2 real decisions
-Russell is facing to test retrieval relevance (also seeds the dogfood).
+2026-06-01: target frozen, gap audited (0/5). **CoWork confirmed IN the first dogfood** (Russell) → Phase 3
+pulls into Phase 1's done. Test decisions: (1) org-chart/revenue-org restructuring, (2) expense-reduction
+targets for solvency/EBITDA.
+
+**Phase 0(a) PASSED — the vault edge is proven achievable.** A standalone BM25+recency retriever
+(`scripts/vault-retriever-spike.mjs`) over the REAL Business Planning vault (357 .md) surfaced exactly the
+right, current notes for BOTH real decisions:
+- Org: `deliverables/.../ORG_CHART_BUILD_BRIEF.md`, `investigations/go-forward-org-structure.md`,
+  `REVENUE_ORG_RESTRUCTURING.md`, `workstreams/WS-03-org-redesign.md` — all 2026-06-01.
+- Expenses: `investigations/cost-reduction-lever-inventory/round2_pass2_{cfo,ceo,cmo,reconciliation}.md`
+  (CEO memo states the answer: ~$3.8–5.0M EBITDA improvement by Q2 FY27) — all 2026-06-01.
+Relevance + recency both good; **embeddings escalation NOT needed for V1.** Gate is Russell's eyeball — pending.
+
+**Two design corrections from Phase 0(a):**
+- (i) The `obsidian-vault` MCP indexes a DIFFERENT vault (its `Projects/Client|Internal` paths don't exist
+  under the product's `Documents/Claude/Projects/Business Planning`). Do NOT use it as the runtime retriever
+  or as a quality benchmark — build the retriever in-process over the Business Planning corpus (proven above).
+- (ii) The retriever indexes `.md` only, but critical org/financial data also lives in `.xlsx/.docx`
+  (`AM_Org_Master`, `Headcount.xlsx`, the cash models). Complete grounding needs xlsx/docx extraction OR relies
+  on the `.md` notes that summarize them — decide per-decision. Minor risk: grounding the 6-lens analysis on
+  the vault's OWN prior 6-lens lens-memos (round2_pass2_*) could echo; treat them as prior-art context, not gospel.
+
+**Next: Phase 0(b)** — 5-min check that `open_qa` ad-hoc ships a real non-empty memo live (needs a Playwright
+run; will coordinate killing the currently-open app). **Then Phase 1** — wire the retriever into the run engine
+(generalize the `run-loop.ts:239` grounding gate) so an arbitrary decision ships a grounded 6-lens memo.
