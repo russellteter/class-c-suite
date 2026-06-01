@@ -5,7 +5,7 @@ import { _electron as electron } from 'playwright';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 
 const require = createRequire(import.meta.url);
@@ -35,9 +35,11 @@ try {
       VAULT_PATH: REAL_VAULT,
     },
   });
+  const LIVE_LOG = '/tmp/live-cash-real-vault.log';
+  writeFileSync(LIVE_LOG, '');  // truncate: this run's log only, captured incrementally so it survives a SIGKILL
   const proc = app.process();
-  proc.stdout?.on('data', (d) => mainLog.push(String(d)));
-  proc.stderr?.on('data', (d) => mainLog.push(String(d)));
+  proc.stdout?.on('data', (d) => { mainLog.push(String(d)); appendFileSync(LIVE_LOG, String(d)); });
+  proc.stderr?.on('data', (d) => { mainLog.push(String(d)); appendFileSync(LIVE_LOG, String(d)); });
   const page = await app.firstWindow();
   await page.waitForSelector('h1', { timeout: 20000 });
   console.log('app up; clicking Cash Lever → Approve (LIVE, REAL vault)…');

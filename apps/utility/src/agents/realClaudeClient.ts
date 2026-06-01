@@ -224,34 +224,61 @@ export class RealClaudeClient {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { ANTHROPIC_API_KEY: _stripped, ...safeEnv } = process.env as Record<string, string | undefined>;
 
-    let text = '';
-    let usage: { input_tokens?: number; output_tokens?: number } | undefined;
+    // A stalled SDK stream emits NO message and NO error — without a bound the `for await` hangs
+    // forever (observed: a Synthesizer call silent for 15+ min, the whole run stuck in_progress).
+    // Bound each attempt; on timeout throw an error whose message contains "timed out" so
+    // isTransientApiError() classifies it transient and invoke()'s retry re-issues the call (the
+    // prior attempt's stream is abandoned). 5 min is generous — real lens/synth calls finish in ~2-4 min.
+    const INVOKE_TIMEOUT_MS = 5 * 60 * 1000;
 
-    for await (const m of queryFn({
-      prompt: JSON.stringify(context),
-      options: {
-        systemPrompt: definition.systemPrompt,
-        model,
-        allowedTools: [],
-        permissionMode: 'dontAsk',
-        maxTurns: 1,
-        env: safeEnv,
-      },
-    })) {
-      if (m.type === 'assistant') {
-        const am = m as SDKAssistantMessage;
-        if (am.message?.content) {
-          for (const b of am.message.content) {
-            if (b && 'text' in b && typeof (b as { text?: string }).text === 'string') {
-              text += (b as { text: string }).text;
+    const consume = async (): Promise<{ text: string; usage?: { input_tokens?: number; output_tokens?: number } }> => {
+      let text = '';
+      let usage: { input_tokens?: number; output_tokens?: number } | undefined;
+      for await (const m of queryFn({
+        prompt: JSON.stringify(context),
+        options: {
+          systemPrompt: definition.systemPrompt,
+          model,
+          allowedTools: [],
+          permissionMode: 'dontAsk',
+          maxTurns: 1,
+          env: safeEnv,
+        },
+      })) {
+        if (m.type === 'assistant') {
+          const am = m as SDKAssistantMessage;
+          if (am.message?.content) {
+            for (const b of am.message.content) {
+              if (b && 'text' in b && typeof (b as { text?: string }).text === 'string') {
+                text += (b as { text: string }).text;
+              }
             }
           }
         }
+        if (m.type === 'result') {
+          const rm = m as SDKResultMessage;
+          if (rm.usage) usage = rm.usage;
+        }
       }
-      if (m.type === 'result') {
-        const rm = m as SDKResultMessage;
-        if (rm.usage) usage = rm.usage;
-      }
+      return { text, usage };
+    };
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`model invocation timed out after ${INVOKE_TIMEOUT_MS}ms (role ${definition.role}) — stalled SDK stream`)),
+        INVOKE_TIMEOUT_MS,
+      );
+    });
+
+    let text: string;
+    let usage: { input_tokens?: number; output_tokens?: number } | undefined;
+    try {
+      const result = await Promise.race([consume(), timeout]);
+      text = result.text;
+      usage = result.usage;
+    } finally {
+      if (timer) clearTimeout(timer);
     }
 
     let structuredOutput: unknown;

@@ -26,8 +26,13 @@ const PROMPT_FILES: Readonly<Record<string, string>> = {
   CPO: 'cpo.prompt.md',
   COS: 'cos.prompt.md',
   Synthesizer: 'Synthesizer.prompt.md',
-  RedTeam: 'RedTeam.prompt.md',
-  Steelman: 'Steelman.prompt.md',
+  // Six-lens adversarial pair (dispatchAdversarial). DISTINCT from RedTeam.prompt.md /
+  // Steelman.prompt.md, which are multi-mode prompts emitting the pre_mortem/strategic_option
+  // `failure_modes` shape for those playbooks' own runners. These sixLens prompts emit the generic
+  // RedTeamOutput (challenges/overallRisk) and SteelmanOutput (steelmen) shapes the run-loop
+  // Verifier-input contract requires.
+  RedTeam: 'RedTeam.sixLens.prompt.md',
+  Steelman: 'Steelman.sixLens.prompt.md',
 };
 
 /**

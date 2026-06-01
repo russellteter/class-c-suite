@@ -232,8 +232,9 @@ export async function dispatchSynthesizer(
 // persist a 'completed' agent_invocations row — buildVerifierInput (verifier-assembler.ts:103-114)
 // FAILS CLOSED without RedTeam/Steelman rows, which is exactly where the live cash_lever run died
 // (VerifierInputContractViolation: missing redTeam.output, steelman.output). Mirrors
-// dispatchSynthesizer's STUB_MODE branching. The generic system prompts (RedTeam.prompt.md /
-// Steelman.prompt.md) emit the generic RedTeamOutput/SteelmanOutput shape, not the pre-mortem one.
+// dispatchSynthesizer's STUB_MODE branching. The generic six-lens prompts (RedTeam.sixLens /
+// Steelman.sixLens.prompt.md, via loadAgentPrompt) emit the generic RedTeamOutput (challenges/
+// overallRisk) + SteelmanOutput (steelmen) shapes — NOT the multi-mode pre_mortem failure_modes one.
 
 export interface AdversarialOutput {
   role: 'RedTeam' | 'Steelman';
