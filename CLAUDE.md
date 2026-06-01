@@ -18,6 +18,7 @@ pnpm typecheck                # tsc --noEmit across workspaces
 pnpm --filter @c-suite/main build         # Rebuild main (tsc) — app runs from dist/; do after editing apps/main/src
 bash tests/e2e/run.sh                     # Real-Electron smoke: frees single-instance lock, starts vite :5273, drives the app
 node tests/e2e/render-leg-proof.mjs       # Prove run→memo→render e2e (prereq: vite :5273; pkill -f electron@33.4.11 between runs)
+node tests/e2e/live-cash-real-vault.mjs   # LIVE grounded cash_lever run → real Opus-verified memo in the vault (proven 2026-05-31: f617c0ed, rigor 92). Sets STUB_MODE=live + real VAULT_PATH itself; ~20-34min (synth is slow). Prereq: vite :5273; between runs pkill -f electron@33.4.11 AND clear stale in_progress rows (UPDATE runs SET status='failed' WHERE status='in_progress') so boot-resume gives one run the full token budget.
 ```
 
 ## Architecture (pnpm monorepo)
