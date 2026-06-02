@@ -10,6 +10,14 @@ memos + two CoWork bundles already sit in the vault; the dated, now-CLICKABLE "V
 section renders. C5 is meetable today. Remaining engineering (priorities below) RAISES TRUST for the dogfood;
 it does not unblock C5.
 
+**Clickability is forward-only — important so the next session doesn't chase a non-bug:** the `[^vault-N]`
+markers + tool_calls rows exist ONLY on runs from 2026-06-02+ (commit `5d7a481`). The two **pre-2026-06-02
+memos on disk** (org `c902b7c6`, expenses `74b719dd`) are **prose-only** — opening one and clicking a source
+resolves NOTHING (no markers, zero tool_calls). That's expected, not a regression. The org decision now has a
+clickable version (run `0da8991c`); the expense memo does NOT (no new run). A fresh dogfood decision gets
+clickable dated Sources by definition. (Optional parity: re-run the expense question, ~20min — the dogfood
+doesn't need it.)
+
 ## What was done this session (C4 render half — commit `5d7a481`)
 Closed C4's render half: **clickable dated vault Sources**, the a→b→c chain the prior handoff scoped.
 - **(a)** `runStrategicGrounded` (`open-qa/index.ts`) emits one `vault.retrieve` `tool_calls` row per injected
@@ -53,7 +61,8 @@ Mechanics also unit-checked (source_id↔marker align, valid result_json) + run-
 ## Top workflows / use-cases
 - **PRIMARY (nail this — it's now fully wired):** real COO decision → vault-grounded 6-lens memo → dated,
   CLICKABLE provenance Russell can SEE → "Draw up for CoWork" bundle. Every gate closed; only the dogfood remains.
-- Ready today: **org-restructuring** + **expense-target** decisions (grounding proven, both render clickable Sources).
+- Ready today: **org-restructuring** + **expense-target** decisions (grounding proven; a FRESH run renders
+  clickable dated Sources — the pre-2026-06-02 memos on disk are prose-only, see "Clickability is forward-only").
 - NOT ready: **cash-runway / NetSuite board-financials** (NetSuite OAuth never run; Phase 4).
 
 ## Open threads
@@ -62,8 +71,10 @@ Mechanics also unit-checked (source_id↔marker align, valid result_json) + run-
 - Telemetry dark: `model`/`tokens`/`cost_ledger` have no write sites (`tasks/followup-specs.md` Thread 2).
 - B22: vault has zero git commits — memos write fine (commitVault:false), but the first SHARED-zone write
   throws `VaultNotInitializedError`. Run `scripts/vault-bootstrap.sh` before shared-zone production use.
-- Echo watch: grounded runs now rank prior memos/handoffs (the corpus grows with each run). Rigor stayed 83;
-  watch if memos crowd out source notes.
+- **C5 risk — echo (not "someday"):** grounded runs now rank prior memos/handoffs (run `0da8991c` grounded on
+  vault-4 = its own 2026-06-02 handoff, vault-5 = the prior org memo `c902b7c6`). The dogfood judge is "name a
+  dated vault item that changed your thinking" — a self-authored prior C-suite output ranking #4-5 is circular.
+  Don't re-architect retrieval, but the dogfood decision should lean on SOURCE notes, not prior memos.
 
 ## Next step
 V1 engineering is essentially done (3/5 closed; C3=Phase 4; C5=Russell's use). The highest-value engineering
