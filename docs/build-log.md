@@ -2722,3 +2722,65 @@ source notes over time.
 ### Burn-down (was 2 fully closed + C4 substantial) → **3/5 fully closed**
 - **C1 ✅ · C2 ✅ · C4 ✅** (vs the V1_TARGET bar). **C5 READY** (dogfood — Russell's actual use; no eng gate).
   **C3 PARTIAL** (NetSuite-on-tile + full live financials = Phase 4, off the dogfood path).
+
+---
+
+## 2026-06-02 — Priority 1: Synthesizer-size trim (Thread 1) — SHIPPED + live-measured
+
+**Status:** complete
+**Token spend:** N/A on Max (1 live grounded harness run + DB measurement; no sub-agents)
+**Owner:** Russell-initiated task (resume recipe priority 1)
+
+### What got done
+- Prompt-only trim of `apps/utility/src/prompts/Synthesizer.prompt.md` (lines 39 + 176): `positionMetadata`
+  must mirror EXACTLY the positions cited in `memoMarkdown` — include an entry for every cited `positionId`
+  (the load-bearing lower bound that protects Verifier citation-resolution), omit every uncited position, cap
+  at 12 (narrow the memo body to the 12 strongest if more would be cited).
+- **Rejected Tier 2 schema `.max()`** as the spec instructed: `agents/index.ts:227` left uncapped. A `.max(16)`
+  sits below the measured baseline (18 here; 20-24 in the 4 prior cash runs) and would block proven-good runs
+  (`calibrate-guards-against-measured-baseline`).
+- Built utility, verified **dist == src** (the stale-prompt false-negative trap the spec flags).
+
+### Live measurement — run `40489d03` vs baseline `0da8991c` (same question, apples-to-apples)
+| Metric | Baseline `0da8991c` | New `40489d03` | Delta |
+|---|---|---|---|
+| synth output total bytes | 45,577 | 33,296 | **−27%** (beat the 24% projection) |
+| positionMetadata count | 18 | **12** | cap honored exactly |
+| positionMetadata bytes | 22,005 | 15,769 | −28% |
+| memoMarkdown bytes | 14,764 | 11,385 | −23% (see deviation) |
+| rigor | 83 | **83** | no regression |
+| status | shipped_clean | **shipped_clean** | ✓ |
+| cited-but-missing-from-metadata (citation gap) | 4 | **0** | lower bound held perfectly |
+
+- Two-sided constraint landed exactly: metadata array == the 12 positions cited in the body, 0 gaps, 0 uncited
+  entries. Memo structurally complete (all 7 sections; Falsifiers has 4 bullets; 0 stub fingerprints; grounded
+  on 8 real org notes; in-app citation click RESOLVED).
+
+### Decisions made (under doctrine)
+- **Kept the "narrow the memo body to 12" coupling** rather than decoupling metadata-cap from prose. Decoupling
+  reintroduces the citation-resolution gap the spec warns against (memo cites 16, metadata holds 12 → 4 orphan
+  citations → lower rigor). The cap is only satisfiable WITH the lower bound if the memo cites ≤12.
+
+### Discoveries that changed the read of the spec
+- **Premise verified before writing (advisor-flagged):** `positionId` tokens (`CFO-p1` etc.) DO appear as
+  literal tokens in `memoMarkdown` (12 present in baseline) — so "positions whose positionId appears in the
+  memo body" is a real filter, not a phantom that would zero the array. Spec phrasing works as written.
+- **Honest deviation from the spec's "memoMarkdown UNCHANGED" claim:** the spec assumed Tier 1 leaves the memo
+  prose untouched (it pegged the memo at 10-13KB). The baseline memo was 14.8KB and cited **16** distinct
+  positions. Honoring cap-12 + the no-gap lower bound FORCES the memo to cite ≤12, so the prose also shrank 23%
+  (14,764→11,385). Quality held (rigor 83, all sections, 4 falsifiers). This aligns with the documented
+  "38KB synth too large — trim for UX" follow-up, so it's an acceptable, even desirable, side effect — but it
+  is a deviation from the spec's stated expectation, recorded here rather than buried under "size cut."
+- **Runtime is NOT a win signal here:** synth took 918s this run vs 357s baseline — LONGER, within the known
+  546-1027s synth variance (`CLAUDE.md` gotcha). The spec's projected "~24% runtime cut" did NOT materialize on
+  this single run; per the advisor, byte-size + count are the low-variance signal and both moved as intended.
+  Don't claim a runtime cut from one noisy run.
+
+### Repeat-issue tally
+- "verify premise before building on spec wording" (advisor caught the positionId-token assumption): aligns
+  with `dont-assert-root-cause-from-a-symptom` — already codified.
+
+### Files touched / commits
+- `apps/utility/src/prompts/Synthesizer.prompt.md`: positionMetadata cap-12 + exact-mirror + load-bearing
+  lower bound (lines 39, 176). dist regenerated (gitignored build artifact).
+- evidence: run `40489d03`, memo `memos/2026-06-02-open_qa-40489d03.md`, screenshot `phase1-synthtrim.png`.
