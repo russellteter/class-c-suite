@@ -63,7 +63,10 @@ try {
       const md = readdirSync(memosDir).filter((f) => f.endsWith('.md') && !before.has(f) && f.includes('open_qa'));
       if (md.length) { newMemo = join(memosDir, md[0]); break; }
     }
-    await page.waitForTimeout(500);
+    // Poll the filesystem with a page-INDEPENDENT timer: a transient renderer/Playwright blip during
+    // the 9-17 min synth wait must NOT abort an otherwise-healthy run (observed 2026-06-02: a mojom
+    // page-close at +4min threw page.waitForTimeout → finally→app.close() killed a live 6-lens run).
+    await new Promise((r) => setTimeout(r, 500));
   }
 
   if (!newMemo) {
@@ -106,10 +109,30 @@ try {
       console.log('screenshot:  FAILED (' + String(e?.message || e) + ') — memo .md is the durable artifact');
     }
 
+    // C4 render half — prove the moat feature: click a [^vault-N] provenance citation and confirm the
+    // tool-call panel resolves it (run-scoped source_id → the note's excerpt). This exercises the full
+    // a→b→c chain live (rows emitted → marker rendered clickable → handler resolves), not just the .md.
+    let clickResolved = 'NOT TESTED';
+    try {
+      const badge = page.locator('[data-source-id="vault-1"]').first();
+      await badge.waitFor({ timeout: 8000 });
+      await badge.click({ timeout: 5000 });
+      const panel = page.getByTestId('tool-call-panel');
+      await panel.waitFor({ timeout: 8000 });
+      await page.waitForTimeout(600);
+      const panelText = (await panel.textContent()) || '';
+      const resolved = panelText.includes('vault.retrieve') && !panelText.includes('(no tool call found)');
+      clickResolved = resolved ? 'RESOLVED (vault.retrieve excerpt shown)' : `UNRESOLVED panel="${panelText.slice(0, 120)}"`;
+      await page.screenshot({ path: join(shots, `phase1-${TAG}-citation.png`), fullPage: true });
+    } catch (e) {
+      clickResolved = 'CLICK FAILED (' + String(e?.message || e) + ')';
+    }
+    console.log('citation click:' + clickResolved);
+
     // Show the provenance block + the tail of the memo so the grounding is visible in this output.
     const provIdx = c.indexOf('## Vault context used');
     console.log('\n----- PROVENANCE BLOCK -----\n' + (provIdx >= 0 ? c.slice(provIdx, provIdx + 1400) : '(none)') + '\n----- END -----');
-    exitCode = hasProvenance && !errMatch ? 0 : 1;
+    exitCode = hasProvenance && !errMatch && clickResolved.startsWith('RESOLVED') ? 0 : 1;
   }
 } catch (e) {
   console.log('THREW: ' + (e?.stack || String(e)));

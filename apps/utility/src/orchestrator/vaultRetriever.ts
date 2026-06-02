@@ -257,19 +257,73 @@ export function buildVaultGrounding(
 }
 
 /**
+ * Stable, short, within-run-unique source id for the i-th ranked note (0-based). This is BOTH the
+ * tool_calls.source_id and the [^token] click-badge text MemoViewer renders, so it must stay short
+ * (the badge prints the raw token) and index-based (the org corpus grounds on two different
+ * context_bundle.md — a path/basename token would collide; the rank index never does). Run-scoping
+ * (handlers resolve WHERE run_id = ? AND source_id = ?) makes vault-N unique across runs.
+ */
+export function vaultSourceId(index: number): string {
+  return `vault-${index + 1}`;
+}
+
+/** A tool_calls row recording one injected vault note (shape compatible with db.insertToolCall). */
+export interface VaultRetrievalRow {
+  call_id: string;
+  run_id: string;
+  invocation_id: string;
+  agent_role: string;
+  tool_name: string;
+  args_json: string;
+  result_json: string;
+  source_id: string;
+}
+
+/**
+ * Build the `vault.retrieve` tool_calls rows that record each injected note as evidence — the
+ * deterministic half of the evidence chain (C4 render / PRD "click any source → see the result").
+ * The live strategic path wrote ZERO tool_calls before this; these rows light up both the click panel
+ * (MemoViewer 'tool-call:get') and the Verifier audit trail (playbookVerifier reads tool_calls). The
+ * source_id matches the [^vault-N] marker renderVaultProvenance emits for the SAME note (same order),
+ * so a click never resolves to the wrong note. result_json carries path/title/date/excerpt — exactly
+ * what grounded the memo (no re-query; C5's judge depends on provenance == what the lenses received).
+ */
+export function buildVaultRetrievalRows(runId: string, query: string, notes: RankedNote[]): VaultRetrievalRow[] {
+  const invocationId = `${runId}-Retriever`;
+  return notes.map((n, i) => ({
+    call_id: `${runId}-vaultret-${i + 1}`,
+    run_id: runId,
+    invocation_id: invocationId,
+    agent_role: 'Retriever',
+    tool_name: 'vault.retrieve',
+    args_json: JSON.stringify({ query, rank: i + 1 }),
+    result_json: JSON.stringify({
+      path: n.path,
+      title: n.title,
+      date: isoDate(n.date),
+      score: Number(n.score.toFixed(4)),
+      excerpt: excerpt(n.body, MAX_CHARS_PER_NOTE),
+    }),
+    source_id: vaultSourceId(i),
+  }));
+}
+
+/**
  * Render the "Vault context used (with dates)" provenance block appended to the memo. Built from the
- * SAME ranked notes the lenses received — what grounded the memo IS what is reported (C5 judge). Uses
- * only headers + plain-text lines (MemoViewer.parseMemoMarkdown renders h1/h2/h3 + text; bold/lists/-
+ * SAME ranked notes the lenses received — what grounded the memo IS what is reported (C5 judge). Each
+ * line ends with a [^vault-N] marker MemoViewer.parseMemoMarkdown turns into a clickable badge that
+ * resolves (run-scoped) to the matching vault.retrieve tool_call (the note's excerpt). Otherwise uses
+ * only headers + plain-text lines (parseMemoMarkdown renders h1/h2/h3 + text + [^id]; bold/lists/-
  * are NOT special-cased and would show as literal characters).
  */
 export function renderVaultProvenance(notes: RankedNote[]): string {
   const lines = [
     '## Vault context used',
-    `These ${notes.length} live notes from the Business Planning vault grounded this analysis (most relevant + current first):`,
+    `These ${notes.length} live notes from the Business Planning vault grounded this analysis (most relevant + current first). Click a source to see the excerpt that grounded it:`,
     '',
   ];
   notes.forEach((n, i) => {
-    lines.push(`${i + 1}. ${n.title}  —  last updated ${isoDate(n.date)}  —  ${n.path}`);
+    lines.push(`${i + 1}. ${n.title}  —  last updated ${isoDate(n.date)}  —  ${n.path} [^${vaultSourceId(i)}]`);
   });
   return lines.join('\n');
 }

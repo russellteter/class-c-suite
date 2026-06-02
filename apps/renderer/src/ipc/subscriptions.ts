@@ -141,14 +141,17 @@ export function useCostUsage(
 
 /**
  * Invoke a tool-call query by source ID (AC-7 click-claim panel).
- * Returns the tool_calls row JSON or null if not found.
+ * Run-scoped: source_id (e.g. vault-1) is only unique within a run, so the main handler resolves
+ * WHERE run_id = ? AND source_id = ? — pass the memo's runId so a re-run of the same question can't
+ * surface an older run's excerpt. Returns the tool_calls row JSON or null if not found.
  */
 export async function invokeToolCallGet(
-  callId: string,
+  runId: string,
+  sourceId: string,
 ): Promise<{ tool_name: string; args_json: string; result_json: string; called_at: number } | null> {
   if (typeof window === 'undefined' || !window.ipc) return null;
   try {
-    const result = await window.ipc.invoke('tool-call:get', { call_id: callId });
+    const result = await window.ipc.invoke('tool-call:get', { run_id: runId, source_id: sourceId });
     return result as { tool_name: string; args_json: string; result_json: string; called_at: number } | null;
   } catch {
     return null;

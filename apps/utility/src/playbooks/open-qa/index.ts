@@ -29,7 +29,8 @@ import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
 import { dispatchLens, dispatchSynthesizer } from '../../orchestrator/dispatch.js';
 import { buildLensBundle } from '../../orchestrator/run-loop.js';
 import { modelClientFromEnv } from '../../agents/modelClient.js';
-import { buildVaultGrounding, renderVaultProvenance } from '../../orchestrator/vaultRetriever.js';
+import { buildVaultGrounding, buildVaultRetrievalRows, renderVaultProvenance } from '../../orchestrator/vaultRetriever.js';
+import { insertToolCall } from '../../db/tool-calls.js';
 import type { ContextDoc } from '../../orchestrator/groundingContext.js';
 import { createLogger } from '../../logger.js';
 import { z } from 'zod';
@@ -254,6 +255,22 @@ async function runStrategicGrounded(input: PlaybookInput, ctx: PlaybookContext):
   }
   const grounded = grounding.contextDocuments.length > 0;
   log.info({ runId, message: `open_qa strategic: 6-lens, grounded=${grounded} (${grounding.notes.length} vault notes)` });
+
+  // Evidence chain (C4 render / PRD "click any source → see the result"): record each injected note as
+  // a `vault.retrieve` tool_calls row. The live path wrote ZERO tool_calls before this — fixing the
+  // click handler alone returned empty. These rows light up BOTH the MemoViewer click panel and the
+  // Verifier audit trail (playbookVerifier reads tool_calls WHERE run_id=?). source_id matches the
+  // [^vault-N] marker renderVaultProvenance appends below. Never blocks the run — a write failure
+  // degrades to "no evidence chain", not a failed decision.
+  if (grounded) {
+    try {
+      const rows = buildVaultRetrievalRows(runId, input.prompt, grounding.notes);
+      for (const row of rows) insertToolCall(db, row);
+      log.info({ runId, message: `open_qa strategic: recorded ${rows.length} vault.retrieve tool_calls (evidence chain lit)` });
+    } catch (err) {
+      log.warn({ runId, message: `open_qa strategic: failed to record vault.retrieve tool_calls — memo ships, citations dark: ${String(err)}` });
+    }
+  }
 
   const lensOutputs: Record<string, unknown> = {};
   await Promise.all(

@@ -134,10 +134,20 @@ export function registerIpcHandlers(
   });
 
   // Tool-call detail for the MemoViewer side panel.
-  ipcMain.handle('tool-call:get', (_event, arg: { call_id?: string } | string) => {
-    const callId = typeof arg === 'string' ? arg : arg?.call_id;
-    if (!callId) return null;
-    return db.prepare('SELECT * FROM tool_calls WHERE call_id = ?').get(callId) ?? null;
+  // ADR-0006 §5.2 + tests/unit/click-claim-tool-call.spec.ts: citations resolve by SOURCE_ID, not
+  // call_id — the [^vault-N] / [^sf-pipeline-…] footnote carries the source_id. Run-scoped because a
+  // source_id is only unique WITHIN a run (the strategic path reuses vault-1..vault-8 every run of the
+  // same question); resolving unscoped would surface an older run's excerpt in a newer memo, breaking
+  // C2's promise that the provenance click resolves to THIS memo's note. Back-compat: a bare string or
+  // legacy {call_id} still resolves (unscoped, by source_id).
+  ipcMain.handle('tool-call:get', (_event, arg: { run_id?: string; source_id?: string; call_id?: string } | string) => {
+    const runId = typeof arg === 'object' && arg ? arg.run_id : undefined;
+    const sourceId = typeof arg === 'string' ? arg : (arg?.source_id ?? arg?.call_id);
+    if (!sourceId) return null;
+    if (runId) {
+      return db.prepare('SELECT * FROM tool_calls WHERE run_id = ? AND source_id = ?').get(runId, sourceId) ?? null;
+    }
+    return db.prepare('SELECT * FROM tool_calls WHERE source_id = ?').get(sourceId) ?? null;
   });
 
   // Scheduler run history for a job — last N runs from scheduled_jobs.

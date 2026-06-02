@@ -137,7 +137,7 @@ export function MemoViewer({ memo, onClose }: MemoViewerProps): React.ReactEleme
   const handleCitationClick = useCallback(async (sourceId: string) => {
     setSidePanelLoading(true);
     try {
-      const row = await invokeToolCallGet(sourceId);
+      const row = await invokeToolCallGet(memo.runId, sourceId);
       if (row) {
         setSidePanel({ sourceId, ...row });
       } else {
@@ -152,7 +152,7 @@ export function MemoViewer({ memo, onClose }: MemoViewerProps): React.ReactEleme
     } finally {
       setSidePanelLoading(false);
     }
-  }, []);
+  }, [memo.runId]);
 
   const memoContent = parseMemoMarkdown(memo.memoMarkdown, handleCitationClick);
   const surfaces = renderableSurfaces(memo.outputSurfaces);
