@@ -2666,3 +2666,59 @@ grounds Path B / ~$3.0–3.5M cuts / DEC-038 / Barclays covenant / ~$3.8–5.0M 
   dated items that changed his thinking. Final close = his actual use.
 - **C3 PARTIAL** — strategic path is honest (vault .md only, scope note, degrade-to-[]); NetSuite-on-tile +
   full live-financials = Phase 4.
+
+## 2026-06-02 — C4 render half CLOSED: clickable dated vault Sources (evidence chain lit) → burn-down 3/5
+
+**Commit `5d7a481`.** The grounded memo already rendered a dated "Vault context used" block, but its citations
+were prose — not threaded, not clickable. The blocker was load-bearing and invisible: **the live strategic
+path wrote ZERO `tool_calls` rows**, so the click-claim backbone (`hooks.ts` writer, `verifier-assembler`/
+`playbookVerifier` reader, `MemoViewer` click panel) was built but dark — fixing the click handler alone
+returned empty. Closed the render half (the a→b→c chain the prior handoff laid out):
+
+- **(a) emit rows.** `runStrategicGrounded` (`open-qa/index.ts`) now calls `insertToolCall` once per injected
+  note: `tool_name='vault.retrieve'`, `source_id=vault-N`, `result_json={path,title,date,excerpt}`,
+  `agent_role='Retriever'`. `insertToolCall` already seeds the FK parent `agent_invocations` idempotently;
+  no schema change. Encapsulated in `vaultRetriever.buildVaultRetrievalRows` so the row's source_id and the
+  provenance marker share ONE generator (`vaultSourceId`) — click→resolve can't drift.
+- **(b) thread markers.** `renderVaultProvenance` appends `[^vault-N]` to each Sources line; `MemoViewer`'s
+  `parseMemoMarkdown` already turns `[^id]` into a clickable `cs-cite` badge. Used a **short indexed token**
+  (`vault-1`..`vault-8`), not `slug(path)` — the badge prints the raw token, AND the org corpus grounds on
+  two different `context_bundle.md` (basename would collide; the rank index never does).
+- **(c) resolve run-scoped.** `tool-call:get` resolved `WHERE call_id=?` (ADR-0006 §5.2 + the click-claim
+  test both mandate `source_id`); fixed to `WHERE run_id=? AND source_id=?`. Run-scoping is **C2's literal
+  promise**: `vault-N` repeats every run of the same question, so unscoped `.get()` would surface a stale
+  run's excerpt in a fresh memo. `invokeToolCallGet(runId, sourceId)` + `MemoViewer` thread `memo.runId`.
+
+**Two pre-write risk reads (advisor-confirmed) that de-risked it:** `runVerifier` (`verifier-runner.ts:124`)
+serializes the tool-call audit trail into the Verifier's model message and validates only the OUTPUT — there
+is NO `VerifierInputSchema.parse` on the live path, and `agent_role` has no CHECK constraint. So the synthetic
+`'Retriever'` role and the string `call_id` flow through safely (the schema's `role:AgentRoleSchema` +
+`toolCallId:z.number().int()` never fire — they'd been untested live because live runs had ZERO tool_calls).
+
+**Proven live, NOT tsc** (run `0da8991c`, `phase1-grounded-decision.mjs`): 8 `vault.retrieve` rows landed;
+the memo's Sources section rendered 8 `[^vault-N]` badges; an in-app click on `[^vault-1]` opened the panel
+showing the `investigations/go-forward-org-structure.md` excerpt (live-DOM asserted: panel text contains
+`vault.retrieve`, not "no tool call found" + screenshot `phase1-c4render-org2-citation.png`). **Behavioral
+gate (the real risk): shipped_clean at rigor 83 vs the 80/80 baseline** — the 8 new Verifier audit-trail
+entries did NOT regress scoring. Mechanics also unit-checked (source_id↔marker alignment, valid result_json)
+and the run-scoped SQL verified against the real rows before the live run.
+
+**Harness hardening (kept in repo).** The first attempt died at +4min: a renderer mojom blip closed the
+Playwright page → `page.waitForTimeout` threw → `finally`→`app.close()` killed an otherwise-healthy 6-lens run
+(agent_invocations showed all 6 lenses `in_progress`, my Retriever row + 8 rows already persisted — my change
+was exonerated). Made the memo-wait loop **page-independent** (plain `setTimeout`, filesystem poll) so a
+transient renderer blip during the 9-17min synth can't abort a healthy run; added a citation-click assertion.
+
+**C4 closes against the FROZEN V1_TARGET bar** (Sources section + citations threaded + click-resolves-via-
+source_id + freshness stamp; all 5 sub-parts incl. the CoWork handback now verified). **Precision (per
+`match-done-label`): this is click-any-SOURCE. The PRD's click-any-CLAIM aspiration — inline prose citations
+threaded onto synthesized claims — stays Phase 2** (the Synthesizer can't reliably emit the post-hoc slugs).
+
+**Side note (not a blocker):** this run grounded partly on its OWN prior outputs — vault-4 = the 2026-06-02
+handoff `memo.md`, vault-5 = the 2026-06-01 org memo `c902b7c6.md` (both now rank for "org structure" as the
+corpus grew). The V1_TARGET-flagged echo risk; rigor stayed healthy (83). Worth watching if memos crowd out
+source notes over time.
+
+### Burn-down (was 2 fully closed + C4 substantial) → **3/5 fully closed**
+- **C1 ✅ · C2 ✅ · C4 ✅** (vs the V1_TARGET bar). **C5 READY** (dogfood — Russell's actual use; no eng gate).
+  **C3 PARTIAL** (NetSuite-on-tile + full live financials = Phase 4, off the dogfood path).

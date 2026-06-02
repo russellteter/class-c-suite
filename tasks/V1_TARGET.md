@@ -28,20 +28,24 @@ it. Generic advice is the failure mode to design against.
 - Must be real: live Obsidian vault · cash-model xlsx (done) · NetSuite · Salesforce · AWS.
 - OUT of V1 → V2: packaged .app · write-backs · other playbooks · mobile/web · alerts · multi-user · cost dashboards.
 
-## Honest state — 2 of 5 fully closed (C1, C2); C4 handback+provenance render proven (Sources-section = Phase 2); C5 ready; C3 partial → Phase 4
+## Honest state — 3 of 5 fully closed (C1, C2, C4 vs the V1_TARGET bar); C5 ready (dogfood); C3 partial → Phase 4
 cash_lever's 4/4 live proof is the **engine spine (the floor), not the product**, and is NOT one of the 5
-V1 criteria. The two wedge-DEFINING criteria (C1, C2) are now **CLOSED** (proven live 2026-06-01). C4's CoWork
-handback + dated provenance block render are proven the same day, **but C4's structured Sources-section +
-clickable-citation half stays Phase 2** — so C4 is NOT fully closed against its sharpened bar (~line 59). Net:
-**2 fully closed, C4 substantial.** The original gap audit is preserved below — State cells note the resolution
-inline; full detail in `docs/build-log.md` (2026-06-01 entry).
+V1 criteria. The two wedge-DEFINING criteria (C1, C2) are **CLOSED** (proven live 2026-06-01). **C4 is now
+fully closed against its sharpened bar (2026-06-02):** all 5 sub-parts verified — CoWork handback bundle,
+Sources/provenance section, [^vault-N] citations threaded, click resolves via run-scoped source_id, and a
+per-note freshness stamp (proven live, run `0da8991c`: shipped_clean rigor 83, 8 vault.retrieve rows, in-app
+click resolves to the note excerpt). **Precision (per `match-done-label`): C4 closes against the FROZEN
+V1_TARGET bar (click-any-SOURCE). The PRD's broader click-any-CLAIM aspiration — inline prose citations
+threaded onto synthesized claims — stays Phase 2** (the Synthesizer can't reliably emit the post-hoc slugs).
+Net: **3 fully closed (C1, C2, C4); C5 ready; C3 partial.** The original gap audit is preserved below — State
+cells note the resolution inline; full detail in `docs/build-log.md` (2026-06-01 + 2026-06-02 entries).
 
 | # | Criterion | State | The gap (evidence) |
 |---|-----------|-------|--------------------|
 | C1 | Arbitrary strategic decision → live 6-lens reconciled memo | **CLOSED 2026-06-01** → `open-qa/index.ts` live-default `runStrategicGrounded` bypasses decompose (no strategic_option crash), forces the 6-lens set, real Synthesizer; both real decisions ship grounded memos rendered in-app. WAS: | A strategic question in the "ask anything" box **crashes the run** (`StubbedSourceLiveError`): the decomposer routes strategic keywords to `strategic_option`, which is hardcoded-prose lenses + `STUBBED_SOURCES:['netsuite']` and throws under the live default (`run-loop.ts:154` redirect, `stubGuard.ts:75`). The viable path — `open_qa` ad-hoc (real lenses + Synthesizer) — is bypassed for exactly those keywords. `classifyPlaybook` is dead code. |
 | C2 | **Provable live-vault grounding (THE edge)** | **CLOSED 2026-06-01** → `orchestrator/vaultRetriever.ts` (BM25×recency, port-faithful to the signed-off spike) injects top-8 current vault notes as contextDocuments into every lens; dated provenance block; memo body cites them. WAS: | No relevance retrieval over arbitrary vault notes exists anywhere. Grounding is gated `if (playbookId==='cash_lever')` (`run-loop.ts:239`) and reads ONE fixed xlsx by filename regex — not notes. obsidian MCP is chat-side only, unreachable from the forked utility. No note→claim provenance. Reusable seeds: `stakeholder-1-1` reads one note + parses `last-updated`→staleDays; the contextDocuments→lens plumbing is proven. |
 | C3 | Real data, honest degradation | **PARTIAL** | Salesforce + AWS + cash-xlsx are REAL + proven live (f617c0ed). NetSuite client is real but `NETSUITE_SUITEQL_CASH_POSITION` is commented out + board-financials query unset + OAuth never run → always degrades. DEGRADED is in memo text but NOT on the run tile (a "CLEAN" run can silently miss NetSuite). Note: Salesforce Connected-App creds are blank in `.env.local` (SFDX CLI auth may suffice) — a second block for `strategic_option`. |
-| C4 | Renders in-app w/ provenance + CoWork hand-back | **HANDBACK CLOSED + dated provenance renders (2026-06-01); structured Sources-section + clickable citations = Phase 2 → NOT a full close** → CoWork handback proven live end-to-end (memo → "Draw up for Cowork" → preview → Send → 3-file bundle on disk; brief.md via RealClaudeClient, 0 stub fingerprints; preview screenshot verified); 5 contract/turn/JSON/runId/frontmatter bugs fixed live. The grounded memo renders in-app with a dated "Vault context used" provenance block, but citations are still prose (not threaded/clickable) and there is no distinct Sources panel — the render half of C4 remains open. WAS: | `memo:read` is playbook-agnostic (a strategic memo renders), BUT structured citations are stripped before the UI (no Sources section), citation-click is broken (`call_id` vs `source_id`, `handlers.ts:137`), no freshness stamp; and the CoWork persist path is **dead** (`handoff.send` has no handler, `writeHandoffBrief` 0 callers, `handoffPath` is a placeholder string never written, generator uses StubClaudeClient). Return-loop watcher IS done. |
+| C4 | Renders in-app w/ provenance + CoWork hand-back | **FULLY CLOSED 2026-06-02 (vs the V1_TARGET bar)** → handback half (2026-06-01): memo → "Draw up for Cowork" → preview → Send → 3-file bundle (brief.md via RealClaudeClient, 0 stub fingerprints), 5 live bugs fixed. Render half (2026-06-02, commit `5d7a481`): "Vault context used" Sources section renders with a per-note freshness date + a threaded `[^vault-N]` badge per source; clicking resolves run-scoped (`WHERE run_id=? AND source_id=?`) to the note's vault.retrieve excerpt — proven live (run `0da8991c`: shipped_clean rigor 83, 8 rows, in-app click DOM-asserted + screenshot). The load-bearing piece: `runStrategicGrounded` now emits a vault.retrieve tool_calls row per injected note (the live path wrote ZERO before), lighting up the click panel AND the Verifier audit trail. Phase 2 (NOT this bar): click-any-CLAIM (inline prose citations). WAS: | `memo:read` is playbook-agnostic (a strategic memo renders), BUT structured citations are stripped before the UI (no Sources section), citation-click is broken (`call_id` vs `source_id`, `handlers.ts:137`), no freshness stamp; and the CoWork persist path is **dead** (`handoff.send` has no handler, `writeHandoffBrief` 0 callers, `handoffPath` is a placeholder string never written, generator uses StubClaudeClient). Return-loop watcher IS done. |
 | C5 | Dogfood: one real decision, materially helps via current context | **READY** (C1+C2+C4 unblocked it; two grounded decision memos + a CoWork bundle now sit in the vault) | Strictly downstream of C1+C2. The judge: Russell can name ≥1 retrieved vault item (with its date) that surfaced current context and changed his thinking. |
 
 **Biggest risk:** not vault *reachability* (settled — the vault is a local dir the utility already reads),
@@ -103,10 +107,15 @@ dogfood fails. De-risk this FIRST, standalone, before any engine integration.
 
 ## Completion contract
 - Frozen scope. New ideas → `tasks/V2_BACKLOG.md`, never into V1.
-- Progress = **criteria-closed / 5** (burn-down), reviewed at each phase gate — not "chapters built." Today: **0/5**.
+- Progress = **criteria-closed / 5** (burn-down), reviewed at each phase gate — not "chapters built." Today: **3/5** fully closed (C1, C2, C4); C5 ready (dogfood); C3 partial (Phase 4).
 - **Hard stop:** all 5 pass on-Mac AND dogfood passes → V1 DONE. Declared, shipped, used.
 
 ## Status
+2026-06-02 (3/5): **C4 fully closed** — render half landed (commit `5d7a481`): clickable dated vault Sources
+(evidence chain lit). The only thing left between "it works" and "V1 DONE" is **C5 dogfood** — Russell runs
+one real COO decision through the in-app box and names ≥1 dated vault item that changed his thinking. No
+engineering gates the dogfood. C3 (NetSuite-on-tile + full live financials) is Phase 4, off the dogfood path.
+
 2026-06-01: target frozen, gap audited (0/5). **CoWork confirmed IN the first dogfood** (Russell) → Phase 3
 pulls into Phase 1's done. Test decisions: (1) org-chart/revenue-org restructuring, (2) expense-reduction
 targets for solvency/EBITDA.

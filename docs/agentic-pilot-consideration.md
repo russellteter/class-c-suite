@@ -16,16 +16,21 @@ deliberate shortcut to ship the vault-grounding edge fast (proven 2026-06-01). E
 - PRD line 19 (happy path) literally says lenses "fan out across his vault and his connected MCPs, hitting
   Salesforce, NetSuite, AWS, Chorus, Gmail."
 
-Today the live path writes **zero** `tool_calls` rows (lenses run `allowedTools:[]` → no PostToolUse →
-`hooks.ts:146` never INSERTs). So the PRD's locked principle ("click any claim → see the underlying
-tool-call result", PRD lines 41/71/73) is **unmet** on the dogfood path.
+~~Today the live path writes **zero** `tool_calls` rows.~~ **UPDATE 2026-06-02 (commit `5d7a481`):** the
+strategic path now emits one `vault.retrieve` `tool_calls` row per injected note (the deterministic half —
+gap #1 / step 1 below — is DONE). `playbookVerifier` reads them into the audit trail, and the memo's Sources
+section resolves each on click. **But the LENS tool-use loop is still off** (lenses run `allowedTools:[]` → no
+PostToolUse). So "click any **source** → see the retrieval result" is now met on the dogfood path; "click any
+**claim** → see the **lens's** tool-call result" (PRD lines 41/71/73, agentic) remains unmet — that's the loop below.
 
 ## Critical separation (do not conflate)
 
-1. **The evidence-chain gap is a DETERMINISTIC fix, not a reason to adopt agents.** Have the retriever emit
-   a `tool_calls` row per injected note (`tool_name='vault.retrieve'`, `source_id=slug(note.path)`,
-   `result_json=excerpt`) via the existing `insertToolCall` (`db/tool-calls.ts`). That closes the
-   evidence-chain contract on the live path with **zero agent risk**. This is V1 work (handoff rank 2a).
+1. **The evidence-chain gap is a DETERMINISTIC fix, not a reason to adopt agents. ✅ DONE 2026-06-02 (commit
+   `5d7a481`).** `runStrategicGrounded` emits a `tool_calls` row per injected note (`tool_name='vault.retrieve'`,
+   `source_id=vault-N`, `result_json={path,title,date,excerpt}`) via the existing `insertToolCall`. Closed the
+   evidence-chain contract on the live path with **zero agent risk** — proven live (run `0da8991c`,
+   shipped_clean rigor 83, in-app click resolves). The clean causal order held: the deterministic fix lit up
+   the backbone; the loop (below) is the upgrade that USES it.
 2. **The plan→act→observe loop is the UPGRADE on top** that adds what the fixed top-8 single pull genuinely
    cannot do. Do not justify agents by gap #1 — that's a non-sequitur. The clean causal order: the
    deterministic fix lights up the backbone; the loop then uses it.
