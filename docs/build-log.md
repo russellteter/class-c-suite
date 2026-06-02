@@ -2769,6 +2769,10 @@ source notes over time.
 - **Kept the "narrow the memo body to 12" coupling** rather than decoupling metadata-cap from prose. Decoupling
   reintroduces the citation-resolution gap the spec warns against (memo cites 16, metadata holds 12 → 4 orphan
   citations → lower rigor). The cap is only satisfiable WITH the lower bound if the memo cites ≤12.
+- **Russell confirmed (2026-06-02): KEEP the shorter memo.** Surfaced the 23% prose shrink as a reversible
+  product-shape decision (C5 dogfood reads this exact memo). He chose keep — 11.4KB sits inside the spec's
+  normal 10-13KB range; revisit only if the dogfood reads thin. The decouple fallback (cite ≤12 positionIds but
+  keep fuller prose) stays untested and unpursued. This open question is CLOSED.
 
 ### Discoveries that changed the read of the spec
 - **Premise verified before writing (advisor-flagged):** `positionId` tokens (`CFO-p1` etc.) DO appear as
