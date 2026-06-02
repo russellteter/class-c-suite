@@ -1,57 +1,98 @@
-# Handoff — 2026-06-01 → next · C-Suite V1 reframed; Phase 0(a) edge PROVEN; start Phase 1
+# Handoff — 2026-06-02 → next · C-Suite V1: wedge proven, dogfood is the last gate
 
-## The reframe (this session)
-Russell stepped back: the tool was "barely functioning / not truly useable" as a personal C-suite. We
-**re-anchored on use and froze a finishable target** to kill the endless-cycle problem. Source of truth is
-now **`tasks/V1_TARGET.md`** (read it first) — it REPLACES the diffuse "8 outcomes / 11 chapters" framing.
+## North star (zoom out)
+Every TECHNICAL gate for frozen V1 (vault-grounded strategic decision → 6-lens memo → in-app render with
+provenance → CoWork handback) is CLOSED and proven on-Mac. The only thing between "it works" and "Russell
+uses it" is **C5 dogfood**: he runs ONE real COO decision through the in-app box this week and can name ≥1
+dated vault item that changed his thinking. Two grounded memos already sit in the vault (org, expenses) and
+the dated "Vault context used" block already renders, so C5 is meetable now. Today's priorities exist to
+RAISE TRUST so he runs a live decision in the app instead of reaching for CoWork — they de-risk the
+experience, they do not unblock C5.
 
-- **V1 = a strategic decision tool grounded in the live Obsidian "Business Planning" vault** + real
-  NetSuite/Salesforce/AWS/cash, rendering in-app, **with a Claude Desktop CoWork hand-back** (Russell
-  confirmed CoWork is IN the first dogfood). Wedge chosen by Russell (overrode cash). Narrow & deep.
-- **Done = dogfood:** he uses it for ONE real decision this week and it materially helps because it surfaced
-  *current* vault context, not generic advice. Hard stop; scope frozen; rest → V2.
+## What was done this session
+- **C1 CLOSED** — `open-qa/index.ts` `runStrategicGrounded` (live default) ships a real 6-lens memo for any
+  strategic decision; proven on both real decisions (org, expenses), rendered in-app.
+- **C2 CLOSED** — `orchestrator/vaultRetriever.ts` (BM25×recency) injects top-8 current vault notes + dated
+  provenance; port-fidelity gate passes; THE edge.
+- **C4 handback CLOSED** — CoWork 3-file bundle proven end-to-end live on BOTH decisions (memo→CTA→preview→
+  Send→`handoffs/<slug>/{brief,memo,continue-prompt}.md`; RealClaudeClient brief, 0 stub fingerprints).
+- Fixed 5 live-only CoWork bugs tsc missed (IPC `originId`→`originPath`; `maxTurns:1` too tight for Handoff →
+  role-aware 6; Handoff prompt markdown→JSON; dropped `runId`; missing frontmatter) — isolated via a new
+  standalone harness.
+- Settled the double-dispatch (clean run = 1 brief gen; failure-path artifact; ADR-0011 §5.1 holds).
+- Docs: CLAUDE.md (+3 harnesses, +3 gotchas), V1_TARGET + build-log (honest burn-down), 2 new global rules.
+- Wrote `docs/agentic-pilot-consideration.md` — the durable answer to "should this use real agents."
 
-## What's proven / where we are (burn-down: 0/5 criteria closed; biggest risk RETIRED)
-- Target-scoped gap audit (`wf_4b81f701`, adversarially verified) → `V1_TARGET.md` gap map. The two
-  wedge-defining criteria (C1 arbitrary strategic flow, C2 vault grounding) were at ZERO; cash_lever is the
-  proven engine SPINE, not the product. Today a strategic question in the app **crashes** (StubbedSourceLiveError),
-  it doesn't ship empty (verdict-corrected).
-- **Phase 0(a) PASSED — the vault edge is achievable.** `scripts/vault-retriever-spike.mjs` (BM25 + recency,
-  no deps) over the REAL vault (357 .md) surfaced exactly the right CURRENT notes for both of Russell's real
-  decisions (org-chart reorg; expense-cut targets). Top hits dated 2026-05-26..06-01. **Embeddings NOT needed
-  for V1.** The two top-8 lists are in the chat + reproducible by re-running the script.
-  - **Gate status: pending Russell's eyeball** on the two lists (he was asked; capture his yes/tweaks).
-- Two corrections: (i) the `obsidian-vault` MCP indexes a DIFFERENT vault — NOT the runtime retriever/benchmark;
-  build in-process over `Business Planning/`. (ii) retriever is `.md`-only; org/financial data also in
-  `.xlsx/.docx` (AM_Org_Master, Headcount, cash models) — extract or rely on summarizing `.md` notes.
+## Current state — burn-down: 2 fully closed, C4 substantial, C5 ready, C3 partial
+- **C1 ✅ · C2 ✅** (fully closed). **C4** = handback + dated-provenance render DONE; render half (clickable
+  Sources section) is Phase 2. **C5** READY (no engineering to trigger). **C3** PARTIAL (NetSuite = Phase 4).
+- Deployed: nothing remote; runs on-Mac (`pnpm dev`, vite :5273). `STUB_MODE=live` is the app default.
+- HEAD `f482c1c` pushed; CLAUDE.md + the two new docs are uncommitted in this session's final commit.
 
-## Real test decisions (Phase-0 inputs + dogfood seeds)
-1. **Org chart / company restructuring** — go-forward whole-company org + reporting + GTM/Revenue/AM/Sales.
-2. **Expense-reduction targets** — the RIGHT amount to cut for 2026/27 solvency + EBITDA/cash-flow positive
-   without missing the revenue model's minimum. (Vault already holds an answer: ~$3.8–5.0M EBITDA by Q2 FY27.)
+## Today's priorities (ranked — complete the tool for daily use)
+1. **[XS, zero-eng] On-Mac visual check** — open both memos (org, expenses), confirm the "Vault context used"
+   block shows the correct 2026-06-01 note dates. C5 precondition; if dates are wrong, everything downstream
+   is moot.
+2. **[S–M] Real clickable dated citations (C4 render half — the moat feature).** Three steps IN ORDER:
+   (a) **load-bearing:** retriever emits a `tool_calls` row per injected note (`tool_name='vault.retrieve'`,
+   `source_id=slug(path)`, `result_json=excerpt`) via existing `insertToolCall` — the live path writes ZERO
+   `tool_calls` today, so fixing the click handler alone returns empty; (b) thread `source_id` onto rendered
+   claims; (c) fix the citation-click handler (`handlers.ts:137`, `call_id` vs `source_id`). Step (a) also
+   lights up the entire built-but-dark tool-call backbone (`hooks.ts:146` writer, `verifier-assembler.ts:83`
+   reader) — foundational for V1 trust AND the V2 agentic pilot.
+3. **[S] Synthesizer-size trim** (Tier 1 prompt cap, `tasks/followup-specs.md` Thread 1) — cap
+   `positionMetadata` (~52% of output) to ≤12 entries; ~24% runtime cut on the 38KB/34-min worst case.
+   Prompt-only; MUST live-measure on one harness run after (don't trust the projection). Reject Tier 2 schema cap.
+4. **[S each] Honesty gaps — close before any cash_lever/financial decision (NOT gating the org/expense
+   dogfood):** (a) cash_lever degrade-on-empty-grounding stamp (`run-loop.ts:238-257` sets contextDocuments
+   only if length>0 → swallows a read failure, ships ungrounded CLEAN; Thread 3d); (b) DEGRADED badge on the
+   Home run tile (today DEGRADED is memo-prose only; a "CLEAN" tile can hide a dropped source).
 
-## Next steps (start here)
-1. **Confirm the Phase-0(a) gate** (Russell's read on the two retrieval lists). Tune ranking if he flags any.
-2. **Phase 0(b)** — 5-min check that `open_qa` ad-hoc ships a real non-empty memo LIVE (UNVERIFIED — only
-   cash_lever is proven live). Needs a Playwright run → kill the currently-open manual app (pid was 4071) first.
-3. **Phase 1 (the build, the dogfood)** — wire the retriever into the run engine:
-   - Generalize the grounding gate `if (playbookId==='cash_lever')` (`run-loop.ts:239`) → for strategic
-     decisions, inject the retriever's top-K as `contextDocuments` into the 6-lens bundle.
-   - Keep strategic questions in the `open_qa` AD-HOC path; **bypass the decomposer's `strategic_option` route**
-     (it routes into the hardcoded-prose, stub-gated playbook that crashes live). Do NOT just "fix" the
-     `run-loop.ts:154` redirect — that routes into the broken playbook (audit verdict).
-   - Force the full 6-lens set; accept ~rigor 85 (no adversarial) as the first dogfood bar.
-   - Render a "Vault context used (with dates)" provenance block. Then the CoWork hand-back (folder bundle:
-     memo.md + brief.md [RealClaudeClient, not stub] + continue-prompt.md; wire `handoff.send` → `writeHandoffBrief`).
-   - Full Phase detail + sharpened acceptance criteria in `V1_TARGET.md`.
+## Top workflows / use-cases
+- **PRIMARY (nail this):** real COO decision → vault-grounded 6-lens memo → dated provenance Russell can SEE →
+  "Draw up for CoWork" bundle. All gates closed; only the dogfood remains.
+- Ready today: **org-restructuring** (surfaces ORG_CHART_BUILD_BRIEF / go-forward-org-structure / names
+  Jorge/Clayton/Sabina) and **expense-target** (surfaces the ~$3.8-5.0M EBITDA figure) decisions; CoWork handback.
+- NOT ready: **cash-runway / NetSuite board-financials** — SF+AWS+cash-xlsx pull live, NetSuite always
+  degrades (OAuth never run, queries unset). Phase 4, and only if a real decision uniquely needs it.
 
-## Read order for the fresh session
-`tasks/V1_TARGET.md` (target + plan + gap map + Phase-0 result) → this handoff → `scripts/vault-retriever-spike.mjs`
-→ audit detail in `/tmp/.../wyf7qgs65.output` (ephemeral; key points are already in V1_TARGET.md) → CLAUDE.md gotchas.
+## Agentic architecture (Russell's explicit ask) — see `docs/agentic-pilot-consideration.md`
+**Narrow YES, V2.** Do NOT convert the parallel 6-lens fan-out to autonomous agents (PRD line 65 locks
+parallel-independent lenses; inter-agent dialogue = 41.8% of MAST failures). Add a bounded plan→act→observe
+loop in ONE place: the **CFO lens on cash_lever**, read-only (`ns_runCustomSuiteQL` + `run_soql_query`),
+`maxTurns:4`. Key insight: **the tool-call backbone is built-and-dark** — the architecture was designed for
+tool-using lenses (`toolAllowlist` field, `hooks.ts` writer, PRD line 19); `allowedTools:[]` was a shipping
+shortcut. The loop unlocks live-data verification of synthesized numbers (the memos cite STALE vault figures
+today) and per-lens retrieval the fixed top-8 can't. The evidence-chain fix (priority 2a) is deterministic
+and closes the PRD's "click any claim → see the source" with zero agent risk — the loop is the upgrade on top.
+Hard guardrails: never make the Verifier agentic; read-only only (PRD line 197); no inter-lens looping. Full
+pilot sequence + risks in the doc.
 
-## State / gotchas
-- 6 commits this session, pushed (`5d54af1`→`eb07830`). No app source changed except the spike script.
-- The manual app instance launched for Russell may still be running (electron pid ~4071) — kill before any harness run.
-- cash_lever remains the only playbook proven live (4/4 shipped_clean, rigor 90-92). The Ch.5 fixes benefit the
-  generic path but `open_qa` ad-hoc live is unproven (Phase 0(b)).
-- Don't relitigate: V1 scope is FROZEN in V1_TARGET.md. New ideas → a V2 backlog, not V1.
+## Files touched (this session)
+2 commits: `8b47cfb` (C1+C2+C4 close), `f482c1c` (framing correction + expenses proof). Plus uncommitted:
+`CLAUDE.md`, `docs/agentic-pilot-consideration.md`, `tasks/handoff.md` (this commit). New global rules:
+`~/.claude/rules/{isolate-the-unit-before-rerunning-an-expensive-harness,match-done-label-to-the-criterions-bar}.md`.
+`git diff --stat HEAD~2` covers the engine changes (vaultRetriever, open-qa, realClaudeClient, handoff/*, ipc).
+
+## Open threads
+- C4 render half (clickable Sources) — priority 2; tool_calls rows are the load-bearing piece.
+- Two honesty gaps (priority 4) — close before any financial decision.
+- Telemetry dark: `model`/`tokens`/`cost_ledger` have no write sites (use `lastUsage`, NOT the Verifier return
+  type — `tasks/followup-specs.md` Thread 2). Off dogfood path; blocks the cost meter.
+- B22: vault has zero git commits — memos write fine (commitVault:false), but the first SHARED-zone write
+  throws `VaultNotInitializedError`. Run `scripts/vault-bootstrap.sh` before shared-zone production use.
+
+## Next step
+Priority 1 (on-Mac visual check of both memos' provenance dates — XS, gates the dogfood), then start
+priority 2a (retriever emits `tool_calls` rows): it ships the moat feature AND lights up the backbone the V2
+agentic pilot needs. Both are inside frozen V1 scope.
+
+## Resume recipe
+1. Read `tasks/handoff.md` → `tasks/V1_TARGET.md` (frozen target + burn-down) → `docs/build-log.md` (2026-06-02
+   entry) → `docs/agentic-pilot-consideration.md` (for the V2 agentic question) → `CLAUDE.md` Gotchas.
+2. Prep before any e2e: vite :5273 up; `pkill -f electron@33.4.11` between runs; clear stale runs
+   (`sqlite3 "$HOME/Library/Application Support/@c-suite/main/runtime.db" "UPDATE runs SET status='failed' WHERE status='in_progress'"`).
+3. Priority 1: `pnpm dev`, open both memos, eyeball the "Vault context used" dates. Then priority 2a:
+   open `apps/utility/src/playbooks/open-qa/index.ts` `runStrategicGrounded` + `apps/utility/src/db/tool-calls.ts`
+   (`insertToolCall`), emit a `vault.retrieve` row per injected note. Re-verify with
+   `node tests/e2e/phase1-grounded-decision.mjs "<question>" <tag>` + a `SELECT FROM tool_calls`.
