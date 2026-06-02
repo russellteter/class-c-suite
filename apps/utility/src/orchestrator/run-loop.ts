@@ -51,6 +51,12 @@ export interface FinalRunState {
   /** Final rigor score for run-row persistence. Lives here because the terminal state may be
    *  'handoff' (which carries no score) even though the Verifier scored the run upstream. */
   rigorScore?: number | null;
+  /** Thread 3(d): sources the run could not ground on (e.g. 'cash_model_ungrounded' when the
+   *  cash-lever xlsx is absent/renamed or yields 0 rows). Empty = fully grounded. The Ch.5 path
+   *  stamps this WITHOUT blocking (DOCTRINE: grounding never blocks) and prepends a DEGRADED banner
+   *  to memoMarkdown so an ungrounded memo cannot appear grounded. The run-row status write + Home
+   *  tile badge that read this are item (b) — deferred until their reader lands. */
+  degradedSources?: string[];
 }
 
 /**
@@ -64,6 +70,23 @@ function buildMemoPath(playbookId: string, runId: string, isDraft: boolean): str
   const shortId = runId.replace(/[^a-z0-9]+/gi, '').slice(0, 8) || 'run';
   const suffix = isDraft ? '.draft.md' : '.md';
   return `memos/${date}-${safePlaybook}-${shortId}${suffix}`;
+}
+
+/**
+ * Honesty banner for an ungrounded run (Thread 3(d), ADR-0006 §1.3 "grounding never blocks").
+ * Prepended to the memo the operator reads so a cash_lever memo that ran without the real cash
+ * model cannot appear grounded. The run still ships (stamp, don't throw) — this banner is the
+ * visible record that the lenses reasoned without real data. No-op when degradedSources is empty.
+ * Returns a new string (does not mutate input); the verifier already ran upstream on the un-bannered
+ * synth output read from the DB, so the banner never affects the rigor score.
+ */
+export function prependDegradedBanner(memoMarkdown: string, degradedSources: string[]): string {
+  if (degradedSources.length === 0) return memoMarkdown;
+  const banner = degradedSources.includes('cash_model_ungrounded')
+    ? '> **DEGRADED: not grounded on the cash model.**\n' +
+      '> No cash-lever model spreadsheet was found in the vault, so the lenses reasoned without your real cash data. Treat any numbers as illustrative. Add the current `Class_Cash_Lever_Model_*.xlsx` to the vault and re-run for a grounded answer.\n\n'
+    : `> **DEGRADED: ${degradedSources.join(', ')}.**\n\n`;
+  return banner + memoMarkdown;
 }
 
 function makeFailedReturn(runId: string, visitedStates: string[], agentRolesInvoked: string[], error: { code: string; message: string }): FinalRunState {
@@ -242,6 +265,15 @@ export async function startRun(
     } catch {
       groundingDocs = [];
     }
+  }
+  // Thread 3(d) — honesty stamp (ADR-0006 §1.3): grounding NEVER blocks, but an empty grounding
+  // (xlsx absent/renamed, or 0 lever rows) means the lenses reasoned without the real cash model.
+  // Record it so memoMarkdown carries a DEGRADED banner and FinalRunState.degradedSources is honest —
+  // otherwise a missing xlsx ships an ungrounded memo that looks clean at rigor 90+ (DOCTRINE #1).
+  const degradedSources: string[] =
+    playbookId === 'cash_lever' && groundingDocs.length === 0 ? ['cash_model_ungrounded'] : [];
+  if (degradedSources.length > 0) {
+    console.warn(`[run-loop] ${runId}: cash_lever has no cash-model grounding — memo stamped DEGRADED (cash_model_ungrounded)`);
   }
   // PARALLEL fan-out: dispatch all 6 lenses CONCURRENTLY (each is an independent live LLM call;
   // lens isolation holds — bundles carry no cross-lens data). This cuts a live run from ~15 min
@@ -431,7 +463,15 @@ export async function startRun(
   visitedStates.push(state.kind);
   agentRolesInvoked.push('Handoff');
 
-  return { finalState: state, visitedStates, agentRolesInvoked, memoMarkdown, memoPath: computedMemoPath, rigorScore: computedRigorScore };
+  return {
+    finalState: state,
+    visitedStates,
+    agentRolesInvoked,
+    memoMarkdown: prependDegradedBanner(memoMarkdown, degradedSources),
+    memoPath: computedMemoPath,
+    rigorScore: computedRigorScore,
+    degradedSources,
+  };
 }
 
 // ── Ch.9 Handoff preview hook ─────────────────────────────────────────────────

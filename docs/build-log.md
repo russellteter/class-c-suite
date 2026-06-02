@@ -2799,3 +2799,68 @@ source notes over time.
 - `apps/utility/src/prompts/Synthesizer.prompt.md`: positionMetadata cap-12 + exact-mirror + load-bearing
   lower bound (lines 39, 176). dist regenerated (gitignored build artifact).
 - evidence: run `40489d03`, memo `memos/2026-06-02-open_qa-40489d03.md`, screenshot `phase1-synthtrim.png`.
+
+## 2026-06-02 — Priority 2(a): cash_lever degrade-on-empty-grounding stamp (Thread 3d) — SHIPPED
+
+**Status:** complete (the stamp; the run-status write + tile badge are item (b), deferred)
+**Token spend:** N/A on Max (no sub-agents; 1 advisor consult, vitest + 1 spine-proof e2e)
+**Owner:** Russell-initiated task (resume recipe priority 2(a))
+
+### The honesty gap closed
+Interactive `cash_lever` takes the Ch.5 generic path (`run-loop.ts`), where `buildCashLeverGrounding()`
+returns `[]` when the vault has no cash-model xlsx (absent/renamed/0 rows) and the throw is swallowed to `[]`
+(`run-loop.ts:240-244`). Before this fix the lenses reasoned WITHOUT the real cash model, yet the run shipped
+`shipped_clean` at rigor 90+ with a memo that looked grounded — an appearance-over-truth violation (DOCTRINE #1).
+
+### What got done (the stamp — `[S]`, code-local, no migration)
+- `run-loop.ts` Ch.5 path: after the grounding try/catch, compute
+  `degradedSources = (playbookId==='cash_lever' && groundingDocs.length===0) ? ['cash_model_ungrounded'] : []`
+  and `console.warn` when it fires. **Stamp, don't throw** — grounding still never blocks (ADR-0006 §1.3).
+- New exported `prependDegradedBanner(memoMarkdown, degradedSources)` prepends a plain, no-em-dash DEGRADED
+  banner ("DEGRADED: not grounded on the cash model. ... Add the current `Class_Cash_Lever_Model_*.xlsx` ...")
+  to the memo the operator reads. Applied at the **Ch.5 return** (post-Verifier), so it cannot touch rigor
+  (the Verifier already ran on the un-bannered synth output read from the DB).
+- `FinalRunState.degradedSources?: string[]` threaded out for item (b) + telemetry.
+- `index.ts` UNCHANGED for the memo (it SafeWrites `result.memoMarkdown`, which now carries the banner).
+
+### Decisions made (under doctrine; advisor-reviewed before coding)
+- **Did NOT introduce `runs.status='shipped_degraded'`** (it was my first instinct). The advisor flagged it as
+  scope creep into item (b) and currently INERT: Home.tsx:318-347 renders the tile from playbook/memoPath/rigor,
+  never `r.status`, and `memo:get` (handlers.ts:118) derives clean/draft from the `.draft.md` suffix, ignoring
+  `status`. A new status value with zero readers = the `wire-new-helpers` anti-pattern. Deferred to (b), where
+  its reader (the tile badge) lands with it. The existing DEGRADED convention is "memo-prose only" — the banner
+  IS that convention; it's the load-bearing, self-contained honesty fix (rides the persisted memo file).
+- **Banner at the Ch.5 return, not at line 305 or in index.ts:** keeps one owner (run-loop) and lets the test
+  assert the full outcome (degradedSources + memo-carries-banner) in one drive; post-Verifier placement keeps
+  rigor untouched even if a future maintainer makes the Verifier read `memoMarkdown`.
+
+### Acceptance criteria
+| Criterion (spec Thread 3d) | PASS / FAIL | Evidence |
+|---|---|---|
+| Empty grounding stamps degraded, does NOT throw | PASS | `cash-lever-grounding-degrade.spec.ts` neg case: degradedSources⊇`cash_model_ungrounded`, finalState=handoff/shipped; spine-proof reaches `handoff` |
+| Memo carries a DEGRADED banner the operator sees | PASS | spine-proof `memo head: "> **DEGRADED: not grounded on the cash model.**\n..."` (banner is line 1 of the memo) |
+| No false-positive when grounded (positive control) | PASS | pos case writes a real `Class_Cash_Lever_Model_v1_*.xlsx`; log "1 lever rows → contextDocuments"; degradedSources=[]; no banner |
+| Banner never affects rigor | PASS | rigorScore is a number in the degraded run; prepend is post-Verifier |
+| No regression on touched surfaces | PASS | `npx vitest run tests/unit/orchestrator/ run-loop-e2e shared-db-persistence degraded-mode` → 66 passed, 5 skipped, 0 failed; `pnpm typecheck` exit 0 |
+| dist carries the change (live tests dist, not src) | PASS | rebuilt utility; spine-proof under Electron 33 ABI exercises dist + shows banner |
+
+### Test added
+`tests/unit/orchestrator/cash-lever-grounding-degrade.spec.ts` (5 tests). Integration altitude per advisor:
+drives real `startRun('cash_lever')` in replay (the spine-proof composition); the ONLY variable is `VAULT_PATH`
+(empty temp dir vs a dir holding a real minimal xlsx written via the `xlsx` lib) — proves the WIRING
+(grounding → degradedSources → banner), not an isolated helper. Plus 2 fast `prependDegradedBanner` unit checks.
+
+### Still open (NOT done — labeled honestly)
+- **Item (b):** persist degraded on the run row (status or a column) + render a DEGRADED badge on the Home
+  tile and a structured banner via `memo.degradationWarnings` (MemoViewer already has the `cs-degrade` surface,
+  line 208-229 — it just needs a populated source). This is where the `runs.status` representation belongs.
+- This entry closes **2(a) only**. Priority 2 is not "closed" until (b) ships.
+
+### Repeat-issue tally
+- "first instinct was a new enum value with no consumer" → caught by advisor pre-code (`wire-new-helpers`):
+  count is within the already-codified rule; no new codification needed.
+
+### Files touched / commits
+- `apps/utility/src/orchestrator/run-loop.ts`: degradedSources compute + `prependDegradedBanner` + return field.
+- `tests/unit/orchestrator/cash-lever-grounding-degrade.spec.ts`: new (5 tests).
+- `docs/build-log.md`: this entry. (dist regenerated; gitignored.)
