@@ -1,91 +1,53 @@
-# Handoff — 2026-06-02 → next · C-Suite V1: 3/5 closed, dogfood is the last gate
+# Handoff — 2026-06-02 → next · C-Suite V1: 3/5 closed; priority 1 (synth-trim) DONE
 
-## North star (zoom out)
-Every V1 criterion that engineering CAN close is now closed. **C1, C2, C4 are fully closed and proven
-on-Mac** (vault-grounded strategic decision → 6-lens memo → in-app render with clickable dated Sources →
-CoWork handback). **C3 is Phase 4** (NetSuite live financials, off the dogfood path). **C5 is the only thing
-between "it works" and "V1 DONE" — and it's Russell's to do, not engineering:** he runs ONE real COO decision
-through the in-app box this week and can name ≥1 dated vault item that changed his thinking. Three grounded
-memos + two CoWork bundles already sit in the vault; the dated, now-CLICKABLE "Vault context used" Sources
-section renders. C5 is meetable today. Remaining engineering (priorities below) RAISES TRUST for the dogfood;
-it does not unblock C5.
+## What was done this session
+- **Priority 1 (Synthesizer-size trim, Thread 1) SHIPPED + live-measured.** Prompt-only edit to
+  `apps/utility/src/prompts/Synthesizer.prompt.md` (lines 39 + 176): `positionMetadata` mirrors EXACTLY the
+  positions cited in `memoMarkdown`, capped at 12, with a load-bearing lower bound (every cited `positionId`
+  gets an entry → protects Verifier citation-resolution).
+- Rejected the Tier 2 schema `.max()` cap per spec (sits below measured baseline → would block good runs).
+- Verified the premise before writing (advisor): positionId tokens (`CFO-p1`) DO appear literally in the memo
+  body, so the cap filter is real (not a phantom that zeroes the array).
+- Built utility, confirmed **dist == src** (the stale-prompt trap), then ran ONE live grounded harness run.
+- Corrected the record twice (advisor caught both): attribution + the "quality held" overclaim (see below).
+- Recorded Russell's product-shape call: **keep the shorter memo** (open question closed).
 
-**Clickability is forward-only — important so the next session doesn't chase a non-bug:** the `[^vault-N]`
-markers + tool_calls rows exist ONLY on runs from 2026-06-02+ (commit `5d7a481`). The two **pre-2026-06-02
-memos on disk** (org `c902b7c6`, expenses `74b719dd`) are **prose-only** — opening one and clicking a source
-resolves NOTHING (no markers, zero tool_calls). That's expected, not a regression. The org decision now has a
-clickable version (run `0da8991c`); the expense memo does NOT (no new run). A fresh dogfood decision gets
-clickable dated Sources by definition. (Optional parity: re-run the expense question, ~20min — the dogfood
-doesn't need it.)
+## Current state — burn-down unchanged: 3/5 fully closed
+- **C1 ✅ · C2 ✅ · C4 ✅** (vs V1_TARGET). **C5 READY** (dogfood, Russell's use, no eng gate). **C3 PARTIAL** (Phase 4).
+- Synth-trim is live in the default strategic path. Run `40489d03` vs baseline `0da8991c` (same question):
+  synth output **45,577→33,296 B (−27% total)**, positionMetadata **18→12**, rigor **83→83**, `shipped_clean`,
+  **0 citation gaps**, memo structurally complete (7 sections, 4 falsifiers, grounded on 8 notes, click resolves).
+- **Attribution (don't misread):** the cap itself bought only −6,236 B ≈ **14% of total (~half the −27%)** and
+  UNDERSHOT the 24% projection; memo prose (−3,379) + other fields (−2,666) made up the rest.
+- Memo prose shrank 23% (14,764→11,385) as a side effect — lands inside the spec's normal 10-13KB range; the
+  14.8KB baseline was the high outlier. "Verifier-clean" ≠ proof depth was preserved; Russell chose keep.
+- HEAD == origin/main == `07dbb05`. Runs on-Mac (`pnpm dev`, vite :5273). `STUB_MODE=live` default.
 
-## What was done this session (C4 render half — commit `5d7a481`)
-Closed C4's render half: **clickable dated vault Sources**, the a→b→c chain the prior handoff scoped.
-- **(a)** `runStrategicGrounded` (`open-qa/index.ts`) emits one `vault.retrieve` `tool_calls` row per injected
-  note (`source_id=vault-N`, `result_json={path,title,date,excerpt}`, `agent_role='Retriever'`) via
-  `insertToolCall` — the live path wrote ZERO before, so the click backbone was built but dark. This ALSO
-  lights up the Verifier audit trail (`playbookVerifier` reads tool_calls) — V2-agentic-pilot foundation.
-- **(b)** `renderVaultProvenance` threads a `[^vault-N]` badge onto each Sources line; `MemoViewer` already
-  renders `[^id]` as a clickable badge. One generator (`vaultSourceId`) for both row + marker → no drift.
-  Short indexed token (NOT `slug(path)`): the badge prints it, and the org corpus has two `context_bundle.md`.
-- **(c)** `tool-call:get` now resolves **run-scoped** (`WHERE run_id=? AND source_id=?`) — `vault-N` repeats
-  across runs, so unscoped would surface a stale run's excerpt (C2's promise). `invokeToolCallGet(runId,…)` +
-  `MemoViewer` thread `memo.runId`.
-- Hardened `phase1-grounded-decision.mjs`: page-independent wait loop (a renderer blip during the 9-17min
-  synth must not abort a healthy run — it did the first attempt) + a citation-click assertion.
+## Files touched (commits 048af74, 592f778, 07dbb05 — all pushed)
+- `apps/utility/src/prompts/Synthesizer.prompt.md` (+4/-2): the cap + exact-mirror + lower bound.
+- `docs/build-log.md` (+77): 2026-06-02 synth-trim entry with corrected attribution + decision record.
+- (dist is gitignored; rebuilt locally. Pre-existing untracked `D build/entitlements.mac.plist` is NOT this session.)
 
-## Proof (live, run `0da8991c` — NOT tsc)
-shipped_clean **rigor 83** (baseline 80/80 — 8 new Verifier entries did NOT regress) · 8 `vault.retrieve` rows
-landed · memo Sources section rendered 8 `[^vault-N]` badges · in-app click on `[^vault-1]` resolved to the
-`go-forward-org-structure.md` excerpt (live-DOM asserted + screenshot `phase1-c4render-org2-citation.png`).
-Mechanics also unit-checked (source_id↔marker align, valid result_json) + run-scoped SQL verified vs real rows.
-
-## Current state — burn-down: 3/5 fully closed
-- **C1 ✅ · C2 ✅ · C4 ✅** (vs the V1_TARGET bar). **C5 READY** (dogfood — no eng gate). **C3 PARTIAL** (Phase 4).
-- **Precision (`match-done-label`):** C4 closes against the FROZEN V1_TARGET bar = click-any-**SOURCE**. The
-  PRD's click-any-**CLAIM** (inline prose citations on synthesized claims) stays **Phase 2** — the Synthesizer
-  can't reliably emit the post-hoc `vault-N` slugs. Don't relabel this as the full PRD aspiration.
-- HEAD: `5d7a481` (code) + a docs commit pushed. Runs on-Mac (`pnpm dev`, vite :5273). `STUB_MODE=live` default.
-
-## Next priorities (ranked — all RAISE TRUST; none gate C5)
-1. **[S] Synthesizer-size trim** (`tasks/followup-specs.md` Thread 1) — cap `positionMetadata` (~52% of the
-   38KB output) to ≤12 entries; ~24% runtime cut on the 34-min worst case. Prompt-only; MUST live-measure on
-   one harness run after (don't trust the projection). Reject the Tier 2 schema cap.
-2. **[S each] Honesty gaps — close before any cash_lever/financial decision** (NOT gating the org/expense
-   dogfood): (a) cash_lever degrade-on-empty-grounding stamp (`run-loop.ts:238-257` sets contextDocuments only
-   if length>0 → swallows a read failure, ships ungrounded CLEAN; `tasks/followup-specs.md` Thread 3d); (b)
-   DEGRADED badge on the Home run tile (today DEGRADED is memo-prose only; a "CLEAN" tile can hide a dropped source).
-3. **[V2, not V1] Agentic pilot** — the evidence-chain backbone is now LIT (this session did the deterministic
-   half the pilot's step 1 required). The bounded CFO-lens-on-cash_lever plan→act→observe loop is the upgrade
-   on top. Full sequence + guardrails in `docs/agentic-pilot-consideration.md`. Do NOT start without Russell's go.
-
-## Top workflows / use-cases
-- **PRIMARY (nail this — it's now fully wired):** real COO decision → vault-grounded 6-lens memo → dated,
-  CLICKABLE provenance Russell can SEE → "Draw up for CoWork" bundle. Every gate closed; only the dogfood remains.
-- Ready today: **org-restructuring** + **expense-target** decisions (grounding proven; a FRESH run renders
-  clickable dated Sources — the pre-2026-06-02 memos on disk are prose-only, see "Clickability is forward-only").
-- NOT ready: **cash-runway / NetSuite board-financials** (NetSuite OAuth never run; Phase 4).
-
-## Open threads
-- C4 click-any-CLAIM (inline prose citations) = Phase 2 (Option B; model-reliability dependent).
-- Honesty gaps (priority 2) — close before any financial decision.
-- Telemetry dark: `model`/`tokens`/`cost_ledger` have no write sites (`tasks/followup-specs.md` Thread 2).
-- B22: vault has zero git commits — memos write fine (commitVault:false), but the first SHARED-zone write
-  throws `VaultNotInitializedError`. Run `scripts/vault-bootstrap.sh` before shared-zone production use.
-- **C5 risk — echo (not "someday"):** grounded runs now rank prior memos/handoffs (run `0da8991c` grounded on
-  vault-4 = its own 2026-06-02 handoff, vault-5 = the prior org memo `c902b7c6`). The dogfood judge is "name a
-  dated vault item that changed your thinking" — a self-authored prior C-suite output ranking #4-5 is circular.
-  Don't re-architect retrieval, but the dogfood decision should lean on SOURCE notes, not prior memos.
+## Open threads (priority 2 is next; none gate C5)
+- **Priority 2 — honesty gaps (close before any cash_lever/financial decision):** (a) cash_lever
+  degrade-on-empty-grounding stamp — `run-loop.ts:242-244` swallows a read failure → `[]` → ships ungrounded
+  CLEAN; spec `tasks/followup-specs.md` Thread 3(d): stamp DEGRADED, don't throw. (b) DEGRADED badge on the
+  Home run tile (today DEGRADED is memo-prose only). Both are `[S]`, prompt/code-local.
+- **Thread 3(b)** un-stub cash_model (drop dead-code liability; fix 2 named tests) and **Thread 2** telemetry
+  writers (largest surface; the `lastUsage` Verifier fix is mandatory — see Thread 2).
+- **V2, needs Russell's go:** agentic pilot (`docs/agentic-pilot-consideration.md`).
+- Decouple fallback for memo depth (cite ≤12 positionIds but keep fuller prose) is UNTESTED — only if dogfood reads thin.
 
 ## Next step
-V1 engineering is essentially done (3/5 closed; C3=Phase 4; C5=Russell's use). The highest-value engineering
-left is priority 1 (synth-trim — a real UX win on the 34-min worst case) then priority 2 (honesty gaps). The
-dogfood (C5) needs no code. The agentic pilot (priority 3) is V2 and needs Russell's explicit go.
+Priority 2(a): the cash_lever degrade-on-empty-grounding stamp (genuine honesty gap, independent of un-stub).
+Spec is `tasks/followup-specs.md` Thread 3(d). Stamp DEGRADED on empty grounding; do NOT throw (grounding never blocks).
 
 ## Resume recipe
-1. Read `tasks/handoff.md` → `tasks/V1_TARGET.md` (frozen target + 3/5 burn-down) → `docs/build-log.md`
-   (2026-06-02 C4-render entry) → `docs/agentic-pilot-consideration.md` (V2) → `CLAUDE.md` Gotchas.
+1. Read `tasks/handoff.md` → `tasks/followup-specs.md` (Thread 3d, then Thread 2) → `CLAUDE.md` Gotchas
+   (cash_lever path, RealClaudeClient JSON/maxTurns, synth-is-slow, started_at-is-seconds).
 2. Prep before any e2e: vite :5273 up; `pkill -f electron@33.4.11` between runs; clear stale runs
    (`sqlite3 "$HOME/Library/Application Support/@c-suite/main/runtime.db" "UPDATE runs SET status='failed' WHERE status='in_progress'"`).
-   If you ran `npx vitest` (flips better-sqlite3 to Node ABI), `pnpm rebuild:electron` before launching the app.
-3. For priority 1 (synth-trim): `tasks/followup-specs.md` Thread 1 → cap `positionMetadata` in the synth prompt
-   → re-run `node tests/e2e/phase1-grounded-decision.mjs "<question>" <tag>` and MEASURE the runtime + rigor delta.
+   If you ran `npx vitest` (flips better-sqlite3 ABI), `pnpm rebuild:electron` before launching.
+3. For Thread 3(d): open `apps/utility/src/orchestrator/run-loop.ts:242` (the grounding `[]`-swallow), add the
+   degrade stamp, `pnpm --filter utility build`, then live-verify a no-xlsx cash_lever run ships DEGRADED (not CLEAN).
+4. After any prompt/utility edit MUST `pnpm --filter utility build` (live tests dist/, not src/).
