@@ -2744,17 +2744,26 @@ source notes over time.
 ### Live measurement — run `40489d03` vs baseline `0da8991c` (same question, apples-to-apples)
 | Metric | Baseline `0da8991c` | New `40489d03` | Delta |
 |---|---|---|---|
-| synth output total bytes | 45,577 | 33,296 | **−27%** (beat the 24% projection) |
+| synth output total bytes | 45,577 | 33,296 | **−27%** total (attribution below) |
 | positionMetadata count | 18 | **12** | cap honored exactly |
-| positionMetadata bytes | 22,005 | 15,769 | −28% |
-| memoMarkdown bytes | 14,764 | 11,385 | −23% (see deviation) |
+| positionMetadata bytes | 22,005 | 15,769 | −6,236 |
+| memoMarkdown bytes | 14,764 | 11,385 | −3,379 |
 | rigor | 83 | **83** | no regression |
 | status | shipped_clean | **shipped_clean** | ✓ |
 | cited-but-missing-from-metadata (citation gap) | 4 | **0** | lower bound held perfectly |
 
+- **Attribution of the −27% (do NOT credit it all to the cap).** The total drop of −12,281 B decomposes:
+  positionMetadata −6,236 (51% of the drop, **−13.7% of total output**) — the targeted lever; memoMarkdown
+  −3,379 (28%, −7.4%); other top-level fields/JSON structure −2,666 (22%). **The metadata cap — the only thing
+  this task changed — directly bought ~half the cut (≈14% of output), and on its own UNDERSHOT the spec's 24%
+  projection (which was specifically about the metadata cut).** Total only cleared 27% because the memo prose
+  and other fields also shrank. (Field byte-sizes are via JSON re-serialization, ±small vs the stored compact
+  string; the attribution conclusion is robust to that.)
 - Two-sided constraint landed exactly: metadata array == the 12 positions cited in the body, 0 gaps, 0 uncited
-  entries. Memo structurally complete (all 7 sections; Falsifiers has 4 bullets; 0 stub fingerprints; grounded
-  on 8 real org notes; in-app citation click RESOLVED).
+  entries. Memo **structurally complete and Verifier-clean** (all 7 sections; Falsifiers has 4 bullets; 0 stub
+  fingerprints; grounded on 8 real org notes; in-app citation click RESOLVED). "Verifier-clean" is a structural
+  proxy — it does NOT measure whether the 23%-shorter prose kept the analytical depth Russell reads. That's a
+  C5-dogfood judgment, surfaced to Russell (below), not asserted here as "quality held."
 
 ### Decisions made (under doctrine)
 - **Kept the "narrow the memo body to 12" coupling** rather than decoupling metadata-cap from prose. Decoupling
@@ -2768,7 +2777,9 @@ source notes over time.
 - **Honest deviation from the spec's "memoMarkdown UNCHANGED" claim:** the spec assumed Tier 1 leaves the memo
   prose untouched (it pegged the memo at 10-13KB). The baseline memo was 14.8KB and cited **16** distinct
   positions. Honoring cap-12 + the no-gap lower bound FORCES the memo to cite ≤12, so the prose also shrank 23%
-  (14,764→11,385). Quality held (rigor 83, all sections, 4 falsifiers). This aligns with the documented
+  (14,764→11,385). Structurally complete and Verifier-clean (rigor 83, all sections, 4 falsifiers), but the
+  Verifier is a structural proxy and does not prove the shorter prose kept the analytical depth Russell reads;
+  one run also cannot separate cap-driven shrink from ordinary synth-output variance. This aligns with the documented
   "38KB synth too large — trim for UX" follow-up, so it's an acceptable, even desirable, side effect — but it
   is a deviation from the spec's stated expectation, recorded here rather than buried under "size cut."
 - **Runtime is NOT a win signal here:** synth took 918s this run vs 357s baseline — LONGER, within the known
