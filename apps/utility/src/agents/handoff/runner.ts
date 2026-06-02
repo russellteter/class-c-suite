@@ -5,8 +5,8 @@
 
 import * as path from 'path';
 import * as os from 'os';
-import { StubClaudeClient } from '@c-suite/stub-harness/stub';
 import type { HandoffGeneratorInput, HandoffBrief } from '@c-suite/shared-types/handoff';
+import { type ModelClient, modelClientFromEnv } from '../modelClient.js';
 import { HandoffFrontmatter } from '@c-suite/shared-types/handoff';
 import { slugify, existingSlugsFromDir } from './slug.js';
 import { pickAllBrandSkills } from './skill-selector.js';
@@ -75,15 +75,15 @@ function extractDeliverables(bodyMarkdown: string): string[] {
  */
 export async function generateHandoffBrief(
   input: HandoffGeneratorInput,
-  client?: StubClaudeClient,
+  client?: ModelClient,
 ): Promise<HandoffBrief> {
   log.info({ message: 'handoff.runner: generating brief', originId: input.origin.id, runId: input.runContext.runId });
 
   const systemPrompt = HANDOFF_SYSTEM_PROMPT;
   const promptContext = buildPromptContext(input);
 
-  // Use provided client or fall back to stub from env
-  const claudeClient = client ?? new StubClaudeClient('replay', 'tests/fixtures/stubs');
+  // Use provided client or fall back to env-driven factory (live → RealClaudeClient, replay/record → StubClaudeClient)
+  const claudeClient = client ?? modelClientFromEnv();
 
   // Invoke the model
   const agentDef = {
@@ -130,11 +130,13 @@ export async function generateHandoffBrief(
     ...originRefField,
     origin_type: input.origin.type,
     origin_path: input.origin.path,
+    origin_title: input.origin.title,
     created: today,
     created_by_run_id: input.runContext.runId,
     status: 'drafted' as const,
     cowork_brand_skills: brandSkills,
     executed_by: null,
+    filename,
   };
 
   // Validate frontmatter via Zod

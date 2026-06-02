@@ -255,10 +255,13 @@ export function App(): React.ReactElement {
   // When generated brief arrives, push HandoffPreview screen preserving current return point.
   // TODO ch9-runtime-ship: Runtime sub-agent emits this on handoff.preview.requested trigger.
   useEffect(() => {
-    const cleanup = onHandoffPreviewReady(({ brief }) => {
+    const cleanup = onHandoffPreviewReady(({ runId, brief }) => {
+      // The utility's brief omits runId (it lives in the preview.ready payload); merge it in so
+      // HandoffPreview's Send (which posts handoff.send with brief.runId) carries a real id — without
+      // this the send is rejected at index.ts (missing runId) and no bundle is ever written.
       setScreen((current) => ({
         name: 'handoff-preview',
-        brief,
+        brief: { ...brief, runId },
         returnScreen: current.name === 'handoff-preview' ? current.returnScreen : current,
       }));
     });

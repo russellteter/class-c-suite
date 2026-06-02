@@ -18,9 +18,11 @@ You are Russell's Chief of Staff. Your task is to produce a concise, structured 
 
 ## Output you must produce
 
-Produce ONLY the body of the execution brief. No preamble. No reasoning. No commentary. Start immediately with the first section heading.
+Respond with a SINGLE JSON object and nothing else — no preamble, no reasoning, no commentary, and do NOT wrap the JSON in markdown code fences. The object has exactly one key:
 
-The body must contain all eight sections in this exact order, with these exact headings:
+{"bodyMarkdown": "<the full execution brief, as a markdown string>"}
+
+The bodyMarkdown value must start immediately with the first section heading (no preamble inside it) and contain all eight sections in this exact order, with these exact headings:
 
 \`\`\`
 ## Decision being executed

@@ -236,6 +236,14 @@ export class RealClaudeClient {
       definition.role === 'Verifier' ? 20 * 60 * 1000 :
       8 * 60 * 1000;
 
+    // maxTurns is a CEILING, not a target: a role that finalizes in one turn is unaffected by a higher
+    // cap. The lens + Synthesizer roles finalize in turn 1 (proven live: org memo c902b7c6 ships a 38KB
+    // memo at maxTurns:1). The Handoff "Chief of Staff" brief ends turn 1 non-final and needs a second
+    // turn to emit its answer — at maxTurns:1 the SDK throws "Reached maximum number of turns (1)" in
+    // ~16s (isolated via tests/e2e/standalone-brief-gen.mjs). allowedTools:[] blocks any tool loop, so a
+    // higher Handoff cap cannot trigger tool execution; it only grants the extra generative turn.
+    const MAX_TURNS = definition.role === 'Handoff' ? 6 : 1;
+
     const consume = async (): Promise<{ text: string; usage?: { input_tokens?: number; output_tokens?: number } }> => {
       let text = '';
       let usage: { input_tokens?: number; output_tokens?: number } | undefined;
@@ -246,7 +254,7 @@ export class RealClaudeClient {
           model,
           allowedTools: [],
           permissionMode: 'dontAsk',
-          maxTurns: 1,
+          maxTurns: MAX_TURNS,
           env: safeEnv,
         },
       })) {

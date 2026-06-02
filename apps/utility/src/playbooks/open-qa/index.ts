@@ -29,6 +29,8 @@ import { evaluatePrereqs } from '../lib/evaluatePrereqs.js';
 import { dispatchLens, dispatchSynthesizer } from '../../orchestrator/dispatch.js';
 import { buildLensBundle } from '../../orchestrator/run-loop.js';
 import { modelClientFromEnv } from '../../agents/modelClient.js';
+import { buildVaultGrounding, renderVaultProvenance } from '../../orchestrator/vaultRetriever.js';
+import type { ContextDoc } from '../../orchestrator/groundingContext.js';
 import { createLogger } from '../../logger.js';
 import { z } from 'zod';
 
@@ -89,6 +91,18 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
   const skipDecompose = (input.context?.['skipDecompose'] as boolean | undefined) === true;
 
   log.info({ runId, message: `open_qa: starting — skipDecompose:${skipDecompose} prompt: "${input.prompt.slice(0, 60)}"` });
+
+  // V1 (tasks/V1_TARGET.md C1+C2): under STUB_MODE=live, open_qa IS the grounded strategic-decision
+  // path. It bypasses the decomposer entirely — no deterministic hijack (the cash_lever / restructure_
+  // decision keyword routes), no strategic_option redirect crash (StubbedSourceLiveError) — forces the
+  // full 6-lens set, and grounds every lens on the most relevant + current vault notes (the C2 edge).
+  // replay/record keep the original two-pass decompose path below so fixtures stay byte-identical. The
+  // only live dispatcher of open_qa is the in-app "ask anything" box (verified 2026-06-01); cash_lever
+  // keeps its own Home tile, so this does not regress the proven cash path.
+  const isLive = (process.env.STUB_MODE ?? 'replay') === 'live';
+  if (isLive && !skipDecompose) {
+    return runStrategicGrounded(input, ctx);
+  }
 
   if (!skipDecompose) {
     // 1. Decompose the prompt
@@ -217,6 +231,66 @@ export const runPlaybook: PlaybookModule['runPlaybook'] = async (
     proposedWritebacks: [],
   };
 };
+
+// ── Strategic grounded path (V1 live default) ──────────────────────────────────
+
+/**
+ * The V1 strategic-decision path (live only). Bypasses the decomposer, forces the full 6-lens set,
+ * grounds every lens on the live vault's most relevant + current notes, runs the real Synthesizer, and
+ * appends a "Vault context used (with dates)" provenance block built from the SAME notes the lenses saw
+ * (no re-query — C5's judge requires provenance == what grounded the memo). Grounding NEVER blocks the
+ * run: an empty/zero-hit vault degrades to [] and the lenses honestly report UNKNOWN (the ungrounded
+ * baseline). Source: tasks/V1_TARGET.md C1+C2; advisor review 2026-06-01.
+ */
+async function runStrategicGrounded(input: PlaybookInput, ctx: PlaybookContext): Promise<PlaybookResult> {
+  const { runId, db, emit, vaultPath } = ctx;
+  const allLenses: LensRole[] = ['CEO', 'CFO', 'CRO', 'CMO', 'CPO', 'COS'];
+
+  let grounding: ReturnType<typeof buildVaultGrounding> = { contextDocuments: [], notes: [] };
+  try {
+    grounding = buildVaultGrounding(input.prompt, vaultPath);
+  } catch (err) {
+    log.warn({ runId, message: `open_qa strategic: vault grounding failed — running ungrounded: ${String(err)}` });
+  }
+  const grounded = grounding.contextDocuments.length > 0;
+  log.info({ runId, message: `open_qa strategic: 6-lens, grounded=${grounded} (${grounding.notes.length} vault notes)` });
+
+  const lensOutputs: Record<string, unknown> = {};
+  await Promise.all(
+    allLenses.map(async (role) => {
+      const bundle = buildLensBundle(role, runId, input.prompt, 'open_qa');
+      if (grounded) {
+        (bundle as { contextDocuments: ContextDoc[] }).contextDocuments = grounding.contextDocuments;
+      }
+      lensOutputs[role] = await dispatchLens(role, bundle, db, emit);
+    }),
+  );
+
+  // Real Synthesizer authors the memo from the (grounded) lens outputs. Fail loud on an empty memo —
+  // never fall back to a template under the DECOMPOSED_AD_HOC → CLEAN stamp (DOCTRINE #1).
+  const synth = await dispatchSynthesizer(runId, input.prompt, 'open_qa', lensOutputs, db, emit);
+  const parsed = SynthesizerMemoSchema.safeParse(synth);
+  if (!parsed.success) throw new OpenQaOutputContractViolation(parsed.error.message);
+  let memoMarkdown = parsed.data.memoMarkdown;
+
+  if (grounded) {
+    // Provenance block + honest data-scope note (advisor: vault .md only; live financials are Phase 4).
+    memoMarkdown =
+      `${memoMarkdown}\n\n${renderVaultProvenance(grounding.notes)}\n\n` +
+      'Scope: grounded on Business Planning vault notes (.md) only; live NetSuite / Salesforce / cash-model data was not pulled this run.';
+  }
+
+  return {
+    memoMarkdown,
+    degradedSources: grounded ? [] : ['vault-grounding-empty'],
+    lensOutputs,
+    stamps: ['DECOMPOSED_AD_HOC'],
+    rigorScore: null,
+    rigorRawScore: null,
+    rigorThreshold: RIGOR_THRESHOLD,
+    proposedWritebacks: [],
+  };
+}
 
 // ── Memo builder helper ───────────────────────────────────────────────────────
 

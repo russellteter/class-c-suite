@@ -322,7 +322,11 @@ export const IpcMessage = z.discriminatedUnion('kind', [
     payload: z.object({
       runId: z.string(),
       originType: z.enum(['decision', 'memo', 'position', 'pre_mortem']),
-      originId: z.string(),
+      // Renderer (MemoViewer + AcceptedHistory) sends the full vault-relative artifact path + display
+      // title; the utility reads originPath directly (no originDir reconstruction). Was originId — a
+      // stale contract the renderer never matched, so the live CTA→preview path always dropped the msg.
+      originPath: z.string(),
+      originTitle: z.string().optional(),
     }),
   }),
   // handoff.preview.ready: main → renderer; generation complete.

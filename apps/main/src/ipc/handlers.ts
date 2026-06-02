@@ -35,7 +35,7 @@ export function registerIpcHandlers(
   getUtilityPort?: () => UtilityPort | null,
 ): void {
   // Kinds the renderer emits that the utility process handles. Relayed below.
-  const UTILITY_BOUND = new Set(['run.start', 'handoff.preview.requested']);
+  const UTILITY_BOUND = new Set(['run.start', 'handoff.preview.requested', 'handoff.send']);
 
   // List all runs — read-only SQLite view. Includes memo_path + rigor_score + finished_at
   // so the Home tiles can show real freshness and the Recent Runs list can render + route a
@@ -123,6 +123,9 @@ export function registerIpcHandlers(
       runId: run?.run_id ?? '',
       memoMarkdown,
       status,
+      // A clean (non-draft) shipped memo represents an accepted decision → enables the "Draw up for
+      // Cowork" CTA (MemoViewer gate at :197). Matches the fixture semantic (hasAcceptedDecision ⟺ clean).
+      hasAcceptedDecision: status === 'clean',
       rigorScore: run?.rigor_score ?? null,
       memoPath,
       filename,

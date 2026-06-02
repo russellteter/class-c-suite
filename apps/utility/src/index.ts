@@ -21,7 +21,8 @@ import type { IpcEmit } from './orchestrator/hooks.js';
 import { initSharedDb, getSharedDb } from './db/sharedDb.js';
 import { initScheduler, getScheduler } from './scheduler/index.js';
 import { initSafeWrite, safeWrite, getVaultPath } from './safewrite/index.js';
-import type { HandoffGeneratorInput } from '@c-suite/shared-types/handoff';
+import type { HandoffGeneratorInput, HandoffBrief } from '@c-suite/shared-types/handoff';
+import { writeHandoffBundle } from './agents/handoff/writer.js';
 
 // B45 diagnostic: emit runtime identity on startup so supervisor can log ABI + Node version.
 // This runs before any async work; if a later import crashes we get the env first.
@@ -152,29 +153,24 @@ process.parentPort.once('message', (e) => {
       // ONLY fires when renderer sends handoff.preview.requested; never auto.
       // Source: docs/decisions/0011-ch9-cowork-handoff.md §5.1 + §7.
       if (msg?.kind === 'handoff.preview.requested') {
-        const payload = msg.payload as { runId: string; originType: string; originId: string } | undefined;
-        if (!payload?.runId || !payload.originType || !payload.originId) {
+        const payload = msg.payload as { runId: string; originType: string; originPath: string; originTitle?: string } | undefined;
+        if (!payload?.runId || !payload.originType || !payload.originPath) {
           log.error({ message: 'handoff.preview.requested: missing payload fields', payload });
           return;
         }
-        // Build HandoffGeneratorInput from IPC payload + vault enrichment.
-        // Vault directory convention is kebab-case (pre-mortems/, not pre_mortems/).
-        // Source: packages/shared-types/src/parseArtifact.ts:80 + data.md §Shared zone.
-        const originDirMap: Record<string, string> = {
-          decision: 'decisions',
-          memo: 'memos',
-          position: 'positions',
-          pre_mortem: 'pre-mortems',
-        };
-        const originDir = originDirMap[payload.originType] ?? `${payload.originType}s`;
-        const originPath = `${originDir}/${payload.originId}.md`;
+        // The renderer (MemoViewer + AcceptedHistory) sends the FULL vault-relative artifact path; read
+        // it directly. The prior originDir + `${originId}.md` reconstruction never matched the renderer
+        // payload (and would break subdir paths like positions/active/…) — the "Draw up for Cowork"
+        // path was never exercised live until 2026-06-01. id = basename without extension.
+        const originPath = payload.originPath;
+        const originId = (originPath.split('/').pop() ?? originPath).replace(/\.md$/, '');
 
         // Enrich from vault: read the originating artifact's body + frontmatter.
         // Best-effort — if the file isn't readable, runner.ts gets empty strings
         // and the brief generation degrades rather than failing.
         let bodyMarkdown = '';
         let frontmatter: Record<string, unknown> = {};
-        let title = payload.originId;
+        let title = payload.originTitle ?? originId;
         try {
           const vaultPath = process.env.VAULT_PATH ?? `${process.env.HOME}/Documents/Claude/Projects/Business Planning`;
           const fsMod = await import('node:fs/promises');
@@ -199,7 +195,7 @@ process.parentPort.once('message', (e) => {
         const input: HandoffGeneratorInput = {
           origin: {
             type: payload.originType as HandoffGeneratorInput['origin']['type'],
-            id: payload.originId,
+            id: originId,
             path: originPath,
             title,
             bodyMarkdown,
@@ -216,6 +212,52 @@ process.parentPort.once('message', (e) => {
         handleHandoffPreviewRequested(payload.runId, input, (m) => ipcPort!.postMessage(m)).catch(
           (err: unknown) => log.error({ message: 'handleHandoffPreviewRequested failed', err: String(err) }),
         );
+        return;
+      }
+
+      // Ch.9 — "Send" action from MemoViewer handoff preview.
+      // Writes vault bundle: handoffs/<slug>/brief.md + memo.md + continue-prompt.md.
+      // Source: docs/decisions/0011-ch9-cowork-handoff.md §5.2.
+      if (msg?.kind === 'handoff.send') {
+        const payload = msg.payload as { runId?: string; brief?: unknown; editedBodyMarkdown?: string } | undefined;
+        if (!payload?.runId || !payload.brief) {
+          log.error({ message: 'handoff.send: missing payload fields', payload });
+          return;
+        }
+        const { runId, editedBodyMarkdown } = payload;
+        // brief arrives as unknown from IPC — cast to the shared type (has filename + fullPath the writer needs)
+        const brief = payload.brief as HandoffBrief;
+        if (editedBodyMarkdown !== undefined) {
+          brief.bodyMarkdown = editedBodyMarkdown;
+        }
+
+        // Read the memo markdown from vault if a path is recorded for this run
+        let memoMarkdown: string | null = null;
+        try {
+          const row = getSharedDb().prepare('SELECT memo_path FROM runs WHERE run_id = ?').get(runId) as { memo_path: string | null } | undefined;
+          if (row?.memo_path) {
+            const fsMod = await import('node:fs/promises');
+            const pathMod = await import('node:path');
+            const vaultPath = process.env.VAULT_PATH ?? `${process.env.HOME}/Documents/Claude/Projects/Business Planning`;
+            memoMarkdown = await fsMod.readFile(pathMod.join(vaultPath, row.memo_path), 'utf8');
+          }
+        } catch (err) {
+          log.warn({ message: 'handoff.send: memo read failed — bundle will omit memo.md', runId, err: String(err) });
+        }
+
+        try {
+          const result = await writeHandoffBundle(brief, memoMarkdown, getSharedDb());
+          ipcPort!.postMessage({
+            kind: 'handoff.sent',
+            payload: { runId, handoffId: brief.frontmatter.id, path: result.folderPath },
+          });
+        } catch (err) {
+          log.error({ message: 'handoff.send: writeHandoffBundle failed', runId, err: String(err) });
+          ipcPort!.postMessage({
+            kind: 'handoff.failed',
+            payload: { runId, reason: String(err) },
+          });
+        }
         return;
       }
     })().catch((err: unknown) => log.error({ message: 'ipcPort message handler crashed', err: String(err) })); });

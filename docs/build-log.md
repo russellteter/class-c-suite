@@ -2554,3 +2554,104 @@ in `tasks/followup-specs.md`. The verifiers caught two would-have-broken-the-bui
 
 No source was changed this session — the 4/4 reliability result stays attached to commit `9b5db30`. Specs are
 for a later clean build phase, each re-verified with a live run.
+
+---
+
+## 2026-06-01 — V1 Phase 0(a)+0(b)+1: arbitrary strategic decision → live vault-grounded 6-lens memo
+
+Drove the frozen V1 plan (`tasks/V1_TARGET.md`) from 0/5 toward the dogfood threshold. The two
+wedge-DEFINING criteria — C1 (arbitrary strategic flow) and C2 (provable live-vault grounding, THE edge) —
+are CLOSED, proven on Russell's two real decisions with on-Mac live runs + rendered screenshots (not DB
+queries). Advisor consulted before committing to the approach and before "done".
+
+### Phase 0(a) — retrieval gate SIGNED OFF
+Re-ran `scripts/vault-retriever-spike.mjs` (live vault, 371 .md); pasted both top-8 lists in chat. Russell
+chose "proceed" (kept prior lens-memos as prior-art context, not down-weighted). Gate CLOSED.
+
+### Phase 0(b) — open_qa ad-hoc ships live; Verifier risk RETIRED
+Advisor flagged the real unproven risk: open_qa is scored by `scorePlaybookRigor` WITHOUT RedTeam/Steelman
+rows. `playbookVerifier.ts` confirms open_qa is NOT in `ADVERSARIAL_PLAYBOOKS`, so `buildPlaybookVerifierInput`
+injects present-but-N/A sentinels (the fix for the 2026-05-29 contract crash). Proved live:
+`tests/e2e/live-openqa-real-vault.mjs` shipped a real Verifier-scored memo (`open_qa-4d50d178.md`, 10KB, zero
+contract/verifier errors). The ungrounded memo said "UNKNOWN across all data sources … a preferences exercise"
+— the exact generic-advice failure mode grounding fixes. Baseline set.
+
+### Mechanism correction (the handoff was imprecise)
+Handoff said "generalize `run-loop.ts:239`." But `:239` is on the Ch.5 path ONLY `cash_lever` reaches; open_qa
+takes the Ch.7 early-return path. And the decomposer's deterministic Pass-1 regex hijacks BOTH real decisions
+by phrasing (expense→`cash_lever`, org→`restructure_decision`) — broader than `strategic_option`. So the real
+fix injects grounding at the open_qa ad-hoc fan-out and BYPASSES decompose entirely.
+
+### C2 — `apps/utility/src/orchestrator/vaultRetriever.ts` (the edge), port-faithful
+BM25×recency over vault `*.md` — faithful port of the signed-off spike (same STOP set, k1/b, title
+double-weight, halflife 120d, archive penalty). Emits `ContextDoc[]` + a "Vault context used (with dates)"
+provenance block built from the SAME ranked notes (no re-query — C5's judge needs provenance == what grounded
+the memo). Prior lens-memos get a "re-examine, do not restate" label (prior-art-not-gospel). Durable gate
+`scripts/vault-retriever-fidelity.ts` diffs TS vs a live spike subprocess: PASS (byte-identical top-8 both
+decisions). Keystone re-confirmed: `realClaudeClient.ts:243` `JSON.stringify(context)` serializes
+`contextDocuments` into the prompt (same path cash_lever's grounded f617c0ed memo proved).
+
+### C1 — open_qa live default = grounded strategic 6-lens (`apps/utility/src/playbooks/open-qa/index.ts`)
+Under `STUB_MODE=live`, open_qa runs `runStrategicGrounded`: bypasses decompose (no keyword hijack, no
+strategic_option crash), forces the full 6-lens set, injects `buildVaultGrounding(question)` top-8 into every
+lens bundle, real Synthesizer authors the memo, appends provenance + an honest scope note (vault .md only;
+live financials = Phase 4). replay/record keep the original decompose path (fixtures byte-identical). Smallest
+surface (1 file, gated to live) vs a 6-point flag-thread; the only live open_qa dispatcher is the in-app box.
+
+### Phase 1 live proof — both real decisions, grounded, rendered in-app
+`tests/e2e/phase1-grounded-decision.mjs` drives the box live + screenshots the rendered MemoViewer:
+- **Org** (`memos/2026-06-01-open_qa-c902b7c6.md`, 13.8KB): grounded=true, 8 notes; names Jorge/Clayton/Sabina,
+  $723K savings, the $9.83M Q3 book, Barclays covenant, POS-021/DEC-009; lens→source citations. `phase1-org.png`.
+- **Expenses** (`memos/2026-06-01-open_qa-74b719dd.md`, 14.8KB): grounded=true, 8 notes; lands the vault's own
+  answer (~$3.0-3.5M cost cut / ~$3.8-5.0M total EBITDA by Q2 FY27), cites DEC-038 + Cut Target memo + the
+  CFO/CEO lens memos. `phase1-expenses.png`.
+The contrast with the ungrounded 0(b) baseline IS the dogfood proof: current, specific vault context vs. generic.
+
+### C4 handback — CoWork bundle wired (RealClaudeClient, not stub)
+`agents/handoff/runner.ts` `generateHandoffBrief` now uses `modelClientFromEnv()` (was hardcoded StubClaudeClient
+even under live); `handoff.send` relayed (`handlers.ts:38`) + handled (`apps/utility/src/index.ts`) → new
+`writeHandoffBundle` writes `handoffs/<slug>/{memo.md, brief.md, continue-prompt.md}` (zone handoff, disk-only).
+`memo:read` now returns `hasAcceptedDecision: status==='clean'` so the "Draw up for Cowork" CTA shows for real
+shipped memos. CoWork wiring done by a Sonnet agent against `tasks/track-cowork-brief.md`; both tsc --noEmit pass.
+**Live-verification (this session) — PROVEN.** Driving the real UI (`tests/e2e/cowork-bundle-verify.mjs`:
+grounded memo → "Draw up for Cowork" CTA → preview → Send) exposed five real defects the prior wiring's
+`tsc --noEmit` could not catch (none was ever exercised live because the CTA had never shown on a real memo).
+Fixed in order, each isolated before the next:
+1. **IPC contract drift** — renderer sends `originPath`/`originTitle` but the schema + utility handler required
+   `originId`; `validateIpc` (stale `shared-types/dist`, 4 days old) dropped the message ("invalid IPC message
+   dropped"). Aligned `ipc.ts` + `apps/utility/src/index.ts` to `originPath`; rebuilt shared-types→utility→main.
+2. **`maxTurns: 1` too tight for Handoff** (`realClaudeClient.ts:249`, hardcoded all-roles) — the lens/synth
+   roles finalize in turn 1, the Handoff "Chief of Staff" brief does not → SDK threw "Reached maximum number of
+   turns (1)" in ~16s. Isolated via a standalone single-call harness (`tests/e2e/standalone-brief-gen.mjs`).
+   Made role-aware: `MAX_TURNS = role==='Handoff' ? 6 : 1` (ceiling; `allowedTools:[]` blocks any tool loop; the
+   proven lens/synth path is byte-identical).
+3. **Handoff prompt emitted markdown, client requires JSON** — `RealClaudeClient.invoke` does `JSON.parse` for
+   every role (synth proves a 38KB markdown-in-JSON parses live). The Handoff prompt said "produce ONLY the body"
+   → `ClaudeOutputParseError`. Changed `prompt.ts` to emit `{"bodyMarkdown":"…"}`. Standalone then succeeded in
+   140s: 12.3KB grounded brief, 0 stub fingerprints.
+4. **`brief.runId` missing** — utility brief omits runId (it's in the `preview.ready` payload); `App.tsx`
+   discarded it, so `HandoffPreview`'s Send posted `runId:undefined` → `handoff.send` rejected → no bundle.
+   `App.tsx` now merges `{...brief, runId}`.
+5. **frontmatter gaps** — utility frontmatter lacked `origin_title` + `filename`, so the preview showed a blank
+   title + "handoffs/undefined". Added both (schema is `.passthrough()`). Preview now renders correctly
+   (screenshot `tests/e2e/screenshots/cowork-preview-c902b7c6.png`).
+Plus a **test bug**: the harness detected the folder the instant safeWrite mkdir'd it and `app.close()` truncated
+memo.md/continue-prompt.md mid-write (atomic `.tmp`→rename). Harness now waits for all 3 files + no `.tmp` +
+brief.md non-empty before report/close.
+**Result = `COWORK BUNDLE PROVEN`:** `handoffs/2026-06-02-the-go-forward-org-structure-sound/{brief.md 14.2KB
+(RealClaudeClient, 0 stub fingerprints, grounds Jorge/Massimo/$723K/$9.83M-Q3/POS-021), memo.md 14.2KB,
+continue-prompt.md}`. Rendered preview verified visually (origin_title + handoff filename both display).
+Non-blocking open question: an earlier failed run logged "generating brief" twice ~4 min apart with a first
+log at launch+0.3s; not reproduced on the clean PROVEN run (leftover-trees, on-mount-send, and shared-client
+all ruled out) — left as a watch item, not a blocker.
+
+### Burn-down (was 0/5)
+- **C1 CLOSED** — arbitrary strategic decision ships a live Synthesizer-authored 6-lens memo (both decisions).
+- **C2 CLOSED** — in-process retriever injects top-K current vault notes; dated provenance; body cites them;
+  port-faithful + signed off.
+- **C4 CLOSED** — render + CoWork handback both proven live end-to-end (UI path: memo → CTA → preview → Send →
+  3-file bundle on disk). Structured-Sources-section + citation-click stay Phase 2.
+- **C5 READY for dogfood** — two real grounded decision memos in the vault Russell can use this week + name
+  dated items that changed his thinking. Final close = his actual use.
+- **C3 PARTIAL** — strategic path is honest (vault .md only, scope note, degrade-to-[]); NetSuite-on-tile +
+  full live-financials = Phase 4.
