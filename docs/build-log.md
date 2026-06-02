@@ -2641,16 +2641,27 @@ brief.md non-empty before report/close.
 **Result = `COWORK BUNDLE PROVEN`:** `handoffs/2026-06-02-the-go-forward-org-structure-sound/{brief.md 14.2KB
 (RealClaudeClient, 0 stub fingerprints, grounds Jorge/Massimo/$723K/$9.83M-Q3/POS-021), memo.md 14.2KB,
 continue-prompt.md}`. Rendered preview verified visually (origin_title + handoff filename both display).
-Non-blocking open question: an earlier failed run logged "generating brief" twice ~4 min apart with a first
-log at launch+0.3s; not reproduced on the clean PROVEN run (leftover-trees, on-mount-send, and shared-client
-all ruled out) — left as a watch item, not a blocker.
+Double-dispatch — **RESOLVED.** The expenses CoWork run (proven below) added a util-log diagnostic that counted
+`generating brief` occurrences: **count = 1 (single — clean).** So on a healthy run the handoff fires exactly
+once; the earlier two-log instances were artifacts of the FAILURE path (each maxTurns/JSON error retried/redrew),
+NOT on-boot auto-generation — **ADR-0011 §5.1 holds** (no brief spun on app-open). Ruled out earlier: leftover
+electron trees, on-mount auto-send (AcceptedHistory + MemoViewer are click-only), shared-client singleton
+(per-call `new RealClaudeClient()`). Closed, not a follow-up.
+
+**Both real decisions proven (handback).** Org `handoffs/2026-06-02-the-go-forward-org-structure-sound/`
+(brief 14.2KB) AND expenses `handoffs/2026-06-02-the-right-expense-reduction-target-for/` (brief 13.1KB,
+grounds Path B / ~$3.0–3.5M cuts / DEC-038 / Barclays covenant / ~$3.8–5.0M EBITDA by Q2 FY27) — both
+3-file bundles, RealClaudeClient, 0 stub fingerprints, frontmatter carries origin_title + filename.
 
 ### Burn-down (was 0/5)
 - **C1 CLOSED** — arbitrary strategic decision ships a live Synthesizer-authored 6-lens memo (both decisions).
 - **C2 CLOSED** — in-process retriever injects top-K current vault notes; dated provenance; body cites them;
   port-faithful + signed off.
-- **C4 CLOSED** — render + CoWork handback both proven live end-to-end (UI path: memo → CTA → preview → Send →
-  3-file bundle on disk). Structured-Sources-section + citation-click stay Phase 2.
+- **C4 — handback CLOSED + dated provenance block renders** (UI path proven: memo → CTA → preview → Send →
+  3-file bundle on disk). The grounded memo renders with a dated "Vault context used" provenance block, BUT
+  citations stay prose (not threaded/clickable) and there's no distinct Sources panel → the render half of C4
+  remains **Phase 2**, so C4 is NOT fully closed against its sharpened bar. Net burn-down: **2 fully closed
+  (C1, C2), C4 substantial, C5 ready, C3 partial.**
 - **C5 READY for dogfood** — two real grounded decision memos in the vault Russell can use this week + name
   dated items that changed his thinking. Final close = his actual use.
 - **C3 PARTIAL** — strategic path is honest (vault .md only, scope note, degrade-to-[]); NetSuite-on-tile +

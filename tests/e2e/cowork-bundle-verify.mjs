@@ -91,7 +91,9 @@ try {
     const briefMd = existsSync(briefP) ? readFileSync(briefP, 'utf8') : '';
     const stubFp = /Stub citation|STUB output|see Ch\.4|tests\/fixtures\/stubs|replay fixture/i.test(briefMd);
     const has = (n) => files.includes(n);
+    const genCount = (mainLog.join('').match(/generating brief/g) || []).length;
     console.log('\n=== COWORK BUNDLE WRITTEN TO VAULT ===');
+    console.log('[diag] "generating brief" log count: ' + genCount + (genCount > 1 ? ' (DOUBLE-DISPATCH — investigate ADR-0011 §5.1)' : ' (single — clean)'));
     console.log('folder:             handoffs/' + basename(folder));
     console.log('files:              ' + files.join(', '));
     console.log('brief.md:           ' + briefMd.length + ' bytes — stub fingerprint: ' + (stubFp ? 'PRESENT (suspicious)' : 'NONE (RealClaudeClient)'));
